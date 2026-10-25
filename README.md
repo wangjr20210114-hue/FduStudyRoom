@@ -1,6 +1,6 @@
 # 校园自习室预约系统
 
-前端采用 TypeScript、Vue 3 与 Vite，后端计划采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端运行骨架、公共主题和基础组件；登录及其他业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
+前端采用 TypeScript、Vue 3 与 Vite，后端计划采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端运行骨架、公共主题与组件、公共请求层和中英文切换；登录及其他业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
 
 ## 前端运行
 
@@ -16,6 +16,8 @@ npm run dev
 开发环境组件预览：http://127.0.0.1:5173/dev/components 。包含按钮、面板、输入、状态及加载重试；正式构建移除该预览页。组件接口见 [公共组件说明](docs/06-frontend-components.md)。
 
 首次由项目根目录启动时，先执行 cd frontend。npm ci 使用已提交的 package-lock.json，依赖目录 node_modules 不纳入 Git。
+
+首页及组件预览右上方可切换中英文，选择会保留到下次访问。公共请求与字典用法见 [T03 使用说明](docs/07-frontend-api-and-i18n.md)。
 
 ## 当前 Windows 与 WSL 路径
 
@@ -36,6 +38,7 @@ pushd 临时映射目录，避免 Windows npm 脚本的 UNC 工作目录限制�
 ## 验证与打包
 
 ```sh
+npm test
 npm run typecheck
 npm run build
 npm run preview
@@ -51,5 +54,6 @@ build 自带类型检查并生成 dist；preview 在 http://127.0.0.1:4173 预�
 - [分步任务与交接](docs/04-login-implementation-tasks.md)
 - [CodeArts IDE 与 Gitee 操作指南](docs/05-codearts-git-guide.md)
 - [公共样式与组件用法](docs/06-frontend-components.md)
+- [公共请求与国际化](docs/07-frontend-api-and-i18n.md)
 
 使用 CodeArts IDE 或码道 IDE 的内置 Git 面板查看差异、暂存和提交，再推送到 Gitee 的 FduStudyRoom 项目仓库。正式账号、密钥及本机 IDE 配置不提交。复旦认证接入依赖校方批准的参数，开发身份不会作为正式认证验收结果。

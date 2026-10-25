@@ -1,40 +1,31 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type zhCN from '@/shared/i18n/locales/zh-CN'
 import {
-  AppAlert,
-  AppButton,
-  AppLoading,
-  AppPanel,
-  AppStatusTag,
-  AppTextField,
+  AppAlert, AppButton, AppLoading, AppPanel, AppStatusTag, AppTextField, LanguageSwitcher,
 } from '@/shared/components'
 
+const { t } = useI18n({ useScope: 'global' })
 const displayName = ref('')
-const fieldError = ref('')
-const formChecked = ref(false)
-const buttonFeedback = ref('点击按钮，查看交互反馈。')
+const submitted = ref(false)
+const fieldError = computed(() => submitted.value && !displayName.value.trim() ? t('preview.form.required') : '')
+const formChecked = computed(() => submitted.value && !!displayName.value.trim())
+const buttonFeedback = ref<keyof typeof zhCN.preview.feedback>('initial')
 const loading = ref(false)
 const retrying = ref(false)
 const recovered = ref(false)
 let actionTimer: ReturnType<typeof setTimeout> | undefined
 let retryTimer: ReturnType<typeof setTimeout> | undefined
 
-watch(displayName, () => {
-  fieldError.value = ''
-  formChecked.value = false
-})
-
-function checkInput() {
-  fieldError.value = displayName.value.trim() ? '' : '请填写显示名称。'
-  formChecked.value = !fieldError.value
-}
+watch(displayName, () => { submitted.value = false })
 
 function simulateLoading() {
   loading.value = true
-  buttonFeedback.value = '正在演示加载状态，按钮暂时不可重复点击。'
+  buttonFeedback.value = 'loading'
   actionTimer = setTimeout(() => {
     loading.value = false
-    buttonFeedback.value = '加载演示完成。'
+    buttonFeedback.value = 'done'
   }, 1000)
 }
 
@@ -48,15 +39,12 @@ function simulateRetry() {
 
 const rootStyles = getComputedStyle(document.documentElement)
 const swatches = [
-  { name: '主色', token: '--color-primary' },
-  { name: '浅色背景', token: '--color-primary-soft' },
-  { name: '成功', token: '--color-success' },
-  { name: '警告', token: '--color-warning' },
-  { name: '错误', token: '--color-error' },
-].map((swatch) => ({
-  ...swatch,
-  value: rootStyles.getPropertyValue(swatch.token).trim().toUpperCase(),
-}))
+  { key: 'primary', token: '--color-primary' },
+  { key: 'soft', token: '--color-primary-soft' },
+  { key: 'success', token: '--color-success' },
+  { key: 'warning', token: '--color-warning' },
+  { key: 'error', token: '--color-error' },
+] as const
 
 onBeforeUnmount(() => {
   clearTimeout(actionTimer)
@@ -66,130 +54,117 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="component-preview">
-    <a class="skip-link" href="#preview-main">跳到组件内容</a>
+    <a class="skip-link" href="#preview-main">{{ t('preview.skip') }}</a>
     <header class="preview-header">
-      <a class="preview-brand" href="/" aria-label="FduStudyRoom 起始页">
+      <a class="preview-brand" href="/" :aria-label="t('common.homeLabel')">
         <img src="/favicon.svg" alt="" width="34" height="34" />
         <span>FduStudyRoom</span>
       </a>
-      <a class="preview-back" href="/">返回起始页 <span aria-hidden="true">↗</span></a>
+      <div class="preview-header-actions">
+        <LanguageSwitcher />
+        <a class="preview-back" href="/">{{ t('common.home') }} <span aria-hidden="true">↗</span></a>
+      </div>
     </header>
 
     <main id="preview-main" class="preview-main">
       <section class="preview-intro" aria-labelledby="preview-title">
-        <p class="preview-eyebrow">公共样式与基础组件</p>
-        <h1 id="preview-title">清楚、一致的操作体验。</h1>
-        <p class="preview-description">在这里检查按钮、输入与反馈的外观和交互。所有操作仅作用于本页预览。</p>
-        <nav class="preview-links" aria-label="组件分类">
-          <a href="#preview-actions">按钮与状态</a>
-          <a href="#preview-form">表单输入</a>
-          <a href="#preview-feedback">加载与反馈</a>
+        <p class="preview-eyebrow">{{ t('preview.eyebrow') }}</p>
+        <h1 id="preview-title">{{ t('preview.title') }}</h1>
+        <p class="preview-description">{{ t('preview.description') }}</p>
+        <nav class="preview-links" :aria-label="t('preview.categories')">
+          <a href="#preview-actions">{{ t('preview.actions.title') }}</a>
+          <a href="#preview-form">{{ t('preview.form.title') }}</a>
+          <a href="#preview-feedback">{{ t('preview.messages.title') }}</a>
         </nav>
       </section>
 
       <div class="preview-grid">
-        <AppPanel
-          id="preview-actions"
-          title="按钮与状态"
-          description="操作层级清晰，加载与禁用状态明确。"
-        >
-          <template #actions><AppStatusTag tone="success">可交互预览</AppStatusTag></template>
+        <AppPanel id="preview-actions" :title="t('preview.actions.title')" :description="t('preview.actions.description')">
+          <template #actions><AppStatusTag tone="success">{{ t('preview.actions.interactive') }}</AppStatusTag></template>
           <div class="preview-stack">
             <div class="preview-button-row">
-              <AppButton variant="primary" @click="buttonFeedback = '已点击主要操作。'">主要操作</AppButton>
-              <AppButton @click="buttonFeedback = '已点击次要操作。'">次要操作</AppButton>
-              <AppButton variant="ghost" @click="buttonFeedback = '已点击文字操作。'">文字操作</AppButton>
-              <AppButton variant="danger" @click="buttonFeedback = '危险操作样式预览，没有执行删除。'">危险操作</AppButton>
+              <AppButton variant="primary" @click="buttonFeedback = 'primary'">{{ t('preview.actions.primary') }}</AppButton>
+              <AppButton @click="buttonFeedback = 'secondary'">{{ t('preview.actions.secondary') }}</AppButton>
+              <AppButton variant="ghost" @click="buttonFeedback = 'ghost'">{{ t('preview.actions.ghost') }}</AppButton>
+              <AppButton variant="danger" @click="buttonFeedback = 'danger'">{{ t('preview.actions.danger') }}</AppButton>
             </div>
             <div class="preview-button-row">
-              <AppButton size="small" @click="buttonFeedback = '已点击小号按钮。'">小号按钮</AppButton>
-              <AppButton @click="buttonFeedback = '已点击标准按钮。'">标准按钮</AppButton>
-              <AppButton size="large" @click="buttonFeedback = '已点击大号按钮。'">大号按钮</AppButton>
+              <AppButton size="small" @click="buttonFeedback = 'small'">{{ t('preview.actions.small') }}</AppButton>
+              <AppButton @click="buttonFeedback = 'medium'">{{ t('preview.actions.medium') }}</AppButton>
+              <AppButton size="large" @click="buttonFeedback = 'large'">{{ t('preview.actions.large') }}</AppButton>
             </div>
             <div class="preview-button-row">
-              <AppButton variant="primary" :loading="loading" @click="simulateLoading">演示加载</AppButton>
-              <AppButton disabled>不可操作</AppButton>
+              <AppButton variant="primary" :loading="loading" @click="simulateLoading">{{ t('preview.actions.loading') }}</AppButton>
+              <AppButton disabled>{{ t('preview.actions.disabled') }}</AppButton>
             </div>
-            <p class="preview-caption preview-event" role="status" aria-live="polite">{{ buttonFeedback }}</p>
+            <p class="preview-caption preview-event" role="status" aria-live="polite">{{ t(`preview.feedback.${buttonFeedback}`) }}</p>
             <div class="preview-divider" />
-            <div class="preview-tag-row" aria-label="状态标签示例">
-              <AppStatusTag>默认</AppStatusTag>
-              <AppStatusTag tone="info">提示</AppStatusTag>
-              <AppStatusTag tone="success">已完成</AppStatusTag>
-              <AppStatusTag tone="warning">待处理</AppStatusTag>
-              <AppStatusTag tone="error">失败</AppStatusTag>
+            <div class="preview-tag-row" :aria-label="t('preview.actions.statusLabel')">
+              <AppStatusTag>{{ t('preview.status.neutral') }}</AppStatusTag>
+              <AppStatusTag tone="info">{{ t('preview.status.info') }}</AppStatusTag>
+              <AppStatusTag tone="success">{{ t('preview.status.success') }}</AppStatusTag>
+              <AppStatusTag tone="warning">{{ t('preview.status.warning') }}</AppStatusTag>
+              <AppStatusTag tone="error">{{ t('preview.status.error') }}</AppStatusTag>
             </div>
           </div>
         </AppPanel>
 
-        <AppPanel id="preview-form" title="表单输入" description="标签、帮助和错误消息与输入框关联。">
-          <form class="preview-stack" novalidate @submit.prevent="checkInput">
+        <AppPanel id="preview-form" :title="t('preview.form.title')" :description="t('preview.form.description')">
+          <form class="preview-stack" novalidate @submit.prevent="submitted = true">
             <AppTextField
               v-model="displayName"
-              label="显示名称"
+              :label="t('preview.form.label')"
               name="display-name"
               autocomplete="nickname"
-              placeholder="怎么称呼你？"
-              hint="试试留空后检查，再填写一个名称。"
+              :placeholder="t('preview.form.placeholder')"
+              :hint="t('preview.form.hint')"
               :error="fieldError"
               required
               clearable
             />
             <AppTextField
-              model-value="此项暂不可编辑"
-              label="禁用的输入框"
-              hint="禁用状态不接受输入。"
+              :model-value="t('preview.form.disabledValue')"
+              :label="t('preview.form.disabledLabel')"
+              :hint="t('preview.form.disabledHint')"
               disabled
             />
-            <AppButton variant="primary" html-type="submit" block>检查输入</AppButton>
-            <AppAlert
-              v-if="formChecked"
-              type="success"
-              title="输入检查通过"
-              description="只更新当前预览，不会保存到服务器。"
-            />
+            <AppButton variant="primary" html-type="submit" block>{{ t('common.checkInput') }}</AppButton>
+            <AppAlert v-if="formChecked" type="success" :title="t('preview.form.success')" :description="t('preview.form.successDescription')" />
           </form>
         </AppPanel>
 
-        <AppPanel id="preview-feedback" title="加载与反馈" description="说明正在发生什么，并提供下一步操作。">
+        <AppPanel id="preview-feedback" :title="t('preview.messages.title')" :description="t('preview.messages.description')">
           <div class="preview-stack">
-            <AppLoading label="正在加载预览内容…" />
-            <AppAlert type="info" title="消息提示" description="普通说明保持简短，不打断当前操作。" />
-            <AppAlert type="warning" title="需要留意" description="用明确文字说明状态，颜色只作为辅助。" />
-            <AppAlert
-              v-if="!recovered"
-              type="error"
-              title="加载失败示例"
-              description="可以重新尝试。这里不会发起实际网络请求。"
-            >
+            <AppLoading :label="t('preview.messages.loading')" />
+            <AppAlert type="info" :title="t('preview.messages.infoTitle')" :description="t('preview.messages.infoDescription')" />
+            <AppAlert type="warning" :title="t('preview.messages.warningTitle')" :description="t('preview.messages.warningDescription')" />
+            <AppAlert v-if="!recovered" type="error" :title="t('preview.messages.errorTitle')" :description="t('preview.messages.errorDescription')">
               <template #actions>
-                <AppButton size="small" :loading="retrying" @click="simulateRetry">重新尝试</AppButton>
+                <AppButton size="small" :loading="retrying" @click="simulateRetry">{{ t('common.retry') }}</AppButton>
               </template>
             </AppAlert>
-            <AppAlert v-else type="success" title="重试演示完成" description="成功状态使用相同的消息结构。">
+            <AppAlert v-else type="success" :title="t('preview.messages.successTitle')" :description="t('preview.messages.successDescription')">
               <template #actions>
-                <AppButton size="small" variant="ghost" @click="recovered = false">恢复错误示例</AppButton>
+                <AppButton size="small" variant="ghost" @click="recovered = false">{{ t('preview.messages.restore') }}</AppButton>
               </template>
             </AppAlert>
           </div>
         </AppPanel>
 
-        <AppPanel title="统一的视觉基础" description="颜色、圆角和间距由公共样式维护。">
+        <AppPanel :title="t('preview.visual.title')" :description="t('preview.visual.description')">
           <div class="preview-swatches">
             <div v-for="swatch in swatches" :key="swatch.token" class="preview-swatch">
               <span class="preview-swatch__color" :style="{ background: `var(${swatch.token})` }" aria-hidden="true" />
-              <span>{{ swatch.name }}</span>
-              <code>{{ swatch.value }}</code>
+              <span>{{ t(`preview.visual.${swatch.key}`) }}</span>
+              <code>{{ rootStyles.getPropertyValue(swatch.token).trim().toUpperCase() }}</code>
             </div>
           </div>
-          <template #footer>
-            <p class="preview-caption">输入框与按钮使用统一尺寸；组件文本由使用方传入，供后续国际化复用。</p>
-          </template>
+          <template #footer><p class="preview-caption">{{ t('preview.visual.footer') }}</p></template>
         </AppPanel>
       </div>
     </main>
 
-    <footer class="preview-footer">组件预览仅在开发环境开放 · 不连接认证或预约服务</footer>
+    <footer class="preview-footer">{{ t('preview.footer') }}</footer>
   </div>
 </template>
 
@@ -215,6 +190,7 @@ onBeforeUnmount(() => {
   font-weight: 600;
   text-decoration: none;
 }
+.preview-header-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-4); }
 .preview-back { font-size: var(--font-size-small); text-decoration: none; white-space: nowrap; }
 .preview-intro { padding-block: var(--space-12) var(--space-8); }
 .preview-eyebrow { margin: 0 0 var(--space-3); color: var(--color-primary); font-size: var(--font-size-small); font-weight: 600; }
@@ -243,7 +219,8 @@ h1 { margin: 0; font-size: clamp(27px, 3.5vw, 40px); font-weight: 600; letter-sp
 }
 @media (max-width: 480px) {
   .component-preview { padding-inline: var(--space-4); }
-  .preview-header { min-height: 76px; gap: var(--space-2); }
+  .preview-header { min-height: 76px; padding-block: var(--space-3); flex-wrap: wrap; gap: var(--space-3); }
+  .preview-header-actions { gap: var(--space-3); }
   .preview-brand { font-size: var(--font-size-body); gap: var(--space-2); }
   .preview-brand img { width: 30px; height: 30px; }
   .preview-intro { padding-block: var(--space-8) var(--space-6); }

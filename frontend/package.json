@@ -10,17 +10,20 @@
     "dev": "vite",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "build": "npm run typecheck && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "naive-ui": "2.45.3",
-    "vue": "3.5.44"
+    "vue": "3.5.44",
+    "vue-i18n": "11.4.16"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
     "@vitejs/plugin-vue": "6.0.10",
     "typescript": "5.9.3",
     "vite": "8.3.5",
+    "vitest": "5.0.5",
     "vue-tsc": "3.3.13"
   }
 }

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AppThemeProvider from '@/shared/components/AppThemeProvider.vue'
+import LanguageSwitcher from '@/shared/components/LanguageSwitcher.vue'
 
+const { t } = useI18n({ useScope: 'global' })
 const ComponentPreview = import.meta.env.DEV
   ? defineAsyncComponent(() => import('./dev/ComponentPreview.vue'))
   : undefined
@@ -12,19 +15,23 @@ const showPreview =
 <template>
   <AppThemeProvider>
     <ComponentPreview v-if="showPreview && ComponentPreview" />
-    <main v-else class="welcome">
-      <img class="welcome__brand" src="/favicon.svg" alt="" width="48" height="48" />
-      <p class="welcome__eyebrow">校园自习室</p>
-      <h1>为下一段专注，<br />找到一个好位置。</h1>
-      <p class="welcome__description">查询校园自习空间，安排你的学习时段。</p>
-    </main>
+    <template v-else>
+      <header class="app-header"><LanguageSwitcher /></header>
+      <main class="welcome">
+        <img class="welcome__brand" src="/favicon.svg" alt="" width="48" height="48" />
+        <p class="welcome__eyebrow">{{ t('app.name') }}</p>
+        <h1>{{ t('app.headingLine1') }}<br />{{ t('app.headingLine2') }}</h1>
+        <p class="welcome__description">{{ t('app.description') }}</p>
+      </main>
+    </template>
   </AppThemeProvider>
 </template>
 
 <style scoped>
+.app-header { display: flex; justify-content: flex-end; align-items: center; min-height: 72px; width: min(100%, 960px); margin-inline: auto; padding-inline: var(--space-8); }
 .welcome {
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - 72px);
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;

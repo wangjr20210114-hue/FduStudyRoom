@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- |
 | T01 | 前端运行骨架 | frontend 的依赖、入口、构建与类型配置，根目录启动说明及 Git 规则 | 可启动并返回前端资源；类型检查和正式打包通过 | 已完成 |
 | T02 | 公共样式与基础组件 | shared/styles、shared/components | 统一主题、按钮、面板、输入框、加载和错误提示；桌面与手机可用 | 已完成 |
-| T03 | 公共逻辑与国际化 | shared 的 API 客户端、工具和 i18n，zh-CN / en 字典 | 请求错误处理一致；语言可切换并保留选择；后续页面复用字典 | 待开始 |
+| T03 | 公共逻辑与国际化 | shared 的 API 客户端、工具和 i18n，zh-CN / en 字典 | 请求错误处理一致；语言可切换并保留选择；后续页面复用字典 | 已完成 |
 | T04 | 登录后端 | backend 构建、identity、security、认证契约和必要数据库迁移 | 用户与角色、当前用户、退出和后端鉴权；开发身份入口与正式模式隔离；关键安全行为有测试 | 待开始 |
 | T05 | 登录前端 | modules/auth 与公共组件组合 | 复旦认证入口、开发模式标识、处理中与失败状态，使用公共样式和字典 | 待开始 |
 | T06 | 登录后基础布局 | app 路由与布局、导航、用户菜单 | 已登录可进入空工作台；未登录不能访问；菜单按权限显示；可以退出 | 待开始 |
@@ -93,17 +93,63 @@ T01 的交付范围为基础页面；公共组件体系由 T02 交付，国际�
 
 预览地址：http://127.0.0.1:5173/dev/components 。完整组件用法见 [公共组件说明](06-frontend-components.md)。
 
-## 6 当前停点与 Git 审查
+## 6 T03 文件与用途
 
-T02 已完成，用户已审查提交说明并授权提交。下一项为 T03 公共逻辑与国际化。登录后端、登录前端和登录后布局仍待对应任务实现。
+| 文件 | 用途 |
+| --- | --- |
+| frontend/src/shared/api/client.ts | JSON 请求、参数编码、语言请求头、超时、取消和响应格式检查 |
+| frontend/src/shared/api/errors.ts | 统一异常分类、HTTP 状态、业务码及追踪号 |
+| frontend/src/shared/api/message.ts、index.ts | 当前语言错误提示和同站点 /api 入口 |
+| frontend/src/shared/i18n/locales/zh-CN.ts、en.ts | 首页、公共提示和组件预览的中英文字典 |
+| frontend/src/shared/i18n/schema.d.ts | 翻译函数的字典结构类型 |
+| frontend/src/shared/i18n/locale.ts、index.ts | 语言保存、回退、全局实例、页面语言和标题同步 |
+| frontend/src/shared/components/LanguageSwitcher.vue | 语言选择控件 |
+| frontend/src/shared/components/AppThemeProvider.vue、index.ts | 同步 Naive UI 语言、日期区域设置并导出新控件 |
+| frontend/src/main.ts、src/app/App.vue | 注册国际化插件，首页接入字典和语言选择 |
+| frontend/src/app/dev/ComponentPreview.vue | 预览文案接入字典，已有错误及反馈随语言更新 |
+| frontend/tests/api-client.test.ts、i18n.test.ts | 请求和国际化共 29 项行为测试 |
+| frontend/vitest.config.ts、tsconfig.json、tsconfig.node.json | 测试入口及应用、测试、配置的类型检查 |
+| frontend/package.json、package-lock.json | 精确锁定 Vue I18n 11.4.16、Vitest 5.0.5，增加 npm test |
+| .gitignore | 忽略测试工具产物 |
+| README.md、docs/01-project-structure.md | 同步实现范围、目录与验证入口 |
+| docs/04-login-implementation-tasks.md | T03 任务记录和待审查提交说明 |
+| docs/06-frontend-components.md | 更新语言选择组件及主题区域设置说明 |
+| docs/07-frontend-api-and-i18n.md | 公共请求、错误处理和国际化用法 |
 
-远程仓库为 https://gitee.com/wangjr2021/fdu-study-room.git ，分支 main；T01 已提交并推送，提交号为 90d4e3c。T02 的提交说明已按用户要求删去预览页和文档两条描述，并经用户审查后授权本地提交。后续任务完成后同样先展示拟用提交说明，等待用户审查。IDE 内置 Git 步骤见 [操作指南](05-codearts-git-guide.md)。
+## 7 T03 验证记录
 
-T02 已审查的提交说明：
+验证环境仍为 Windows 与 WSL 共享目录，Node.js v24.19.0、npm 11.17.0。浏览器使用隔离的无头 Chrome。
+
+| 检查 | 结果 |
+| --- | --- |
+| npm test | 2 个测试文件、29 项测试全部通过 |
+| 类型检查与正式构建 | npm run build 通过，包含应用、测试及构建配置类型检查 |
+| 请求行为 | 查询编码、JSON 提交、当前语言请求头、HTTP 状态及安全错误信息符合预期 |
+| 异常与取消 | 网络故障、格式异常、超时、主动取消分类正确；写请求不自动重试 |
+| 语言选择 | 默认中文，中英文可切换；刷新和首页/预览跳转后保留选择 |
+| 已有提示 | 已展示的表单错误和按钮反馈切换语言时即时翻译 |
+| 页面及组件区域设置 | html lang、页面标题随语言更新；主题容器响应语言变化 |
+| 存储受限 | 不支持的已存语言回退为中文；存储禁止或写入失败时仍可在当前页面切换 |
+| 手机布局 | 英文页面 375px 视口无横向溢出；面板宽 343px，纵向排列 |
+| 浏览器运行与外观 | 检查期间无 JavaScript 异常，已检查英文桌面和手机截图 |
+| 正式产物 | 移除开发预览组件及其交互逻辑 |
+| macOS 与真实后端 | 尚未实际验收 macOS；请求测试未连接真实业务后端或复旦服务 |
+
+操作入口：http://127.0.0.1:5173/ 与 http://127.0.0.1:5173/dev/components 。详细用法见 [公共请求与国际化](07-frontend-api-and-i18n.md)。
+
+## 8 当前停点与 Git 审查
+
+T02 已按用户审查后的说明本地提交，提交号 1be62d3；当前尚未推送。远程仓库为 https://gitee.com/wangjr2021/fdu-study-room.git ，分支 main；T01 已推送，提交号 90d4e3c。
+
+T03 已完成，用户已审查提交说明并授权本地提交；下一项为 T04 登录后端。每个任务完成后先报告文件、功能及验证结果，并展示拟用 Git 提交说明，等待用户审查；IDE 操作步骤见 [Git 指南](05-codearts-git-guide.md)。
+
+下一项为 T04 登录后端，收到继续指令后再开始。届时定稿身份接口、Cookie 与 CSRF、开发身份隔离和数据库用户字段；本阶段的公共请求工具不代表认证已经接通。
+
+T03 已审查的提交说明：
 
 ```text
-feat(ui): 添加公共主题与基础组件
+feat(frontend): 添加公共请求与中英文切换
 
-- 统一颜色、字体、间距、圆角及 Naive UI 主题
-- 封装按钮、面板、输入框、状态、加载和消息提示
+- 统一接口请求、超时取消和错误提示
+- 加入中英文字典及语言选择持久化
 ```

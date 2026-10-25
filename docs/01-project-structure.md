@@ -2,7 +2,7 @@
 
 日期：2026年10月25日。技术基线：前端 TypeScript 与 Vue 3，后端 Java 与 Spring Boot，数据库 PostgreSQL。四名开发分为后端 A、后端 B、前端 A、前端 B。
 
-当前已完成 T01 前端运行骨架和 T02 公共样式组件，入口为 frontend/src/main.ts。公共视觉参数位于 shared/styles，七个主题及基础组件位于 shared/components；开发预览入口为 /dev/components，用法见 [公共组件说明](06-frontend-components.md)。后端及业务模块仍为预留目录；空目录使用 `.gitkeep` 保留。国际化及登录按 [分步任务清单](04-login-implementation-tasks.md) 继续实施，每项完成后停止交接。
+当前已完成 T01 前端运行骨架、T02 公共样式组件和 T03 公共请求与国际化，入口为 frontend/src/main.ts。公共视觉参数位于 shared/styles，主题、基础组件及语言选择位于 shared/components；公共请求位于 shared/api，中英文字典位于 shared/i18n；开发预览入口为 /dev/components，用法见 [公共组件说明](06-frontend-components.md)。后端及业务模块仍为预留目录；空目录使用 `.gitkeep` 保留。登录按 [分步任务清单](04-login-implementation-tasks.md) 继续实施，每项完成后停止交接。
 
 数据库字段、约束、外键和关系图见 [数据库表结构设计](02-database-design.md)。前端风格及复旦统一身份认证的新方案见 [前端与登录实施计划](03-ui-and-auth-plan.md)；用户表的旧本地密码设计在后续定稿时按该计划修订。
 
@@ -23,6 +23,7 @@ new-project/
 │   ├── 04-login-implementation-tasks.md    分步任务与交接
 │   ├── 05-codearts-git-guide.md           IDE 提交与推送操作
 │   ├── 06-frontend-components.md          公共样式与组件用法
+│   ├── 07-frontend-api-and-i18n.md        公共请求与国际化用法
 │   ├── adr/                              架构与公共层归属决策
 │   └── acceptance/                       需求验收标准
 ├── contracts/
@@ -68,9 +69,10 @@ new-project/
 │       │   ├── App.vue                   应用根组件与主题入口
 │       │   └── dev/ComponentPreview.vue  仅开发环境的组件预览
 │       ├── shared/
-│       │   ├── api/
+│       │   ├── api/                     请求客户端、错误及公共导出
 │       │   │   └── generated/
-│       │   ├── components/              AppThemeProvider、AppButton 等七个组件及公共导出
+│       │   ├── components/              AppThemeProvider、AppButton 等组件与语言选择
+│       │   ├── i18n/                    中英文字典、类型与语言保存
 │       │   └── styles/                  tokens.css、base.css、theme.ts
 │       └── modules/
 │           ├── auth/
