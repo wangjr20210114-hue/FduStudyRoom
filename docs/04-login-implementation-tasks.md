@@ -9,7 +9,7 @@
 | 编号 | 任务 | 主要文件范围 | 验收 | 状态 |
 | --- | --- | --- | --- | --- |
 | T01 | 前端运行骨架 | frontend 的依赖、入口、构建与类型配置，根目录启动说明及 Git 规则 | 可启动并返回前端资源；类型检查和正式打包通过 | 已完成 |
-| T02 | 公共样式与基础组件 | shared/styles、shared/components | 统一主题、按钮、面板、输入框、加载和错误提示；桌面与手机可用 | 待开始 |
+| T02 | 公共样式与基础组件 | shared/styles、shared/components | 统一主题、按钮、面板、输入框、加载和错误提示；桌面与手机可用 | 已完成 |
 | T03 | 公共逻辑与国际化 | shared 的 API 客户端、工具和 i18n，zh-CN / en 字典 | 请求错误处理一致；语言可切换并保留选择；后续页面复用字典 | 待开始 |
 | T04 | 登录后端 | backend 构建、identity、security、认证契约和必要数据库迁移 | 用户与角色、当前用户、退出和后端鉴权；开发身份入口与正式模式隔离；关键安全行为有测试 | 待开始 |
 | T05 | 登录前端 | modules/auth 与公共组件组合 | 复旦认证入口、开发模式标识、处理中与失败状态，使用公共样式和字典 | 待开始 |
@@ -50,10 +50,60 @@ T04 与 T05 可以先联调明确标识的开发身份，T07 才能认定正式�
 | 浏览器外观 | 等待用户打开地址检查；未声称完成真实浏览器视觉验收 |
 | macOS | 已提供运行步骤，尚未在实际 macOS 环境执行 |
 
-当前只实现基础页面，公共组件体系、国际化、认证后端、登录页及登录后工作台属于后续任务。
+T01 的交付范围为基础页面；公共组件体系由 T02 交付，国际化、认证后端、登录页及登录后工作台仍按后续编号实施。
 
-## 4 下一停点
+## 4 T02 文件与用途
 
-T01 验证完成后停止，等待用户检查页面和文件；之后再开始 T02。每个后续任务均按相同方式交接，不自动跨越停点。
+| 文件 | 用途 |
+| --- | --- |
+| frontend/package.json、package-lock.json | 加入并精确锁定 Naive UI 2.45.3 |
+| frontend/src/shared/styles/tokens.css | 统一颜色、字体、字号、间距、圆角、高度、阴影及动效 |
+| frontend/src/shared/styles/base.css | 导入公共变量，统一基础排版、键盘焦点和减少动效支持 |
+| frontend/src/shared/styles/theme.ts | 从 CSS 变量生成 Naive UI 主题 |
+| frontend/src/shared/components/AppThemeProvider.vue | 应用主题和组件库中文区域设置 |
+| frontend/src/shared/components/AppButton.vue | 按钮变体、尺寸、加载、禁用及提交类型 |
+| frontend/src/shared/components/AppPanel.vue | 面板标题、说明、内容、操作和页脚 |
+| frontend/src/shared/components/AppTextField.vue | 标签、输入、提示、错误和 v-model；关联无障碍属性 |
+| frontend/src/shared/components/AppStatusTag.vue | 以文字和颜色展示状态 |
+| frontend/src/shared/components/AppLoading.vue | 加载图标、文案及状态播报 |
+| frontend/src/shared/components/AppAlert.vue | 信息、成功、警告和错误提示，可附操作 |
+| frontend/src/shared/components/types.ts、index.ts | 公共类型与导出 |
+| frontend/src/app/App.vue | 接入主题和仅开发环境可用的预览入口 |
+| frontend/src/app/dev/ComponentPreview.vue | 组件展示、输入校验和加载重试演示，适配手机 |
+| README.md、docs/01-project-structure.md | 同步当前实现范围、目录和预览入口 |
+| docs/04-login-implementation-tasks.md | 更新任务状态、验证记录及本次 Git 审查停点 |
+| docs/06-frontend-components.md | 组件属性、插槽、使用示例与样式约定 |
 
-Git 使用 [CodeArts IDE 与 Gitee 操作指南](05-codearts-git-guide.md)。用户已授权将当前版本提交并推送到独立的 FduStudyRoom 仓库。使用已有作者署名；远程创建与认证就绪后执行推送，不将其他项目的 vla-b 用作目标。
+## 5 T02 验证记录
+
+验证环境：Windows，Node.js v24.19.0、npm 11.17.0；源码位于 WSL 共享目录。使用隔离的无头 Chrome 执行真实页面交互，并检查桌面与手机截图。
+
+| 检查 | 结果 |
+| --- | --- |
+| 类型检查与正式构建 | npm run build 通过，包含 Vue 应用与构建配置的类型检查 |
+| 统一主题 | 浏览器中 CSS 主色与 Naive UI 主按钮颜色一致 |
+| 按钮交互 | 点击、禁用、加载与提交类型符合预期；加载时阻止重复点击 |
+| 输入与校验 | 标签可聚焦输入框；v-model 更新；错误文案和 aria-invalid、aria-describedby 关联正确 |
+| 加载与重试 | 重试经过加载状态后呈现成功反馈 |
+| 减少动效 | 系统偏好启用时应用减少动效样式 |
+| 手机布局 | 375px 视口面板纵向排列，无横向溢出 |
+| 浏览器运行 | 检查过程中未出现 JavaScript 异常 |
+| 正式产物 | 开发组件预览及示例逻辑不进入 dist |
+| macOS | 已提供启动步骤，尚未在实际 macOS 环境执行 |
+
+预览地址：http://127.0.0.1:5173/dev/components 。完整组件用法见 [公共组件说明](06-frontend-components.md)。
+
+## 6 当前停点与 Git 审查
+
+T02 已完成，用户已审查提交说明并授权提交。下一项为 T03 公共逻辑与国际化。登录后端、登录前端和登录后布局仍待对应任务实现。
+
+远程仓库为 https://gitee.com/wangjr2021/fdu-study-room.git ，分支 main；T01 已提交并推送，提交号为 90d4e3c。T02 的提交说明已按用户要求删去预览页和文档两条描述，并经用户审查后授权本地提交。后续任务完成后同样先展示拟用提交说明，等待用户审查。IDE 内置 Git 步骤见 [操作指南](05-codearts-git-guide.md)。
+
+T02 已审查的提交说明：
+
+```text
+feat(ui): 添加公共主题与基础组件
+
+- 统一颜色、字体、间距、圆角及 Naive UI 主题
+- 封装按钮、面板、输入框、状态、加载和消息提示
+```

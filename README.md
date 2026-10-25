@@ -1,6 +1,6 @@
 # 校园自习室预约系统
 
-前端采用 TypeScript、Vue 3 与 Vite，后端计划采用 Java、Spring Boot，数据库采用 PostgreSQL。当前完成范围是前端运行骨架；登录及其他业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
+前端采用 TypeScript、Vue 3 与 Vite，后端计划采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端运行骨架、公共主题和基础组件；登录及其他业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
 
 ## 前端运行
 
@@ -12,6 +12,8 @@ npm run dev
 ```
 
 浏览器访问 http://127.0.0.1:5173。端口被占用时会明确报错，不会自动改用其他端口。使用 Ctrl+C 停止服务。
+
+开发环境组件预览：http://127.0.0.1:5173/dev/components 。包含按钮、面板、输入、状态及加载重试；正式构建移除该预览页。组件接口见 [公共组件说明](docs/06-frontend-components.md)。
 
 首次由项目根目录启动时，先执行 cd frontend。npm ci 使用已提交的 package-lock.json，依赖目录 node_modules 不纳入 Git。
 
@@ -48,5 +50,6 @@ build 自带类型检查并生成 dist；preview 在 http://127.0.0.1:4173 预�
 - [前端风格与复旦认证计划](docs/03-ui-and-auth-plan.md)
 - [分步任务与交接](docs/04-login-implementation-tasks.md)
 - [CodeArts IDE 与 Gitee 操作指南](docs/05-codearts-git-guide.md)
+- [公共样式与组件用法](docs/06-frontend-components.md)
 
 使用 CodeArts IDE 或码道 IDE 的内置 Git 面板查看差异、暂存和提交，再推送到 Gitee 的 FduStudyRoom 项目仓库。正式账号、密钥及本机 IDE 配置不提交。复旦认证接入依赖校方批准的参数，开发身份不会作为正式认证验收结果。
