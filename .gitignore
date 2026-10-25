@@ -1,0 +1,23 @@
+# Local IDE and assistant configuration
+.codeartsdoer/
+.idea/
+.vscode/
+
+# Dependencies and generated output
+**/node_modules/
+**/dist/
+**/target/
+**/coverage/
+*.tsbuildinfo
+*.log
+
+# Local environment values
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.local
+
+# Operating system files
+.DS_Store
+Thumbs.db
