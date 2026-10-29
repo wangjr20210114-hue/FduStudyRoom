@@ -1,6 +1,6 @@
 export default {
   "app": {
-    "title": "复旦自习室预约",
+    "title": "自习室预约",
     "name": "校园自习室",
     "headingLine1": "为下一段专注，",
     "headingLine2": "找到一个好位置。",
@@ -109,35 +109,24 @@ export default {
     "footer": "组件预览仅在开发环境开放 · 不连接认证或预约服务"
   },
   "auth": {
-    "card": {
-      "title": "登录"
-    },
-    "official": {
-      "action": "复旦统一身份认证",
-      "unavailable": "统一认证暂未开放"
-    },
-    "development": {
-      "badge": "开发模式",
-      "label": "开发身份",
-      "action": "登录",
-      "accounts": {
-        "student": "开发学生",
-        "admin": "开发管理员",
-        "maintainer": "开发维护人员"
-      }
+    "login": "登录",
+    "register": "注册",
+    "toLogin": "已有账号？登录",
+    "toRegister": "注册账号",
+    "fields": {
+      "account": "账号",
+      "password": "密码",
+      "confirmation": "确认密码",
+      "accountHint": "3–32位字母、数字、点、下划线或短横线",
+      "passwordHint": "8–64位字符"
     },
     "actions": {
-      "recheck": "重新检查",
-      "signingIn": "正在登录…",
       "signOut": "退出登录"
     },
     "loading": "正在检查登录状态…",
     "session": {
-      "role": "角色",
-      "identity": "身份",
       "account": "账号",
-      "student": "学生",
-      "staff": "教职工"
+      "role": "角色"
     },
     "roles": {
       "student": "普通用户",
@@ -145,27 +134,44 @@ export default {
       "maintainer": "维护人员"
     },
     "errors": {
-      "title": "暂时无法完成操作",
-      "csrf": "安全校验已失效，请重新尝试。",
-      "ineligible": "当前身份不符合使用条件，请联系管理员核对资格。",
+      "title": "操作未完成",
+      "csrf": "安全校验已失效，请重试。",
+      "password": "密码需为8–64位，且不能全部为空白。",
+      "credentials": "账号或密码错误。",
+      "taken": "账号已被使用。",
+      "mismatch": "两次密码不一致。",
       "disabled": "账号或角色已停用，请联系管理员。",
-      "environment": "当前登录配置不可用，请联系系统管理员。",
-      "unconfirmed": "暂未确认登录状态，请重新检查后再试。"
+      "unconfirmed": "登录状态未确认，请重试。"
     }
   },
   "shell": {
     "navigation": {
       "workspace": "工作台",
-      "users": "账号管理"
+      "rooms": "座位预约",
+      "reservations": "我的预约",
+      "roomRequests": "教室申请",
+      "repairs": "我的报修",
+      "manageRooms": "教室与座位",
+      "manageReservations": "预约管理",
+      "approvals": "教室审批",
+      "manageRepairs": "报修管理",
+      "users": "账号管理",
+      "settings": "系统设置",
+      "statistics": "运营统计",
+      "audit": "审计日志",
+      "maintenanceTasks": "维修任务",
+      "maintenanceHistory": "维修记录",
+      "notifications": "消息"
     },
     "navigationLabel": "主导航",
     "account": "个人信息",
     "name": "姓名",
     "skip": "跳到主要内容",
     "empty": "暂无内容",
-    "pending": "功能待接入",
+    "pending": "暂未开放",
     "forbidden": "无访问权限",
     "notFound": "页面不存在",
-    "returnWorkspace": "返回工作台"
+    "returnWorkspace": "返回工作台",
+    "menu": "导航"
   }
 }

@@ -15,7 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 public class CookieAuthenticationFilter extends OncePerRequestFilter {
     private static final Set<String> PUBLIC_PATHS = Set.of("/health", "/api/auth/config", "/api/auth/csrf",
-            "/api/auth/dev/login", "/api/auth/fudan/login", "/api/auth/fudan/callback", "/internal/auth/introspect");
+            "/api/auth/login", "/api/auth/register", "/internal/auth/introspect");
     private final TokenService tokens;
     private final AuthCookies cookies;
     private final IdentityLookup identities;

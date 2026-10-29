@@ -1,11 +1,11 @@
 openapi: 3.1.0
 info:
   title: FduStudyRoom Identity API
-  version: 0.1.0
+  version: 0.2.0
   description: |
-    T04 登录后端。成功响应直接返回 JSON，失败返回 Error。
-    开发登录仅 local profile 且绑定回环地址时开放；UIS 未配置时返回 503。
-    生产 Cookie 为 __Host-FDU_SESSION；开发 Cookie 为 FDU_SESSION。
+    普通账号密码登录与开放注册。注册固定为 USER，不接受客户端指定角色。
+    成功响应直接返回 JSON，失败返回 Error；不验证学校身份。
+    生产 Cookie 为 __Host-FDU_SESSION；local profile 回环 HTTP 使用 FDU_SESSION。
     写操作先 GET /api/auth/csrf，携带响应中的 headerName/token；
     登录及退出后重新获取 CSRF 令牌。跨源 CORS 未开放。
 servers:
@@ -18,7 +18,7 @@ paths:
       security: []
       responses:
         '200':
-          description: 服务已启动，不代表 UIS 已获批
+          description: 服务进程已启动，数据库就绪由身份接口另行确认
   /api/auth/config:
     get:
       security: []
@@ -29,19 +29,11 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [mode, available, developmentAccounts, unavailableCode]
+                required: [mode, available, registrationOpen]
                 properties:
-                  mode: {type: string, enum: [development, fudan]}
-                  available: {type: boolean}
-                  developmentAccounts:
-                    type: array
-                    items:
-                      type: object
-                      required: [key, label]
-                      properties:
-                        key: {type: string}
-                        label: {type: string}
-                  unavailableCode: {type: string}
+                  mode: {type: string, const: password}
+                  available: {type: boolean, const: true}
+                  registrationOpen: {type: boolean, const: true}
   /api/auth/csrf:
     get:
       security: []
@@ -56,7 +48,7 @@ paths:
                 properties:
                   headerName: {type: string, const: X-XSRF-TOKEN}
                   token: {type: string}
-  /api/auth/dev/login:
+  /api/auth/login:
     post:
       security:
         - CsrfHeader: []
@@ -64,30 +56,44 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [account]
-              properties:
-                account:
-                  type: string
-                  enum: [student, admin, maintainer, staff-user, inactive, disabled]
-                  description: 后三项为拒绝场景测试；不接收学号、密码、身份类型或角色
+            schema: {$ref: '#/components/schemas/Credentials'}
       responses:
         '200':
-          description: 设置 HttpOnly 登录 Cookie；响应中不返回凭据
+          description: 验证账号密码并设置 HttpOnly 会话 Cookie
           content:
             application/json:
               schema: {$ref: '#/components/schemas/CurrentUser'}
         '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
         '403': {$ref: '#/components/responses/Error'}
-        '404':
-          description: 生产环境不存在此控制器
+        '429': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/auth/register:
+    post:
+      security:
+        - CsrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Credentials'}
+      responses:
+        '201':
+          description: 创建 USER 并设置 HttpOnly 会话 Cookie；显示名称初始为规范账号
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentUser'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
   /api/auth/me:
     get:
       responses:
         '200':
-          description: 实时读取账号、身份资格、角色及权限
+          description: 实时读取账号状态、角色及权限
           content:
             application/json:
               schema: {$ref: '#/components/schemas/CurrentUser'}
@@ -104,24 +110,6 @@ paths:
           description: 递增 auth_version，使本系统所有设备旧凭据失效，清除登录与 CSRF Cookie
         '401': {$ref: '#/components/responses/Error'}
         '403': {$ref: '#/components/responses/Error'}
-  /api/auth/fudan/login:
-    get:
-      security: []
-      responses:
-        '503':
-          description: UIS_NOT_CONFIGURED；T07 获得校方配置后实现正式跳转
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/Error'}
-  /api/auth/fudan/callback:
-    get:
-      security: []
-      responses:
-        '503':
-          description: UIS_NOT_CONFIGURED；不接受浏览器自报身份，不签发登录凭据
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/Error'}
   /api/admin/roles:
     get:
       responses:
@@ -152,13 +140,11 @@ paths:
                 type: array
                 items:
                   type: object
-                  required: [id, loginName, displayName, identityType, identitySource, roleId, role, enabled, authVersion]
+                  required: [id, loginName, displayName, roleId, role, enabled, authVersion]
                   properties:
                     id: {type: string, format: uuid}
                     loginName: {type: string}
                     displayName: {type: string}
-                    identityType: {type: string, enum: [STUDENT, STAFF]}
-                    identitySource: {type: string, enum: [DEVELOPMENT, FUDAN_UIS]}
                     roleId: {type: string, format: uuid}
                     role: {type: string}
                     enabled: {type: boolean}
@@ -189,7 +175,7 @@ paths:
                 expectedAuthVersion: {type: integer, minimum: 1}
       responses:
         '204':
-          description: 具有 identity:users:update 权限时变更角色/启用状态并递增 auth_version
+          description: 具有 identity:users:update 权限时变更角色/启用状态并递增 auth_version；无密码旧账号不能通过此接口启用
         '400': {$ref: '#/components/responses/Error'}
         '401': {$ref: '#/components/responses/Error'}
         '403': {$ref: '#/components/responses/Error'}
@@ -230,15 +216,30 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    Credentials:
+      type: object
+      additionalProperties: false
+      required: [loginName, password]
+      properties:
+        loginName:
+          type: string
+          minLength: 3
+          maxLength: 128
+          description: 原始请求最多 128 字符；后端去首尾空格转小写后须为 3—32 位，匹配 [a-z0-9][a-z0-9_.-]{2,31}。本地账号大小写不重复
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 8
+          maxLength: 64
+          description: 不去除空格，不得全为空白；长度按 Java 字符串长度计算。不符合要求时返回 400 / INVALID_PASSWORD，不回显密码
     CurrentUser:
       type: object
-      required: [id, loginName, displayName, identityType, identitySource, role, permissions, authVersion, profileIncomplete]
+      required: [id, loginName, displayName, role, permissions, authVersion, profileIncomplete]
       properties:
         id: {type: string, format: uuid}
         loginName: {type: string}
         displayName: {type: string}
-        identityType: {type: string, enum: [STUDENT, STAFF]}
-        identitySource: {type: string, enum: [DEVELOPMENT, FUDAN_UIS]}
         role: {type: string}
         permissions: {type: array, uniqueItems: true, items: {type: string}}
         authVersion: {type: integer, minimum: 1}

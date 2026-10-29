@@ -22,28 +22,28 @@ class TokenServiceTest {
         return new TokenService(settings(mode, key), Clock.fixed(time, ZoneOffset.UTC));
     }
     @Test void signedTokenPreservesSubjectAndVersion() {
-        var tokens = service("dev", (byte)1, now);
+        var tokens = service("password", (byte)1, now);
         assertThat(tokens.verify(tokens.issue(id, 3))).isEqualTo(new TokenService.Claims(id, 3));
     }
     @Test void expiredTokenIsRejected() {
-        String token = service("dev", (byte)1, now).issue(id, 1);
-        assertThatThrownBy(() -> service("dev", (byte)1, now.plusSeconds(1801)).verify(token)).isInstanceOf(ApiException.class);
+        String token = service("password", (byte)1, now).issue(id, 1);
+        assertThatThrownBy(() -> service("password", (byte)1, now.plusSeconds(1801)).verify(token)).isInstanceOf(ApiException.class);
     }
     @Test void anotherSigningKeyCannotAuthenticateTheToken() {
-        String token = service("dev", (byte)1, now).issue(id, 1);
-        assertThatThrownBy(() -> service("dev", (byte)2, now).verify(token)).isInstanceOf(ApiException.class);
+        String token = service("password", (byte)1, now).issue(id, 1);
+        assertThatThrownBy(() -> service("password", (byte)2, now).verify(token)).isInstanceOf(ApiException.class);
     }
-    @Test void developmentTokenCannotBeUsedInUisModeWithTheSameKey() {
+    @Test void legacyTokenCannotBeUsedInPasswordModeWithTheSameKey() {
         String token = service("dev", (byte)1, now).issue(id, 1);
-        assertThatThrownBy(() -> service("uis", (byte)1, now).verify(token)).isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> service("password", (byte)1, now).verify(token)).isInstanceOf(ApiException.class);
     }
     @Test void unsignedOrMalformedTokensAreRejected() {
         for (String token : new String[]{"not-a-token", "eyJhbGciOiJub25lIn0.e30.", ""}) {
-            assertThatThrownBy(() -> service("dev", (byte)1, now).verify(token)).isInstanceOf(ApiException.class);
+            assertThatThrownBy(() -> service("password", (byte)1, now).verify(token)).isInstanceOf(ApiException.class);
         }
     }
     @Test void futureIssuedTokenIsRejected() {
-        String token = service("dev", (byte)1, now.plusSeconds(60)).issue(id, 1);
-        assertThatThrownBy(() -> service("dev", (byte)1, now).verify(token)).isInstanceOf(ApiException.class);
+        String token = service("password", (byte)1, now.plusSeconds(60)).issue(id, 1);
+        assertThatThrownBy(() -> service("password", (byte)1, now).verify(token)).isInstanceOf(ApiException.class);
     }
 }

@@ -6,6 +6,10 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   modelValue: string
+  type?: 'text' | 'password'
+  minLength?: number
+  maxLength?: number
+  pattern?: string
   label: string
   id?: string
   name?: string
@@ -31,6 +35,7 @@ const inputProps = computed(() => ({
   name: props.name,
   autocomplete: props.autocomplete,
   required: props.required,
+  pattern: props.pattern,
   'aria-invalid': props.error ? ('true' as const) : undefined,
   'aria-describedby': descriptionId.value,
 }))
@@ -42,8 +47,11 @@ const inputProps = computed(() => ({
       {{ label }}<span v-if="required" class="app-text-field__required" aria-hidden="true"> *</span>
     </label>
     <NInput
+      :type="type ?? 'text'"
       :value="modelValue"
       :input-props="inputProps"
+      :minlength="minLength"
+      :maxlength="maxLength"
       :placeholder="placeholder"
       :disabled="disabled"
       :clearable="clearable"

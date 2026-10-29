@@ -16,6 +16,7 @@ export function getApiErrorMessage(error: unknown): string {
         case 403: return t('errors.forbidden')
         case 404: return t('errors.notFound')
         case 409: return t('errors.conflict')
+        case 400:
         case 422: return t('errors.validation')
         case 429: return t('errors.rateLimited')
         default: return error.status && error.status >= 500 ? t('errors.server') : t('errors.http')

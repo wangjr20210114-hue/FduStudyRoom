@@ -2,13 +2,13 @@
 
 更新：2026年10月29日。技术基线：前端 TypeScript 与 Vue 3，后端 Java 与 Spring Boot，数据库 PostgreSQL。四名开发分为后端 A、后端 B、前端 A、前端 B。
 
-当前已完成 T01 前端运行骨架、T02 公共样式组件和 T03 公共请求与国际化，入口为 frontend/src/main.ts。公共视觉参数位于 shared/styles，主题、基础组件及语言选择位于 shared/components；公共请求位于 shared/api，中英文字典位于 shared/i18n；开发预览入口为 /dev/components，用法见 [公共组件说明](06-frontend-components.md)。流程服务和其余业务模块仍为预留目录；空目录使用 `.gitkeep` 保留。登录按 [分步任务清单](04-login-implementation-tasks.md) 继续实施，每项完成后停止交接。
+当前已完成 T01 前端运行骨架、T02 公共样式组件和 T03 公共请求与国际化，入口为 frontend/src/main.ts。公共视觉参数位于 shared/styles，主题、基础组件及语言选择位于 shared/components；公共请求位于 shared/api，中英文字典位于 shared/i18n；开发预览入口为 /dev/components，用法见 [公共组件说明](06-frontend-components.md)。流程服务及业务逻辑仍待实现，前端各业务模块已登记页面路由；空目录使用 `.gitkeep` 保留。登录按 [分步任务清单](04-login-implementation-tasks.md) 继续实施，每项完成后停止交接。
 
 T04 已实现 platform-common 安全基础和 resource-service 的 identity 模块，Java 21 / Spring Boot 4.1.2，通过 Maven Wrapper 构建；身份迁移和运行方法见 [登录后端](08-login-backend.md)。workflow-service 仍预留，尚未加入当前构建。
 
-T05 已实现登录接口接入，T06 已加入 Vue Router、共享身份状态、权限导航、个人信息及空工作台。/login 为精简登录页，首页进入工作台；本地 API 通过 Vite 同站点代理。用法见 [登录前端](09-login-frontend.md) 和 [T06 说明](10-workspace-and-navigation.md)。
+T05 已实现登录接口接入，T06 已加入 Vue Router、共享身份状态、权限导航、个人信息及空工作台。/login 为精简登录页，首页进入工作台；本地 API 通过 Vite 同站点代理。用法见 [登录前端](09-login-frontend.md) 和 [T06 历史说明](10-workspace-and-navigation.md)。T08 已增加三种角色的侧栏、工作台入口与业务页面切换，当前菜单与路径见 [角色导航](13-role-navigation.md)。
 
-数据库字段、约束、外键和关系图见 [数据库表结构设计](02-database-design.md)。前端风格及复旦统一身份认证的新方案见 [前端与登录实施计划](03-ui-and-auth-plan.md)；用户表的旧本地密码设计在后续定稿时按该计划修订。
+数据库字段、约束、外键和关系图见 [数据库表结构设计](02-database-design.md)。T07 已改用本系统账号密码登录并开放注册，规则与迁移见 [普通账号登录](12-password-login.md)；前端视觉参考保留在 [历史计划](03-ui-and-auth-plan.md)。
 
 ## 一 目录树
 
@@ -31,6 +31,9 @@ new-project/
 │   ├── 08-login-backend.md                身份后端与运行说明
 │   ├── 09-login-frontend.md               登录前端与接口联调
 │   ├── 10-workspace-and-navigation.md      T06 导航与访问控制
+│   ├── 11-uis-and-danxi-research.md         历史学校接入与旦挞调研
+│   ├── 12-password-login.md                T07 普通账号登录与注册
+│   ├── 13-role-navigation.md               T08 角色导航与页面切换
 │   ├── adr/                              架构与公共层归属决策
 │   └── acceptance/                       需求验收标准
 ├── contracts/
@@ -78,15 +81,17 @@ new-project/
 │   └── src/
 │       ├── app/
 │       │   ├── App.vue                   主题、会话检查与路由显示
-│       │   ├── router/                   路由守卫、权限菜单与返回地址
+│       │   ├── router/                   模块路由汇总、角色权限检查与返回地址
 │       │   ├── layouts/AppShell.vue       导航、用户菜单与主内容区
-│       │   ├── pages/StatusPage.vue       工作台与必要状态页
+│       │   ├── pages/                    WorkspacePage.vue、StatusPage.vue
 │       │   └── dev/ComponentPreview.vue  仅开发环境的组件预览
 │       ├── shared/
 │       │   ├── api/                     请求客户端、错误及公共导出
 │       │   │   └── generated/
 │       │   ├── components/              AppThemeProvider、AppButton 等组件与语言选择
 │       │   ├── i18n/                    中英文字典、类型与语言保存
+│       │   ├── navigation/              模块路由类型与骨架页工厂
+│       │   ├── pages/FeaturePage.vue     通用业务骨架页
 │       │   └── styles/                  tokens.css、base.css、theme.ts
 │       └── modules/
 │           ├── auth/
@@ -94,13 +99,13 @@ new-project/
 │           │   ├── api/auth.ts           身份接口与 CSRF
 │           │   ├── model/                登录状态及错误文案
 │           │   └── pages/                LoginPage.vue、AccountPage.vue
-│           ├── system/
-│           ├── resource/
-│           ├── notification/
-│           ├── audit/
-│           ├── reservation/
-│           ├── approval/
-│           └── repair/
+│           ├── system/routes.ts            账号、参数和统计路由
+│           ├── resource/routes.ts          座位预约与资源管理路由
+│           ├── notification/routes.ts      消息路由
+│           ├── audit/routes.ts             审计路由
+│           ├── reservation/routes.ts       本人预约与预约管理路由
+│           ├── approval/routes.ts          教室申请与审批路由
+│           └── repair/routes.ts            报修与维护人员路由
 ├── infra/
 │   └── env/
 ├── scripts/
@@ -134,7 +139,7 @@ new-project/
 | platform-common 的 security | 令牌校验、身份上下文、权限校验接入 | 后端 A |
 | platform-common 的 tracing | 请求编号、日志上下文和跨服务追踪传递 | 后端 B |
 | platform-common 的 integration | HTTP 调用、超时、重试、幂等基础约定 | 后端 B |
-| resource-service 的 identity | 复旦统一认证接入、用户、角色与操作权限；第一版单账号单角色 | 后端 A |
+| resource-service 的 identity | 本系统账号密码认证、用户、角色与操作权限；第一版单账号单角色 | 后端 A |
 | resource-service 的 resource | 教室位置、座位、每日开放时间、可选院系限定、全局参数、统一占用 | 后端 A |
 | workflow-service 的 notification | 站内通知和邮件投递、失败重试 | 后端 B |
 | workflow-service 的 audit | 审计接收、去重与查询 | 后端 B |
@@ -150,21 +155,22 @@ new-project/
 | shared/api | 请求客户端、身份传递、统一错误处理 | 前端 B |
 | shared/api/generated | 后续从 OpenAPI 生成的客户端与类型 | 接口更新后统一生成 |
 | shared/components、shared/styles | 可复用视觉组件、样式规范 | 前端 A |
+| shared/navigation、shared/pages | 模块路由类型、通用业务骨架页 | 前端 B 维护，前端 A 评审 |
 | modules/auth、modules/system | 登录、当前用户、用户角色和参数管理 | 前端 B |
 | modules/resource | 教室、座位、每日开放时间与可选院系编码管理 | 前端 A |
 | modules/notification、modules/audit | 通知、审计查询 | 前端 B |
 | modules/reservation | M1 的普通用户与管理员页面 | 前端 A |
 | modules/approval、modules/repair | M2、M3 的普通用户、管理员、维修页面 | 前端 B |
 
-一个业务模块的普通用户页面和管理页面归同一位前端开发。模块自己的页面、状态、接口封装和路由在模块内维护；app 只汇总入口，避免所有业务集中修改同一个文件。
+一个业务模块的普通用户页面和管理页面归同一位前端开发。模块自己的页面、状态、接口封装和路由在模块内维护；app 只汇总入口，避免所有业务集中修改同一个文件。T08 的侧栏和工作台均从模块路由生成；业务页面暂用共享骨架，后续在各模块 routes.ts 替换为实际页面。
 
 | 默认角色编码 | 名称 | 默认职责 |
 | --- | --- | --- |
-| USER | 普通用户 | 经核实的复旦学生进行查询、预约、签到、申请、报修、本人验收与评价 |
+| USER | 普通用户 | 本系统普通账号进行查询、预约、签到、申请、报修、本人验收与评价 |
 | SYSTEM_ADMIN | 系统管理员 | 身份权限、资源与参数、审批、工单调度、统计、审计和同步管理 |
 | MAINTAINER | 维护人员 | 处理分配给自己的维修任务并申请验收 |
 
-三种是默认角色，角色可扩展；第一版每个账号配置一个角色。普通用户限复旦学生；管理员和维护人员也允许复旦工号，但必须先由本系统授权。学生身份的管理员或维护人员可在其角色中包含学生预约权限，工号账号按管理或维护职责使用。管理员按指定节点进行多级审批，禁止申请人自审及同一账号重复通过同一申请的多级审批。维修人员不得验收自身维修。前端控制入口，后端控制操作与数据范围。
+三种是默认角色，角色可扩展；第一版每个账号配置一个角色。开放注册固定创建 USER，管理员和维护人员由管理员授权，首个管理员通过后端环境变量初始化。登录仅校验本系统账号密码，不验证复旦学生或教职工身份。管理员按指定节点进行多级审批，禁止申请人自审及同一账号重复通过同一申请的多级审批。维修人员不得验收自身维修。前端控制入口，后端控制操作与数据范围。
 
 ## 五 模块内部的组织约定
 
@@ -177,7 +183,7 @@ new-project/
 
 这些子目录在实际实现模块时创建；当前仅建立模块根目录。Java 基础包采用 com.campus，公共库为 com.campus.common。公共库编译依赖保持单向，两个服务不能互相作为构建依赖。
 
-前端模块内部后续按 pages、components、api、store、routes 等实际需要组织。接口类型以 OpenAPI 为来源，生成目录中的文件通过生成流程更新。
+前端各业务模块已建立 routes.ts，后续按 pages、components、api、store 等实际需要增加目录。接口类型以 OpenAPI 为来源，生成目录中的文件通过生成流程更新。
 
 ## 六 数据文件与配置的归属
 
@@ -245,26 +251,26 @@ T04 已加入后端根构建、公共库和资源服务 pom.xml、Maven Wrapper�
 | --- | --- | --- |
 | 组织表、组织类型、组织树、范围授权 | 删除；用户和教室各保留可选 department_code | 院系专用自习室的最小资格匹配 |
 | 校区和楼宇独立主表 | 合并为教室上的 campus、building 文本属性 | 校区、楼宇筛选和教室定位 |
-| 一人多角色及多客户端会话体系 | 第一版单角色；复旦统一身份认证与 auth_version | 三种默认角色、可新增角色、令牌失效和权限校验 |
+| 一人多角色及多客户端会话体系 | 第一版单角色；本系统密码认证与 auth_version | 三种默认角色、可新增角色、令牌失效和权限校验 |
 | 角色和权限目录 | 保留 roles、permissions、role_permissions | 任务书明确要求的可配置角色及权限 |
 | 独立签到码、签到和违约表 | 每日签到码放 rooms；签到时间和 NO_SHOW 放预约记录 | 每日教室码签到、违约记录、历史与运营统计 |
 | 通用审批模板与版本管理 | 申请加逐级审批任务；系统参数保存至少两级审批人顺序 | 权限门槛、多级审批、驳回与超时撤销 |
 | 独立多轮验收表 | 最终验收与评价放工单，历史过程放 repair_events | 维修中、验收失败返工、通过后恢复与评价 |
-| 附件和照片体系 | 第一版采用文字报修；统一身份认证按新增登录方案单独接入 | 故障上报、派单、维修和完整操作流程 |
+| 附件和照片体系 | 第一版采用文字报修；账号密码登录按 T07 方案实现 | 故障上报、派单、维修和完整操作流程 |
 | 专门的资源变化日志 | 合入统一 audit_logs，记录来源、业务 ID、前后摘要 | M1、M2、M3 写入来源和状态追溯 |
 | 多数据源、映射审批和同步批次平台 | 教室保存外部编号，一张按教室与日期的查询缓存 | 用户希望的复旦空教室只读查询、范围与时效 |
 | 通用 outbox 与独立幂等框架 | 每服务一张 service_tasks；业务 UUID、唯一约束和来源版本去重 | 真实网络调用、失败重试、乱序保护与状态对账 |
 
-用户院系编码仅为经核实的在读学生填写，其他用户为空；由管理员或可信导入维护，普通用户不能自行修改。教室的 department_code 为空时全校开放；非空时必须匹配用户的 department_code。这是任务书对院系自习室的必要限制，不扩展为院系业务系统。
+用户院系编码由管理员按核实的资格维护，未核实或不需要时为空；普通用户注册不能自行填写。教室的 department_code 为空时全校开放；非空时必须匹配用户的 department_code。这是任务书对院系自习室的必要限制，不扩展为院系业务系统。
 
 service_tasks 只处理本项目公开接口的占用、释放、维修下架、恢复、通知和审计。业务变化与任务同一事务提交，接收方按来源 ID 和版本幂等；不引入事件总线、插件化流程设计器或通用分布式事务框架。
 
 数据库精简不减免工程交付：需求与验收可追踪，项目规则、决策、迁移和流水线随 Git 管理；提交及合并请求触发有效测试，测试不过禁止合并；测试环境自动整组部署，生产需人工审批、版本 tag 和可演示的回退；部署窗口或互斥避免集成测试撞上部署。AI 生成变更由人工验收，代码冲突由人处理，工程伦理问题在开发中记录。
 
-## 十一 前端风格与复旦登录的新决策
+## 十一 当前登录与视觉决策
 
-前端保持 Vue 3 与 TypeScript，参考 WisePen 的浅色面板、统一圆角、可折叠侧栏和柔和装饰背景。公共样式及组件由前端 A 维护，布局汇总和认证页面由前端 B 维护。设计参数、原型范围和实现阶段见 [前端与登录实施计划](03-ui-and-auth-plan.md)。
+前端保持 Vue 3 与 TypeScript，视觉参考 WisePen；当前只保留简洁表单和基础导航，整体视觉设计后续进行。公共样式及组件由前端 A 维护，布局和认证页面由前端 B 维护。
 
-正式登录目标改为复旦 UIS：普通用户限经核实的复旦学生，管理员和维护人员允许学号或工号，管理权限由本系统授予。学校具体协议、返回属性、应用获批及回调登记仍待确认；数据库用户字段按新增计划统一修订。
+用户决定取消学校认证，采用本系统账号密码登录并允许注册，新账号固定 USER。管理员与维护人员由系统管理员授权，首个管理员通过环境变量初始化。V2 迁移保留旧账号和身份记录，新增密码哈希与本地账号约束，详见 [T07 普通账号登录](12-password-login.md)。
 
-build skill 不能自动获得校方接入授权。开发可用明确标识的模拟身份进行联调，生产必须禁用模拟入口；正式认证验收依赖已获批配置和测试账号，缺失时准确报告未就绪。
+build skill 后续负责数据库、密钥、可选首个管理员与运行配置，不再等待校方接口。当前流程服务和完整 build skill 尚未实现。

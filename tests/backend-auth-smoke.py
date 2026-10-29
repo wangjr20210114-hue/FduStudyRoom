@@ -1,136 +1,102 @@
-"""Exercise T04 against a dedicated development database; mutates the seeded student account."""
+"""Run against a dedicated password-auth test database. Creates and changes test accounts."""
 import argparse
+import base64
+import hashlib
+import hmac
 import http.cookiejar
 import json
 import os
+import time
 import urllib.error
 import urllib.request
+import uuid
 
 class Client:
-    def __init__(self, base_url):
-        self.base = base_url.rstrip("/")
+    def __init__(self, base):
+        self.base = base.rstrip("/")
         self.jar = http.cookiejar.CookieJar()
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPCookieProcessor(self.jar))
-
-    def call(self, method, path, body=None, headers=None):
-        data = json.dumps(body).encode() if body is not None else (b"" if method in ("POST", "PATCH") else None)
-        request = urllib.request.Request(self.base + path, data=data, method=method, headers=headers or {})
-        if body is not None:
-            request.add_header("Content-Type", "application/json")
-        try:
-            response = self.opener.open(request, timeout=10)
-        except urllib.error.HTTPError as error:
-            response = error
+    def request(self, path, method="GET", body=None, csrf=True, headers=None):
+        request_headers = dict(headers or {})
+        if method != "GET" and csrf:
+            status, token, _ = self.request("/api/auth/csrf")
+            assert status == 200
+            request_headers[token["headerName"]] = token["token"]
+        data = None if body is None else json.dumps(body).encode()
+        if data is not None: request_headers["Content-Type"] = "application/json"
+        request = urllib.request.Request(self.base + path, data=data, method=method, headers=request_headers)
+        try: response = self.opener.open(request, timeout=15)
+        except urllib.error.HTTPError as error: response = error
         with response:
-            raw = response.read()
+            raw=response.read()
             return response.status, json.loads(raw) if raw else None, response.headers
 
-    def csrf(self):
-        status, body, _ = self.call("GET", "/api/auth/csrf")
-        assert status == 200
-        return {body["headerName"]: body["token"]}
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--base-url",default="http://127.0.0.1:8080")
+    parser.add_argument("--admin-login",default="admin")
+    args=parser.parse_args()
+    admin_password=os.environ.get("CAMPUS_SMOKE_ADMIN_PASSWORD")
+    if not admin_password: raise SystemExit("Set CAMPUS_SMOKE_ADMIN_PASSWORD for a dedicated test administrator.")
+    prefix="smoke-"+uuid.uuid4().hex[:10]
+    password="Test-"+uuid.uuid4().hex[:18]
+    user=Client(args.base_url);admin=Client(args.base_url)
+    checks=[]
+    def expect(condition,label):
+        assert condition,label
+        checks.append(label)
 
-    def login(self, account):
-        return self.call("POST", "/api/auth/dev/login", {"account": account}, self.csrf())
+    status,config,_=user.request("/api/auth/config")
+    expect(status==200 and config=={"mode":"password","available":True,"registrationOpen":True},"password mode and registration config")
+    expect(user.request("/api/auth/me")[0]==401,"anonymous current user is rejected")
+    expect(user.request("/api/admin/users")[0]==401,"anonymous management is rejected")
+    expect(user.request("/api/auth/login","POST",{"loginName":prefix,"password":password},csrf=False)[0]==403,"login requires CSRF")
+    expect(user.request("/api/auth/register","POST",{"loginName":prefix,"password":password},csrf=False)[0]==403,"registration requires CSRF")
+    status,_,_=user.request("/api/auth/register","POST",{"loginName":prefix,"password":password,"role":"SYSTEM_ADMIN"})
+    expect(status==400,"registration rejects a client-supplied role")
+    expect(user.request("/api/auth/register","POST",{"loginName":"../bad","password":password})[0]==400,"invalid account format is rejected")
+    status,error,_=user.request("/api/auth/register","POST",{"loginName":prefix,"password":"short"})
+    expect(status==400 and error.get("code")=="INVALID_PASSWORD","registration explains invalid password length")
+    status,error,_=user.request("/api/auth/login","POST",{"loginName":prefix,"password":"short"})
+    expect(status==400 and error.get("code")=="INVALID_PASSWORD","login explains invalid password length")
+    status,identity,headers=user.request("/api/auth/register","POST",{"loginName":prefix,"password":password})
+    expect(status==201 and identity["role"]=="USER","registration creates an ordinary user")
+    expect(not any("password" in key.lower() for key in identity),"credentials do not appear in the response")
+    expect("identitySource" not in identity and "identityType" not in identity,"ordinary identity does not claim school verification")
+    expect("HttpOnly" in " ".join(headers.get_all("Set-Cookie",[])),"login cookie is HttpOnly")
+    expect(user.request("/api/auth/me")[1]["id"]==identity["id"],"registration establishes a usable session")
+    expect(user.request("/api/admin/users")[0]==403,"ordinary user cannot manage accounts")
+    second=Client(args.base_url)
+    expect(second.request("/api/auth/register","POST",{"loginName":prefix.upper(),"password":password})[0]==409,"case-insensitive duplicate accounts are rejected")
+    wrong=second.request("/api/auth/login","POST",{"loginName":prefix,"password":"Wrong-password-123"})
+    missing=second.request("/api/auth/login","POST",{"loginName":prefix+"x","password":"Wrong-password-123"})
+    expect(wrong[0]==missing[0]==401 and wrong[1]["code"]==missing[1]["code"]=="INVALID_CREDENTIALS","wrong and unknown credentials have the same failure")
+    expect(second.request("/api/auth/login","POST",{"loginName":prefix.upper(),"password":password})[0]==200,"normalized account can log in")
+    old_cookie="; ".join(cookie.name+"="+cookie.value for cookie in second.jar if "SESSION" in cookie.name)
+    expect(user.request("/api/auth/logout","POST")[0]==204,"logout succeeds")
+    expect(second.request("/api/auth/me")[0]==401,"logout invalidates another device")
+    expect(second.request("/api/auth/login","POST",{"loginName":prefix,"password":password})[0]==200,"password login works after logout")
+    expect(admin.request("/api/auth/login","POST",{"loginName":args.admin_login,"password":admin_password})[0]==200,"bootstrap administrator can log in")
+    status,roles,_=admin.request("/api/admin/roles")
+    expect(status==200,"administrator can read roles")
+    maintainer=next(role for role in roles if role["code"]=="MAINTAINER")
+    current=second.request("/api/auth/me")[1]
+    access={"roleId":maintainer["id"],"enabled":True,"expectedAuthVersion":current["authVersion"]}
+    expect(admin.request("/api/admin/users/"+identity["id"]+"/access","PATCH",access)[0]==204,"administrator grants maintenance role")
+    expect(second.request("/api/auth/me")[0]==401,"role changes revoke the previous session")
+    status,current,_=second.request("/api/auth/login","POST",{"loginName":prefix,"password":password})
+    expect(status==200 and current["role"]=="MAINTAINER","assigned maintainer logs in with own password")
+    access.update(enabled=False,expectedAuthVersion=current["authVersion"])
+    expect(admin.request("/api/admin/users/"+identity["id"]+"/access","PATCH",access)[0]==204,"administrator can disable an account")
+    expect(second.request("/api/auth/login","POST",{"loginName":prefix,"password":password})[0]==401,"disabled account cannot log in")
+    users=admin.request("/api/admin/users")[1]
+    expect(all(not any("password" in key.lower() for key in row) for row in users),"management responses never expose password hashes")
+    for path in ["/api/auth/dev/login","/api/auth/fudan/login","/api/auth/fudan/callback"]:
+        status,_,headers=Client(args.base_url).request(path)
+        expect(status in (401,404) and not any("FDU_SESSION=" in h for h in headers.get_all("Set-Cookie",[])),"removed endpoint cannot authenticate: "+path)
+    limiter=Client(args.base_url)
+    codes=[limiter.request("/api/auth/login","POST",{"loginName":prefix+"-limit","password":"Wrong-password-123"})[0] for _ in range(11)]
+    expect(codes[:10]==[401]*10 and codes[10]==429,"repeated password attempts are rate limited")
+    print(json.dumps({"passed":len(checks),"checks":checks,"created_account":prefix},ensure_ascii=False))
 
-    def session(self):
-        return next(cookie.value for cookie in self.jar if cookie.name == "FDU_SESSION")
-
-def run(base_url, production_url=None):
-    checks = []
-    def check(condition, name):
-        assert condition, name
-        checks.append(name)
-
-    guest = Client(base_url)
-    status, config, _ = guest.call("GET", "/api/auth/config")
-    check(status == 200 and config["mode"] == "development" and config["available"], "explicit development configuration")
-    check(len(config["developmentAccounts"]) == 3, "three development role choices")
-    status, error, headers = guest.call("GET", "/api/auth/me", headers={"X-User-Id": "forged", "X-Role": "SYSTEM_ADMIN"})
-    check(status == 401 and error["traceId"] == headers["X-Request-Id"], "anonymous access and forged identity headers rejected")
-    check(guest.call("POST", "/api/auth/dev/login", {"account": "student"})[0] == 403, "login requires CSRF")
-    bad_csrf = guest.csrf()
-    bad_csrf = {key: "invalid" for key in bad_csrf}
-    check(guest.call("POST", "/api/auth/dev/login", {"account": "student"}, bad_csrf)[0] == 403, "invalid CSRF rejected")
-    check(guest.call("POST", "/api/auth/dev/login", {"account": "student", "role": "SYSTEM_ADMIN"}, guest.csrf())[0] == 400, "browser cannot submit a role")
-
-    student = Client(base_url)
-    status, me, headers = student.login("student")
-    check(status == 200 and me["role"] == "USER" and me["identityType"] == "STUDENT" and me["identitySource"] == "DEVELOPMENT", "student identity resolved by server")
-    check("token" not in me and "HttpOnly" in headers["Set-Cookie"] and "SameSite=Lax" in headers["Set-Cookie"], "login credential only in HttpOnly cookie")
-    check(student.call("GET", "/api/auth/me")[0] == 200, "current user request uses login cookie")
-    check(student.call("GET", "/api/admin/users")[0] == 403, "student cannot list accounts")
-    check(student.call("GET", "/api/admin/roles")[0] == 403, "student cannot list roles")
-
-    for account in ("staff-user", "inactive", "disabled"):
-        check(Client(base_url).login(account)[0] == 403, account + " rejected")
-    status, maintainer, _ = Client(base_url).login("maintainer")
-    check(status == 200 and maintainer["role"] == "MAINTAINER" and maintainer["identityType"] == "STAFF", "assigned staff maintainer can log in")
-
-    admin = Client(base_url)
-    status, me_admin, _ = admin.login("admin")
-    check(status == 200 and me_admin["role"] == "SYSTEM_ADMIN", "assigned staff administrator can log in")
-    status, roles, _ = admin.call("GET", "/api/admin/roles")
-    check(status == 200 and len(roles) >= 3, "administrator can read roles")
-    role_ids = {role["code"]: role["id"] for role in roles}
-
-    def student_row():
-        status, users, _ = admin.call("GET", "/api/admin/users")
-        assert status == 200
-        return next(row for row in users if row["loginName"] == "DEV-STUDENT")
-
-    before = student_row()
-    path = "/api/admin/users/" + before["id"] + "/access"
-    body = {"roleId": role_ids["USER"], "enabled": False, "expectedAuthVersion": before["authVersion"]}
-    check(student.call("PATCH", path, body, student.csrf())[0] == 403, "student cannot change account access")
-    check(admin.call("PATCH", path, body)[0] == 403, "administrator writes require CSRF")
-    old_cookie = student.session()
-    check(admin.call("PATCH", path, body, admin.csrf())[0] == 204, "administrator can disable an account")
-    check(student.call("GET", "/api/auth/me")[0] == 401, "access change revokes existing credentials")
-    check(Client(base_url).login("student")[0] == 403, "disabled account cannot log in again")
-    check(admin.call("PATCH", path, body, admin.csrf())[0] == 409, "stale update version rejected")
-    after = student_row()
-    body = {"roleId": role_ids["MAINTAINER"], "enabled": True, "expectedAuthVersion": after["authVersion"]}
-    check(admin.call("PATCH", path, body, admin.csrf())[0] == 204, "administrator can assign another allowed role")
-    status, changed, _ = student.login("student")
-    check(status == 200 and changed["role"] == "MAINTAINER", "new login reads current role")
-    after = student_row()
-    body = {"roleId": role_ids["USER"], "enabled": True, "expectedAuthVersion": after["authVersion"]}
-    check(admin.call("PATCH", path, body, admin.csrf())[0] == 204, "restore seeded student role")
-
-    first, second = Client(base_url), Client(base_url)
-    check(first.login("student")[0] == 200 and second.login("student")[0] == 200, "two sessions may coexist")
-    token = second.session()
-    check(first.call("POST", "/api/auth/logout", headers=first.csrf())[0] == 204, "logout succeeds with CSRF")
-    check(second.call("GET", "/api/auth/me")[0] == 401, "logout revokes other sessions")
-    replay = Client(base_url)
-    status, _, _ = replay.call("GET", "/api/auth/me", headers={"Cookie": "FDU_SESSION=" + token})
-    check(status == 401, "logged out cookie cannot be replayed")
-    check(Client(base_url).call("GET", "/api/auth/me", headers={"Cookie": "FDU_SESSION=malformed"})[0] == 401, "malformed credential rejected")
-
-    service_key = os.environ.get("CAMPUS_AUTH_SERVICE_KEY")
-    check(guest.call("POST", "/internal/auth/introspect", headers={"Authorization": "Bearer " + old_cookie})[0] == 401, "internal introspection requires service authentication")
-    if service_key:
-        live = Client(base_url)
-        assert live.login("student")[0] == 200
-        status, identity, _ = guest.call("POST", "/internal/auth/introspect", headers={"X-Service-Key": service_key, "Authorization": "Bearer " + live.session()})
-        check(status == 200 and identity["id"] == before["id"], "internal introspection verifies current identity")
-        status, _, _ = guest.call("POST", "/internal/auth/introspect", headers={"X-Service-Key": service_key, "Authorization": "Bearer " + token})
-        check(status == 401, "internal introspection rejects revoked credentials")
-    check(guest.call("GET", "/api/auth/fudan/callback?ticket=untrusted")[0] == 503, "unconfigured UIS callback never authenticates")
-    if production_url:
-        prod = Client(production_url)
-        status, config, _ = prod.call("GET", "/api/auth/config")
-        check(status == 200 and config["mode"] == "fudan" and not config["available"] and not config["developmentAccounts"], "production reports UIS unavailable")
-        check(prod.call("GET", "/api/auth/dev/login")[0] == 404, "production has no development controller")
-        check(prod.call("GET", "/api/auth/me", headers={"Cookie": "__Host-FDU_SESSION=" + token})[0] == 401, "production rejects development credentials")
-        _, _, headers = prod.call("GET", "/api/auth/csrf")
-        check("__Host-FDU_CSRF=" in headers["Set-Cookie"] and "Secure" in headers["Set-Cookie"] and "HttpOnly" in headers["Set-Cookie"], "production CSRF cookie is secure and host scoped")
-    print(json.dumps({"passed": len(checks), "checks": checks}, ensure_ascii=False, indent=2))
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", required=True)
-    parser.add_argument("--production-url")
-    args = parser.parse_args()
-    run(args.base_url, args.production_url)
+if __name__=="__main__": main()

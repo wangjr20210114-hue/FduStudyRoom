@@ -43,6 +43,7 @@ describe('language persistence and translated feedback', () => {
   })
 
   it.each([
+    [400, 'Some information is invalid. Please check your input.'],
     [401, 'Your session has expired. Please sign in again.'],
     [403, 'You do not have permission to perform this action.'],
     [409, 'The data has changed. Refresh and try again.'],

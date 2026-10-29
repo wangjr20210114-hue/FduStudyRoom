@@ -9,6 +9,8 @@
 **/target/
 **/coverage/
 **/.vitest/
+**/__pycache__/
+*.pyc
 *.tsbuildinfo
 *.log
 

@@ -16,7 +16,6 @@ const role = computed(() => user.value ? getRoleLabel(user.value.role) : '')
       <div><dt>{{ t('shell.name') }}</dt><dd>{{ user.displayName }}</dd></div>
       <div><dt>{{ t('auth.session.account') }}</dt><dd>{{ user.loginName }}</dd></div>
       <div><dt>{{ t('auth.session.role') }}</dt><dd>{{ role }}</dd></div>
-      <div><dt>{{ t('auth.session.identity') }}</dt><dd>{{ user.identityType === 'STUDENT' ? t('auth.session.student') : t('auth.session.staff') }}</dd></div>
     </dl>
   </section>
 </template>

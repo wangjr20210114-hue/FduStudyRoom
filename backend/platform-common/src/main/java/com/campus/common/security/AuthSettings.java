@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("campus.auth")
 public record AuthSettings(String mode, String signingKey, String serviceKey, boolean secureCookies, Duration tokenTtl) {
     public void validate(String[] profiles, String address) {
-        if (!"dev".equals(mode) && !"uis".equals(mode)) throw new IllegalStateException("Authentication mode must be dev or uis");
+        if (!"password".equals(mode)) throw new IllegalStateException("Authentication mode must be password");
         byte[] key;
         try { key = Base64.getDecoder().decode(signingKey == null ? "" : signingKey); }
         catch (IllegalArgumentException error) { throw new IllegalStateException("Authentication signing key must be Base64"); }
@@ -17,12 +17,9 @@ public record AuthSettings(String mode, String signingKey, String serviceKey, bo
         if (tokenTtl == null || tokenTtl.isZero() || tokenTtl.isNegative() || tokenTtl.compareTo(Duration.ofHours(2)) > 0) {
             throw new IllegalStateException("Authentication lifetime must be positive and at most two hours");
         }
-        if ("dev".equals(mode)) {
-            if (!Arrays.equals(profiles, new String[]{"local"}) || !("127.0.0.1".equals(address) || "::1".equals(address))) {
-                throw new IllegalStateException("Development authentication requires only the local profile and loopback binding");
-            }
-        } else if (!secureCookies) {
-            throw new IllegalStateException("UIS mode requires secure cookies");
+        if (!secureCookies && (!Arrays.equals(profiles, new String[]{"local"})
+                || !("127.0.0.1".equals(address) || "::1".equals(address)))) {
+            throw new IllegalStateException("HTTP authentication requires only the local profile and loopback binding");
         }
     }
 }

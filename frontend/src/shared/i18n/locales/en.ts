@@ -2,7 +2,7 @@ import zhCN from './zh-CN'
 
 export default {
   "app": {
-    "title": "Fudan Study Room",
+    "title": "Study Room",
     "name": "Campus study rooms",
     "headingLine1": "Find your place.",
     "headingLine2": "Make time to focus.",
@@ -111,54 +111,59 @@ export default {
     "footer": "Development preview only · No authentication or reservation service"
   },
   "auth": {
-    "card": {
-      "title": "Sign in"
-    },
-    "official": {
-      "action": "Sign in with Fudan UIS",
-      "unavailable": "University sign-in is unavailable"
-    },
-    "development": {
-      "badge": "Development mode",
-      "label": "Development account",
-      "action": "Sign in",
-      "accounts": {
-        "student": "Development student",
-        "admin": "Development administrator",
-        "maintainer": "Development maintainer"
-      }
+    "login": "Sign in",
+    "register": "Register",
+    "toLogin": "Already registered? Sign in",
+    "toRegister": "Create an account",
+    "fields": {
+      "account": "Account",
+      "password": "Password",
+      "confirmation": "Confirm password",
+      "accountHint": "3–32 letters, digits, dots, underscores or hyphens",
+      "passwordHint": "8–64 characters"
     },
     "actions": {
-      "recheck": "Check again",
-      "signingIn": "Signing in…",
       "signOut": "Sign out"
     },
-    "loading": "Checking your sign-in status…",
+    "loading": "Checking session…",
     "session": {
-      "role": "Role",
-      "identity": "Identity",
       "account": "Account",
-      "student": "Student",
-      "staff": "Staff"
+      "role": "Role"
     },
     "roles": {
-      "student": "Student user",
-      "admin": "System administrator",
+      "student": "User",
+      "admin": "Administrator",
       "maintainer": "Maintainer"
     },
     "errors": {
-      "title": "The action could not be completed",
-      "csrf": "The security check expired. Please try again.",
-      "ineligible": "This identity is not eligible. Ask an administrator to verify your access.",
+      "title": "Action failed",
+      "csrf": "Security check expired. Please try again.",
+      "password": "Use 8–64 characters; the password cannot be all whitespace.",
+      "credentials": "Incorrect account or password.",
+      "taken": "This account is already in use.",
+      "mismatch": "Passwords do not match.",
       "disabled": "This account or role is disabled. Please contact an administrator.",
-      "environment": "Sign-in is unavailable with this configuration. Please contact an administrator.",
-      "unconfirmed": "Your sign-in could not be confirmed. Check again before retrying."
+      "unconfirmed": "The session could not be confirmed. Please try again."
     }
   },
   "shell": {
     "navigation": {
       "workspace": "Workspace",
-      "users": "User management"
+      "rooms": "Book a seat",
+      "reservations": "My bookings",
+      "roomRequests": "Room requests",
+      "repairs": "My repairs",
+      "manageRooms": "Rooms and seats",
+      "manageReservations": "Bookings",
+      "approvals": "Room approvals",
+      "manageRepairs": "Repairs",
+      "users": "Users",
+      "settings": "Settings",
+      "statistics": "Statistics",
+      "audit": "Audit log",
+      "maintenanceTasks": "Repair tasks",
+      "maintenanceHistory": "Repair history",
+      "notifications": "Messages"
     },
     "navigationLabel": "Main navigation",
     "account": "My account",
@@ -168,6 +173,7 @@ export default {
     "pending": "Not available yet",
     "forbidden": "Access denied",
     "notFound": "Page not found",
-    "returnWorkspace": "Back to workspace"
+    "returnWorkspace": "Back to workspace",
+    "menu": "Menu"
   }
 } satisfies typeof zhCN

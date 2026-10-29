@@ -3,7 +3,7 @@
 | 属性 | 作用 |
 | --- | --- |
 | 设计范围 | 覆盖 M1、M2、M3 和公共层；19 张应用表，另有两张 Flyway 工具历史表。 |
-| 当前实现 | T04 已实现 iam 的四张表与资源服务 Flyway 历史；其余业务表按后续任务迁移。 |
+| 当前实现 | T07 已实现 iam 四张表、V2 密码迁移与资源服务 Flyway 历史；其余业务表按后续任务迁移。 |
 | 简化原则 | 不建立组织层级、校区楼宇主表、多范围授权、通用审批模板、独立签到违约验收表或多源同步平台。 |
 | 非空 | 是表示不能保存 SQL NULL；否表示允许为空，条件必填另列。 |
 | 主键 | 唯一定位记录。业务创建重试复用同一个 UUID，同 ID 不同参数必须拒绝。 |
@@ -98,14 +98,15 @@
 | `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
 | `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
 | `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `login_name` | `varchar(128)` | 是 | 否 | 否 | 是 | — | — | — |
+| `login_name` | `varchar(128)` | 是 | 否 | 否 | U1、U2 | — | 本地接口限定规范化后 3—32 位 | — |
+| `password_hash` | `varchar(255)` | 条件必填 | 否 | 否 | 否 | — | LOCAL 来源非空；格式见下方 CHECK | — |
 | `display_name` | `varchar(128)` | 是 | 否 | 否 | 否 | — | — | — |
 | `email` | `varchar(254)` | 否 | 否 | 否 | 否 | — | — | — |
-| `identity_type` | `varchar(16)` | 是 | 否 | 否 | 否 | — | CHECK：STUDENT、STAFF | — |
-| `identity_source` | `varchar(16)` | 是 | 否 | 否 | 否 | 'FUDAN_UIS' | CHECK：FUDAN_UIS、DEVELOPMENT | — |
+| `identity_type` | `varchar(16)` | 否 | 否 | 否 | 否 | — | CHECK：STUDENT、STAFF；允许 NULL | — |
+| `identity_source` | `varchar(16)` | 是 | 否 | 否 | 否 | 'LOCAL' | CHECK：LOCAL、FUDAN_UIS、DEVELOPMENT | — |
 | `identity_active` | `boolean` | 是 | 否 | 否 | 否 | false | — | — |
 | `role_id` | `uuid` | 是 | 否 | 是 | 否 | — | — | iam.roles.id |
-| `department_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | CHECK：非 STUDENT 时必须为空 | — |
+| `department_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | identity_type = 'STUDENT' OR department_code IS NULL | — |
 | `can_apply_room` | `boolean` | 是 | 否 | 否 | 否 | false | — | — |
 | `enabled` | `boolean` | 是 | 否 | 否 | 否 | true | — | — |
 | `auth_version` | `integer` | 是 | 否 | 否 | 否 | 1 | CHECK：大于 0 | — |
@@ -115,28 +116,34 @@
 - `id`：唯一标识用户，业务表使用该 ID 关联账号
 - `created_at`：记录账号首次建立时间
 - `updated_at`：记录最近修改时间，由应用更新
-- `login_name`：正式环境保存校方核验后的规范学工号；开发数据使用 DEV- 前缀
-- `display_name`：显示姓名或名称
-- `email`：保存可信来源或验证后的通知邮箱；未取得时允许为空，当前用户接口标记 profileIncomplete；邮件业务接入时要求补全，不猜测学号邮箱格式
-- `identity_type`：区分学生与教职工，不由浏览器提交决定；资格未知或不在允许类别内的身份不自动建立可登录账号
-- `identity_source`：区分正式校方身份与明确标记的开发数据，防止开发账号被正式认证流程复用；不引入多身份提供方平台
-- `identity_active`：记录可信来源核验的有效资格；未知、过期或失效时为 false，拒绝登录和已有凭据访问；开发值仅用于模拟
-- `role_id`：第一版每个账号关联一个角色，系统自行授权管理权限
-- `department_code`：保存经核实的学生院系资格；教职工为空，用于院系自习室的最小资格匹配
-- `can_apply_room`：标记是否获得整教室申请资格，还需对应操作权限
-- `enabled`：控制本系统账号是否启用，不替代校方身份资格
-- `auth_version`：退出本系统或变更访问权限时递增，使所有设备的旧凭据失效；身份资格变更时同样应递增
+- `login_name`：本系统账号；本地注册时去首尾空格并转小写，首位为字母或数字，其余允许字母、数字、下划线、点、短横线
+- `password_hash`：保存随机盐和密码哈希，不保存明文；旧非 LOCAL 账号允许为空，不能直接使用本地密码登录
+- `display_name`：界面显示名称；新注册时初始为账号
+- `email`：通知邮箱，未补全时允许为空；当前用户接口以 profileIncomplete 标记，后续邮件业务要求验证和补全
+- `identity_type`：保留旧学生、教职工身份元数据；新本地账号为空，不作为普通登录条件
+- `identity_source`：标记本地账号或历史账号来源；本地密码查询只接受 LOCAL，不代表已完成学校身份核验
+- `identity_active`：保留旧学校资格记录值；本地密码登录不使用此字段，不据此宣称复旦身份
+- `role_id`：每个账号关联一个角色；注册固定为 USER，管理和维护角色由管理员分配
+- `department_code`：管理员维护的可选院系资格，用于后续院系限定资源匹配；注册不接收此字段，未核实前不授予院系资格
+- `can_apply_room`：是否获得整教室申请资格，后续业务还需检查相应权限
+- `enabled`：控制账号是否可以登录及访问系统
+- `auth_version`：退出或变更访问权限时递增，使所有设备的旧会话失效
 
 | 约束类型 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (login_name) |
+| U1 | UNIQUE (login_name)，保留原有精确值唯一约束 |
+| U2 | UNIQUE INDEX ON lower(login_name) WHERE identity_source = 'LOCAL'，保证本地账号大小写不重复 |
 | INDEX | (role_id) |
-| CHECK | identity_type IN ('STUDENT', 'STAFF')；identity_source IN ('FUDAN_UIS', 'DEVELOPMENT') |
+| CHECK | identity_type IN ('STUDENT', 'STAFF')；identity_source IN ('FUDAN_UIS', 'DEVELOPMENT', 'LOCAL') |
+| CHECK | identity_source <> 'LOCAL' OR password_hash IS NOT NULL |
+| CHECK | password_hash IS NULL OR password_hash ~ '^\{pbkdf2-sha256-v1\}[0-9a-f]{96}$' |
 | CHECK | identity_type = 'STUDENT' OR department_code IS NULL；auth_version > 0 |
-| 应用校验 | 必须账号、角色启用且身份资格有效；正式模式仅接受 FUDAN_UIS 来源。普通角色仅学生可登录，教职工需已授予 SYSTEM_ADMIN 或 MAINTAINER |
-| 应用校验 | 院系、身份来源及资格不从浏览器自报值更新；角色与启用状态变更校验旧 auth_version，成功后递增 |
+| 兼容规则 | PostgreSQL CHECK 接受 TRUE 或 NULL：identity_type 为空时该院系 CHECK 不禁止 department_code；院系资格由管理员核实，注册不能自报 |
+| 应用校验 | 本地账号匹配密码且账号、角色均启用才允许登录；哈希采用 PBKDF2-HMAC-SHA256，16 字节盐、600,000 次迭代、256 位结果 |
+| 应用校验 | 注册仅接收账号和密码；角色与启用状态变更校验 expectedAuthVersion，成功后递增；不能通过授权接口启用无密码旧账号 |
 | FOREIGN KEY | role_id 引用 iam.roles.id，ON DELETE RESTRICT、ON UPDATE RESTRICT；历史账号采用停用 |
 
+V1 迁移不修改；V2 增加本地密码约束，保留全部旧账号、身份字段值及启用状态。当前用户接口不返回历史学校属性或密码哈希。详见 [普通账号登录](12-password-login.md)。
 
 ## 2 教室座位与参数
 

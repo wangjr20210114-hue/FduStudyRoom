@@ -1,22 +1,24 @@
 # 登录后端使用与交接
 
-T04 使用 Java 21、Spring Boot 4.1.2、Spring Security、PostgreSQL 与 Flyway。当前实现资源服务中的身份模块和 platform-common 安全基础；workflow-service 仍为后续业务预留目录。两个服务不互相依赖构建产物。
+当前使用 Java 21、Spring Boot 4.1.2、Spring Security、PostgreSQL 与 Flyway。当前实现资源服务中的身份模块和 platform-common 安全基础；workflow-service 仍为后续业务预留目录。两个服务不互相依赖构建产物。
 
-## 本阶段能力
+## 当前能力
+
+T07 已改为普通账号密码登录和开放注册，详见 [登录注册规则](12-password-login.md)。不再接入学校认证，不使用一键开发身份。
 
 | 入口 | 功能 |
 | --- | --- |
-| GET /api/auth/config | 返回认证模式、可用性及开发身份选项 |
-| GET /api/auth/csrf | 设置 CSRF Cookie，返回提交用的 headerName 和 token |
-| POST /api/auth/dev/login | 仅本地开发模式可用的固定身份演示 |
-| GET /api/auth/me | 返回当前身份、角色和实时权限 |
-| POST /api/auth/logout | 退出本系统，使该账号所有设备的旧凭据失效 |
-| GET /api/admin/users、/roles | 管理权限下查询用户及角色；用户暂返回前 100 条 |
-| PATCH /api/admin/users/{id}/access | 按版本修改角色及启用状态，立即撤销旧凭据 |
-| POST /internal/auth/introspect | 提供给后续流程服务的服务端身份校验入口 |
-| GET /api/auth/fudan/login、/callback | 当前返回 UIS_NOT_CONFIGURED，不接收浏览器自报身份 |
+| GET /api/auth/config | 返回 mode=password、available=true、registrationOpen=true |
+| GET /api/auth/csrf | 设置 CSRF Cookie，返回 headerName/token |
+| POST /api/auth/login | 账号密码登录 |
+| POST /api/auth/register | 固定创建 USER，201 响应并自动建立会话 |
+| GET /api/auth/me | 当前账号、角色和实时权限 |
+| POST /api/auth/logout | 全设备退出，清除 Cookie |
+| GET /api/admin/users、/roles | 有管理权限时查询用户及角色；用户暂返回前 100 条 |
+| PATCH /api/admin/users/{id}/access | 按版本修改角色、启用状态，撤销旧会话 |
+| POST /internal/auth/introspect | 流程服务预留的服务端身份校验 |
 
-完整请求、响应和权限见 [身份 OpenAPI](../contracts/openapi/identity.yaml)。成功响应直接返回 JSON，与 T03 客户端一致；无内容操作返回 204。错误返回 code、message、traceId，响应头 X-Request-Id 与 traceId 一致。
+完整契约见 [身份 OpenAPI](../contracts/openapi/identity.yaml)。登录和注册仅接收 loginName/password，写请求先获取 CSRF。成功直接返回 JSON；无内容操作返回 204；错误返回 code/message/traceId。
 
 ## 运行前提与数据库
 
@@ -28,7 +30,7 @@ T04 使用 Java 21、Spring Boot 4.1.2、Spring Security、PostgreSQL 与 Flyway
 docker compose --env-file infra/.env -f infra/compose.yaml up -d postgres
 ```
 
-数据库仅映射本机 55432 端口，数据保存在本项目命名卷中。当前 Compose 只提供数据库；不会启动已有其他项目的容器。当前机器的 Docker 位于 CampusStudyRoom WSL，可在该发行版的 /opt/new-project 执行上述命令。
+数据库仅映射本机 55432 端口，数据保存在本项目命名卷中，使用 unless-stopped 重启策略。本机预览已切换到这套持久化数据库；临时验收容器不再用于预览。当前 Compose 只提供数据库；不会启动已有其他项目的容器。当前机器的 Docker 位于 CampusStudyRoom WSL，可在该发行版的 /opt/new-project 执行上述命令。
 
 配置后端环境变量，参考 backend/.env.example。Spring 不会自动读取该文件，应在运行终端或 IDE 启动配置中设置。数据库密码需与 infra/.env 一致。
 
@@ -40,7 +42,9 @@ docker compose --env-file infra/.env -f infra/compose.yaml up -d postgres
 | CAMPUS_AUTH_SIGNING_KEY | 至少 32 个随机字节的 Base64 编码；用于本系统凭据签名 |
 | CAMPUS_AUTH_SERVICE_KEY | 独立随机服务密钥，至少 32 字符；不交给前端 |
 | SERVER_PORT | 可选，默认 8080 |
-| SERVER_ADDRESS | 默认 127.0.0.1；开发登录必须绑定回环地址 |
+| SERVER_ADDRESS | 默认 127.0.0.1；本地 HTTP Cookie 必须绑定回环地址 |
+| CAMPUS_BOOTSTRAP_ADMIN_LOGIN | 可选首个管理员账号，须与密码同时提供 |
+| CAMPUS_BOOTSTRAP_ADMIN_PASSWORD | 可选初始化密码，12—64 字符；只创建新管理员，不覆盖已有账号 |
 
 数据库容器的账号用于本地开发。正式环境按服务配置限权账号，身份资源服务不向流程服务开放 iam 表访问。
 
@@ -60,6 +64,8 @@ $env:CAMPUS_DB_URL = 'jdbc:postgresql://127.0.0.1:55432/fdu_study_room'
 $env:CAMPUS_DB_USER = 'campus_resource'
 $env:CAMPUS_DB_PASSWORD = '<与 infra/.env 一致的密码>'
 ```
+
+若需首个管理员，启动前在 IDE 环境变量或当前终端设置 CAMPUS_BOOTSTRAP_ADMIN_LOGIN 和 CAMPUS_BOOTSTRAP_ADMIN_PASSWORD；不要把真实值保存到仓库。具体行为见 [管理员初始化](12-password-login.md)。
 
 确认当前终端的 java -version 为 JDK 21。普通 Windows 路径下进入 backend，执行：
 
@@ -86,48 +92,43 @@ export CAMPUS_DB_PASSWORD='<与 infra/.env 一致的密码>'
 java -jar resource-service/target/resource-service-0.1.0-SNAPSHOT.jar --spring.profiles.active=local
 ```
 
-启动后访问 http://127.0.0.1:8080/api/auth/config 检查模式。local profile 会初始化明确标记的开发数据，三个可登录选项为学生、管理员和维护人员；另有教职工普通账号、资格失效和停用账号用于拒绝测试。开发身份不代表真实复旦身份。
+启动后访问 http://127.0.0.1:8080/api/auth/config，应返回 password 模式。local profile 仅调整本机 HTTP Cookie，不会创建固定密码或演示账号。
 
-T05 已提供登录页面及同站点开发代理，访问 http://127.0.0.1:5173/login 可完成开发登录、刷新恢复与退出，见 [登录前端说明](09-login-frontend.md)。浏览器直接输入 /api/auth/me 在未登录时仍返回 401；正式复旦 UIS 继续等待 T07。
+前端入口 http://127.0.0.1:5173/login，注册入口 /register，运行见 [前端说明](09-login-frontend.md)。未登录访问 /api/auth/me 返回 401。
 
 ## 凭据与权限
 
-凭据为短期 HS256 JWT，只放在 HttpOnly Cookie；JSON 不返回登录凭据。默认有效期 30 分钟，上限 2 小时。请求每次读取最新账号资格、角色与权限，并比较 auth_version。
+凭据为短期 HS256 JWT，只放在 HttpOnly Cookie；JSON 不返回登录凭据。默认有效期 30 分钟，上限 2 小时。请求每次读取最新账号状态、角色与权限，并比较 auth_version。
 
 生产 Cookie 使用 __Host- 前缀、Secure、HttpOnly 和主机范围；开发模式在回环 HTTP 下使用 FDU_SESSION。CSRF Cookie 同样为 HttpOnly，页面通过 GET /api/auth/csrf 获取掩码令牌，按响应中的 headerName 提交。登录和退出会清除旧 CSRF Cookie，下一次写请求前需重新获取令牌。
 
-账号、角色停用或资格无效时拒绝访问。账号改权和退出会递增 auth_version；权限集合每次查询数据库，不信任浏览器传入角色。管理员改权同时提交 expectedAuthVersion，冲突返回 409。退出影响本系统所有设备，不执行学校全局退出。
+账号或角色停用时拒绝访问。账号改权和退出会递增 auth_version；权限集合每次查询数据库，不信任浏览器传入角色。管理员改权同时提交 expectedAuthVersion，冲突返回 409。退出影响本系统所有设备。
 
 数据库连接与 socket 等待设有上限；数据库故障时身份请求返回 503，恢复后可重新请求，不使用缓存身份放行。
 
-## 迁移、种子与开发数据
+## 迁移与种子
 
 | 文件 | 用途 |
 | --- | --- |
-| db/migration/V1__identity_schema.sql | 建立 iam 四张表及约束，Flyway 历史在 resource_meta |
-| db/seed/R__identity_defaults.sql | 幂等建立默认角色与权限；仅为新建角色分配基线权限，不覆盖已有配置 |
-| db/demo/identity.sql | 本地开发数据，独立于正式种子；重复执行保留已修改账号 |
+| db/migration/V1__identity_schema.sql | 原身份四表及约束，保持已发布版本 |
+| db/migration/V2__password_accounts.sql | 新增密码哈希、LOCAL 来源、条件必填与本地账号大小写唯一约束 |
+| db/seed/R__identity_defaults.sql | 幂等角色和权限种子，不覆盖已有配置，不创建密码账号 |
 
-默认模式为 uis。开发登录同时要求仅启用 local profile、mode=dev、回环地址绑定；混用 local/prod 或公开绑定会启动失败。生产没有开发控制器和开发数据初始化器。正式模式拒绝 DEVELOPMENT 数据和 dev 模式凭据。
+Flyway 历史在 resource_meta。V2 保留旧账号、字段值及启用状态；旧账号没有本地密码，不能直接密码登录。新账号的学校身份类型为空，不使用学校资格字段作为登录条件。字段约束见 [数据库设计](02-database-design.md)。
 
-数据库文档已同步删除 password_hash，并加入 identity_type、identity_source、identity_active；邮箱允许待补全。见 [数据库表结构](02-database-design.md)。仍保持 19 张应用表的总设计，本阶段仅迁移身份四表。
+认证模式仅支持 password。未启用 local 时使用 Secure Cookie；需要同域 HTTPS 反向代理。本地 HTTP 仅支持单独 local profile 和回环地址，混合 profile 或公开绑定会启动失败。密钥必须独立且符合长度要求。
 
 ## 验证与后续
 
-- Maven Wrapper verify：15 项单元测试及可运行 JAR 打包。
-- tests/backend-auth-smoke.py：针对专用测试库执行真实 HTTP 验收；会修改并恢复开发学生的访问状态。
-- PostgreSQL：验证迁移、重复启动及种子不覆盖管理员修改。
-- Windows Wrapper 已实际验证；Unix 脚本完成语法检查，macOS 待实际运行。
-- 正式 UIS、流程服务端接入及持久审计投递分别随后续任务完成；当前安全事件写结构化日志，不宣称完整审计链已完成。
+- 后端 clean verify：21 项测试通过，生成可运行 JAR。
+- 真实 HTTP：33 项检查通过；详细覆盖见 [T07 记录](12-password-login.md)。
+- Windows Wrapper 已实际运行；Unix 脚本做过语法检查，macOS 尚未实跑。
+- workflow-service 身份接入和完整部署入口待后续实施。
 
-HTTP 验收示例：
+针对专用测试库运行 HTTP 验证；先设置 CAMPUS_SMOKE_ADMIN_PASSWORD，再在项目根目录执行：
 
 ```sh
-python tests/backend-auth-smoke.py --base-url http://127.0.0.1:8080
+python tests/backend-auth-smoke.py --base-url http://127.0.0.1:8080 --admin-login <已初始化的管理员账号>
 ```
 
-配置 CAMPUS_AUTH_SERVICE_KEY 后脚本还会验证内部凭据校验。--production-url 可指定另一份默认 UIS 模式测试服务，检查生产隔离；测试脚本不会连接学校服务。
-
-正式 UIS 当前准确返回未配置。校方协议、回调、属性及首位正式管理员的受控绑定在 T07 完成，不能用开发登录测试替代。
-
-实现依据：[Spring Boot 系统要求](https://docs.spring.io/spring-boot/system-requirements.html)、[Spring Security CSRF](https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html)、[Maven Wrapper](https://maven.apache.org/wrapper/)。
+脚本创建随机 smoke- 前缀账号，并只变更这些测试账号的角色和状态；不会清空数据库。密码通过环境变量读取，不放在命令行参数。前后端测试和启动应依次执行，当前 Windows UNC 临时映射目录不支持多个 npm/Maven 进程交错退出。

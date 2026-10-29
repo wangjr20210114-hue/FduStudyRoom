@@ -7,28 +7,19 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 class AccountTest {
-    private Account account(String type, String role, String source, boolean active, boolean enabled, boolean roleEnabled) {
-        return new Account(UUID.randomUUID(), "DEV-TEST", "Development", null, type, source, active,
-                UUID.randomUUID(), role, roleEnabled, enabled, 1, Set.of("identity:read"));
+    private Account account(String role, boolean enabled, boolean roleEnabled) {
+        return new Account(UUID.randomUUID(), "test", "Test", null, UUID.randomUUID(), role, roleEnabled, enabled, 1, Set.of("identity:read"));
     }
-    @Test void activeStudentCanUseTheOrdinaryRole() {
-        assertThatCode(() -> account("STUDENT","USER","DEVELOPMENT",true,true,true).requireEligible("dev")).doesNotThrowAnyException();
-    }
-    @Test void staffNeedsAnAssignedManagementOrMaintenanceRole() {
-        for (String role : new String[]{"SYSTEM_ADMIN","MAINTAINER"}) {
-            assertThatCode(() -> account("STAFF",role,"DEVELOPMENT",true,true,true).requireEligible("dev")).doesNotThrowAnyException();
-        }
-        assertThatThrownBy(() -> account("STAFF","USER","DEVELOPMENT",true,true,true).requireEligible("dev")).isInstanceOf(ApiException.class);
-    }
-    @Test void inactiveIdentityOrDisabledAccountOrRoleIsRejected() {
-        for (Account account : new Account[]{
-                account("STUDENT","USER","DEVELOPMENT",false,true,true),
-                account("STUDENT","USER","DEVELOPMENT",true,false,true),
-                account("STUDENT","USER","DEVELOPMENT",true,true,false)}) {
-            assertThatThrownBy(() -> account.requireEligible("dev")).isInstanceOf(ApiException.class);
+    @Test void ordinaryAndAssignedRolesDoNotRequireSchoolVerification() {
+        for (String role : new String[]{"USER","SYSTEM_ADMIN","MAINTAINER"}) {
+            assertThatCode(() -> account(role,true,true).requireEligible()).doesNotThrowAnyException();
         }
     }
-    @Test void developmentDatabaseIdentitiesAreRejectedInUisMode() {
-        assertThatThrownBy(() -> account("STUDENT","USER","DEVELOPMENT",true,true,true).requireEligible("uis")).isInstanceOf(ApiException.class);
+    @Test void disabledAccountOrRoleIsRejected() {
+        assertThatThrownBy(() -> account("USER",false,true).requireEligible()).isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> account("USER",true,false).requireEligible()).isInstanceOf(ApiException.class);
+    }
+    @Test void principalContainsNoCredentials() {
+        assertThat(account("USER",true,true).principal().toString()).doesNotContain("password");
     }
 }

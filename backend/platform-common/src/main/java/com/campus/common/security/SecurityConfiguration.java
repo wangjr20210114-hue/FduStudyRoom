@@ -42,7 +42,7 @@ public class SecurityConfiguration {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .csrf(config -> config.csrfTokenRepository(csrf).ignoringRequestMatchers("/internal/auth/introspect"))
             .authorizeHttpRequests(auth -> auth.dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR).permitAll().requestMatchers("/health", "/api/auth/config", "/api/auth/csrf",
-                    "/api/auth/dev/login", "/api/auth/fudan/login", "/api/auth/fudan/callback", "/internal/auth/introspect").permitAll()
+                    "/api/auth/login", "/api/auth/register", "/internal/auth/introspect").permitAll()
                     .anyRequest().authenticated())
             .exceptionHandling(config -> config
                     .authenticationEntryPoint((request, response, error) -> errors.write(request, response, 401, "AUTHENTICATION_REQUIRED"))

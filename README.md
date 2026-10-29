@@ -1,6 +1,6 @@
 # 校园自习室预约系统
 
-前端采用 TypeScript、Vue 3 与 Vite，后端采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端公共层、登录后端、登录页面及登录后基础布局；预约等业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
+前端采用 TypeScript、Vue 3 与 Vite，后端采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端公共层、账号登录注册、三种角色导航和页面切换；预约等业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
 
 ## 前端运行
 
@@ -48,11 +48,11 @@ build 自带类型检查并生成 dist；preview 在 http://127.0.0.1:4173 预�
 
 ## 登录后端
 
-T04 已实现资源服务的身份接口、角色与权限校验、Cookie/CSRF 和 PostgreSQL 身份表迁移。使用 JDK 21 与 backend 内的 Maven Wrapper 构建，启动方式见 [登录后端说明](docs/08-login-backend.md)。正式复旦 UIS 仍等待校方配置；本地开发身份会明确标记。
+当前采用本系统账号密码登录，允许注册，注册账号固定为普通用户。三种角色继续保留，管理员和维护人员由管理员授权；不再接入学校身份认证。后端支持密码哈希、Cookie/CSRF、权限校验及首个管理员初始化。使用 JDK 21 与 backend 内 Maven Wrapper 构建，命令见 [后端运行](docs/08-login-backend.md)。
 
 ## 登录页面
 
-T05 已接入认证配置、CSRF、开发登录、当前用户和退出。先启动登录后端，再访问 http://127.0.0.1:5173/login；本地开发可选择学生、管理员和维护人员，页面明确标记演示身份。后端未启动时显示服务错误。登录成功后进入空工作台，用户菜单提供个人信息和退出；具有相应权限时显示账号管理预留入口。登录页已精简，视觉设计后续再做。
+先启动登录后端，再访问 http://127.0.0.1:5173/login；注册入口为 http://127.0.0.1:5173/register。登录后根据普通用户、系统管理员或维护人员身份显示侧栏和工作台入口；点击菜单切换页面，用户菜单提供个人信息和退出。业务页面只保留标题和“暂未开放”，入口与路径见 [角色导航](docs/13-role-navigation.md)。页面只保留必要文字，视觉设计后续进行。功能、迁移和验证见 [T07 普通登录](docs/12-password-login.md)。
 
 Vite 默认将 /api 代理至 http://127.0.0.1:8080。需要修改后端端口时，将 frontend/.env.example 复制为 frontend/.env.local，调整 CAMPUS_API_TARGET 并重启 Vite。具体行为与验证见 [登录前端说明](docs/09-login-frontend.md)。
 
@@ -60,7 +60,7 @@ Vite 默认将 /api 代理至 http://127.0.0.1:8080。需要修改后端端口�
 
 - [项目目录与模块归属](docs/01-project-structure.md)
 - [数据库设计](docs/02-database-design.md)
-- [前端风格与复旦认证计划](docs/03-ui-and-auth-plan.md)
+- [前端风格与历史认证计划](docs/03-ui-and-auth-plan.md)
 - [分步任务与交接](docs/04-login-implementation-tasks.md)
 - [CodeArts IDE 与 Gitee 操作指南](docs/05-codearts-git-guide.md)
 - [公共样式与组件用法](docs/06-frontend-components.md)
@@ -68,5 +68,8 @@ Vite 默认将 /api 代理至 http://127.0.0.1:8080。需要修改后端端口�
 - [登录后端与运行说明](docs/08-login-backend.md)
 - [登录前端与接口联调](docs/09-login-frontend.md)
 - [T06 导航、工作台与访问控制](docs/10-workspace-and-navigation.md)
+- [UIS 与旦挞历史调研](docs/11-uis-and-danxi-research.md)
+- [T07 普通账号登录与注册](docs/12-password-login.md)
+- [T08 角色导航与页面切换](docs/13-role-navigation.md)
 
-使用 CodeArts IDE 或码道 IDE 的内置 Git 面板查看差异、暂存和提交，再推送到 Gitee 的 FduStudyRoom 项目仓库。正式账号、密钥及本机 IDE 配置不提交。复旦认证接入依赖校方批准的参数，开发身份不会作为正式认证验收结果。
+使用 CodeArts IDE 或码道 IDE 的内置 Git 面板查看差异、暂存和提交，再推送到 Gitee 的 FduStudyRoom 项目仓库。正式账号、密钥及本机 IDE 配置不提交。本地账号不证明复旦身份，真实密码和初始化凭据不纳入 Git。
