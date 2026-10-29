@@ -12,7 +12,7 @@
 | T02 | 公共样式与基础组件 | shared/styles、shared/components | 统一主题、按钮、面板、输入框、加载和错误提示；桌面与手机可用 | 已完成 |
 | T03 | 公共逻辑与国际化 | shared 的 API 客户端、工具和 i18n，zh-CN / en 字典 | 请求错误处理一致；语言可切换并保留选择；后续页面复用字典 | 已完成 |
 | T04 | 登录后端 | backend 构建、identity、security、认证契约和必要数据库迁移 | 用户与角色、当前用户、退出和后端鉴权；开发身份入口与正式模式隔离；关键安全行为有测试 | 已完成，待用户审查 |
-| T05 | 登录前端 | modules/auth 与公共组件组合 | 复旦认证入口、开发模式标识、处理中与失败状态，使用公共样式和字典 | 待开始 |
+| T05 | 登录前端 | modules/auth 与公共组件组合 | 复旦认证入口、开发模式标识、处理中与失败状态，使用公共样式和字典 | 已完成，待用户审查 |
 | T06 | 登录后基础布局 | app 路由与布局、导航、用户菜单 | 已登录可进入空工作台；未登录不能访问；菜单按权限显示；可以退出 | 待开始 |
 | T07 | 正式复旦 UIS 联调 | identity 协议适配、回调和部署配置 | 真实校方凭据与资格核验通过；拒绝过期、重放及不符合资格的登录 | 待校方配置 |
 | T08 | 完整登录流程验收 | 两服务、前端、构建入口及使用说明 | 类型、构建和真实流程验证通过，生产无模拟入口；Windows/macOS 运行步骤完成验收 | 待开始 |
@@ -195,13 +195,52 @@ T01 的交付范围为基础页面；公共组件体系由 T02 交付，国际�
 
 启动与验证说明见 [登录后端](08-login-backend.md)。当前安全事件写结构化日志；持久审计投递随公共审计模块接入，未宣称完整审计链完成。
 
-## 10 当前停点与 Git 审查
+## 10 T05 文件与用途
+
+| 文件 | 用途 |
+| --- | --- |
+| frontend/src/modules/auth/types.ts | 模式、当前用户与开发账号类型 |
+| frontend/src/modules/auth/api/auth.ts | 响应校验、认证配置、CSRF、登录、当前用户和退出 |
+| frontend/src/modules/auth/model/login-flow.ts | 登录状态、会话确认、刷新恢复、失败重试及取消 |
+| frontend/src/modules/auth/model/error-message.ts | 认证业务错误的中英文提示 |
+| frontend/src/modules/auth/pages/LoginPage.vue | 登录布局、开发身份选择及登录成功确认 |
+| frontend/src/app/App.vue | 以登录页作为当前入口 |
+| frontend/src/shared/i18n/locales/zh-CN.ts、en.ts | 登录与身份确认字典 |
+| frontend/vite.config.ts、frontend/.env.example | 回环地址 API 代理与配置模板 |
+| frontend/vitest.config.ts | 测试路径别名 |
+| frontend/tests/auth-api.test.ts、login-flow.test.ts、fixtures/auth.ts | CSRF、响应检查、会话状态及环境隔离测试 |
+| README.md、docs/01-project-structure.md、08-login-backend.md | 同步入口、目录与前后端联调说明 |
+| docs/04-login-implementation-tasks.md、09-login-frontend.md | T05 文件清单、运行、验证与交接 |
+
+没有新增前端依赖；后端、身份契约与数据库设计保持本任务开始时的内容。
+
+## 11 T05 验证记录
+
+验证日期：2026-10-29。Windows / WSL 共享目录，Node.js 24.19.0、npm 11.17.0；隔离 Chrome、独立 PostgreSQL 测试库及 T04 资源服务。
+
+| 检查 | 结果 |
+| --- | --- |
+| npm test | 4 个文件、48 项全部通过，T05 新增 19 项 |
+| 类型与构建 | npm run typecheck、npm run build 通过 |
+| 真实登录 | 学生、管理员、维护人员经 CSRF 和 Cookie 登录，身份由后端确认 |
+| 会话与退出 | 刷新恢复当前身份，退出后回到登录入口 |
+| 重复提交 | 加载时禁用操作，重复提交不增加登录请求 |
+| 凭据 | Cookie 为 HttpOnly，页面无法读取；localStorage 无用户、角色或令牌 |
+| 错误与恢复 | 注入账号停用和服务故障，验证已有错误随语言更新、重新检查恢复 |
+| 正式环境 | 正式模式无开发表单；正式前端误连开发后端时拒绝该配置 |
+| 正式产物 | 移除开发登录请求地址和开发组件预览 |
+| 布局与运行 | 中文桌面、英文 375px 手机、成功页及正式模式截图已检查；无横向溢出或 JavaScript 异常 |
+| macOS / 正式 UIS | 尚未实际验收 macOS；真实校方认证仍待 T07 |
+
+使用说明见 [登录前端](09-login-frontend.md)。当前登录成功后展示身份确认卡片，T06 才实现受保护工作台与按权限显示的导航。
+
+## 12 当前停点与 Git 审查
 
 T02 本地提交为 1be62d3，T03 已按用户审查的说明提交为 1cabf40。当前均未推送；origin/main 对应 T01 的 90d4e3c。远程仓库为 https://gitee.com/wangjr2021/fdu-study-room.git 。
 
-T04 已完成，改动保留在工作区，尚未暂存、提交或推送。每个任务完成后先报告文件、功能及验证结果，并展示拟用 Git 提交说明，等待用户审查。
+T04 与 T05 已完成，改动保留在工作区，尚未暂存、提交或推送。用户指令为继续 T05，本次没有代替用户批准 T04 的提交。每个任务完成后报告文件、功能及验证结果，并展示拟用 Git 提交说明，等待用户审查。
 
-下一项为 T05 登录前端，接入本次的模式、CSRF、登录和当前用户接口；收到继续指令后再开始。T07 才完成获批配置下的正式复旦 UIS 认证验收。
+下一项为 T06 登录后基础布局、导航、用户菜单和页面访问控制，收到继续指令后再开始。T07 才完成获批配置下的正式复旦 UIS 认证验收。
 
 T04 拟用提交说明：
 
@@ -210,4 +249,13 @@ feat(auth): 添加身份接口与后端权限校验
 
 - 添加开发登录、当前用户、退出及账号授权接口
 - 接入 PostgreSQL 迁移和 Cookie、CSRF 安全控制
+```
+
+T05 拟用提交说明：
+
+```text
+feat(auth): 添加登录页面与身份接口联调
+
+- 实现统一认证入口、开发登录及身份确认
+- 接入 CSRF、退出与中英文错误反馈
 ```

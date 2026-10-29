@@ -107,5 +107,74 @@ export default {
       "footer": "输入框与按钮使用统一尺寸；组件文案统一来自中英文字典。"
     },
     "footer": "组件预览仅在开发环境开放 · 不连接认证或预约服务"
+  },
+  "auth": {
+    "hero": {
+      "eyebrow": "校园里的专注时光",
+      "titleLine1": "让专注，",
+      "titleLine2": "有一个好位置。",
+      "description": "从寻找一张座位开始，安排好在校园里的每一段学习时光。",
+      "spaces": "找到适合自己的自习空间",
+      "schedule": "安排每一段学习时光",
+      "records": "有序管理预约与使用记录"
+    },
+    "card": {
+      "label": "登录区域",
+      "title": "欢迎回来",
+      "description": "使用复旦统一身份认证登录。",
+      "eligibility": "普通用户仅限复旦学生；管理员和维护人员需预先授权。"
+    },
+    "official": {
+      "action": "复旦统一身份认证",
+      "unavailable": "统一认证暂未开放，请稍后再试。",
+      "password": "将在学校认证页面验证身份，本系统不收集学校密码。"
+    },
+    "development": {
+      "badge": "开发模式",
+      "localOnly": "仅限本地联调",
+      "notice": "以下为模拟身份，不代表真实复旦身份，请勿输入真实学号或学校密码。",
+      "label": "选择开发身份",
+      "action": "以开发身份登录",
+      "accounts": {
+        "student": "开发学生",
+        "admin": "开发管理员",
+        "maintainer": "开发维护人员"
+      }
+    },
+    "actions": {
+      "recheck": "重新检查",
+      "signingIn": "正在登录…",
+      "signOut": "退出当前账号"
+    },
+    "loading": "正在检查登录状态…",
+    "session": {
+      "title": "已登录",
+      "welcome": "欢迎回来，愿今天的学习更加专注。",
+      "verified": "复旦身份",
+      "role": "角色",
+      "identity": "身份",
+      "account": "账号",
+      "student": "学生",
+      "staff": "教职工"
+    },
+    "roles": {
+      "student": "普通用户",
+      "admin": "系统管理员",
+      "maintainer": "维护人员"
+    },
+    "errors": {
+      "title": "暂时无法完成操作",
+      "csrf": "安全校验已失效，请重新尝试。",
+      "ineligible": "当前身份不符合使用条件，请联系管理员核对资格。",
+      "disabled": "账号或角色已停用，请联系管理员。",
+      "environment": "当前登录配置不可用，请联系系统管理员。",
+      "unconfirmed": "暂未确认登录状态，请重新检查后再试。"
+    },
+    "help": {
+      "title": "登录遇到问题？",
+      "description": "请确认你具有有效的复旦学生身份，或已获授管理、维护权限。若仍无法登录，请联系系统管理员核对账号状态。"
+    },
+    "privacy": "仅通过校方认证验证身份，不收集学校密码",
+    "footer": "为校园里的每一段专注时光"
   }
 }

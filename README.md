@@ -1,6 +1,6 @@
 # 校园自习室预约系统
 
-前端采用 TypeScript、Vue 3 与 Vite，后端采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端运行骨架、公共主题与组件、公共请求层和中英文切换；登录及其他业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
+前端采用 TypeScript、Vue 3 与 Vite，后端采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端公共层、登录后端和登录页面；登录后工作台及其他业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
 
 ## 前端运行
 
@@ -11,13 +11,13 @@ npm ci
 npm run dev
 ```
 
-浏览器访问 http://127.0.0.1:5173。端口被占用时会明确报错，不会自动改用其他端口。使用 Ctrl+C 停止服务。
+浏览器访问 http://127.0.0.1:5173/login。端口被占用时会明确报错，不会自动改用其他端口。使用 Ctrl+C 停止服务。
 
 开发环境组件预览：http://127.0.0.1:5173/dev/components 。包含按钮、面板、输入、状态及加载重试；正式构建移除该预览页。组件接口见 [公共组件说明](docs/06-frontend-components.md)。
 
 首次由项目根目录启动时，先执行 cd frontend。npm ci 使用已提交的 package-lock.json，依赖目录 node_modules 不纳入 Git。
 
-首页及组件预览右上方可切换中英文，选择会保留到下次访问。公共请求与字典用法见 [T03 使用说明](docs/07-frontend-api-and-i18n.md)。
+登录页及组件预览右上方可切换中英文，选择会保留到下次访问。公共请求与字典用法见 [T03 使用说明](docs/07-frontend-api-and-i18n.md)。
 
 ## 当前 Windows 与 WSL 路径
 
@@ -50,6 +50,12 @@ build 自带类型检查并生成 dist；preview 在 http://127.0.0.1:4173 预�
 
 T04 已实现资源服务的身份接口、角色与权限校验、Cookie/CSRF 和 PostgreSQL 身份表迁移。使用 JDK 21 与 backend 内的 Maven Wrapper 构建，启动方式见 [登录后端说明](docs/08-login-backend.md)。正式复旦 UIS 仍等待校方配置；本地开发身份会明确标记。
 
+## 登录页面
+
+T05 已接入认证配置、CSRF、开发登录、当前用户和退出。先启动登录后端，再访问 http://127.0.0.1:5173/login；本地开发可选择学生、管理员和维护人员，页面明确标记演示身份。后端未启动时显示服务错误。登录成功后暂展示身份确认卡片，导航与工作台在 T06 实现。
+
+Vite 默认将 /api 代理至 http://127.0.0.1:8080。需要修改后端端口时，将 frontend/.env.example 复制为 frontend/.env.local，调整 CAMPUS_API_TARGET 并重启 Vite。具体行为与验证见 [登录前端说明](docs/09-login-frontend.md)。
+
 ## 文档与协作
 
 - [项目目录与模块归属](docs/01-project-structure.md)
@@ -60,5 +66,6 @@ T04 已实现资源服务的身份接口、角色与权限校验、Cookie/CSRF �
 - [公共样式与组件用法](docs/06-frontend-components.md)
 - [公共请求与国际化](docs/07-frontend-api-and-i18n.md)
 - [登录后端与运行说明](docs/08-login-backend.md)
+- [登录前端与接口联调](docs/09-login-frontend.md)
 
 使用 CodeArts IDE 或码道 IDE 的内置 Git 面板查看差异、暂存和提交，再推送到 Gitee 的 FduStudyRoom 项目仓库。正式账号、密钥及本机 IDE 配置不提交。复旦认证接入依赖校方批准的参数，开发身份不会作为正式认证验收结果。

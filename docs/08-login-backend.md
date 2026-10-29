@@ -88,7 +88,7 @@ java -jar resource-service/target/resource-service-0.1.0-SNAPSHOT.jar --spring.p
 
 启动后访问 http://127.0.0.1:8080/api/auth/config 检查模式。local profile 会初始化明确标记的开发数据，三个可登录选项为学生、管理员和维护人员；另有教职工普通账号、资格失效和停用账号用于拒绝测试。开发身份不代表真实复旦身份。
 
-目前前端登录页面尚未实现，浏览器直接输入 /api/auth/me 会在未登录时返回 401。T05 将接入这些接口并增加同站点开发代理。
+T05 已提供登录页面及同站点开发代理，访问 http://127.0.0.1:5173/login 可完成开发登录、刷新恢复与退出，见 [登录前端说明](09-login-frontend.md)。浏览器直接输入 /api/auth/me 在未登录时仍返回 401；正式复旦 UIS 继续等待 T07。
 
 ## 凭据与权限
 
