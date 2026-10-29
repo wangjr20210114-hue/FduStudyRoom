@@ -1,6 +1,6 @@
 # 校园自习室预约系统
 
-前端采用 TypeScript、Vue 3 与 Vite，后端采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端公共层、登录后端和登录页面；登录后工作台及其他业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
+前端采用 TypeScript、Vue 3 与 Vite，后端采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端公共层、登录后端、登录页面及登录后基础布局；预约等业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
 
 ## 前端运行
 
@@ -52,7 +52,7 @@ T04 已实现资源服务的身份接口、角色与权限校验、Cookie/CSRF �
 
 ## 登录页面
 
-T05 已接入认证配置、CSRF、开发登录、当前用户和退出。先启动登录后端，再访问 http://127.0.0.1:5173/login；本地开发可选择学生、管理员和维护人员，页面明确标记演示身份。后端未启动时显示服务错误。登录成功后暂展示身份确认卡片，导航与工作台在 T06 实现。
+T05 已接入认证配置、CSRF、开发登录、当前用户和退出。先启动登录后端，再访问 http://127.0.0.1:5173/login；本地开发可选择学生、管理员和维护人员，页面明确标记演示身份。后端未启动时显示服务错误。登录成功后进入空工作台，用户菜单提供个人信息和退出；具有相应权限时显示账号管理预留入口。登录页已精简，视觉设计后续再做。
 
 Vite 默认将 /api 代理至 http://127.0.0.1:8080。需要修改后端端口时，将 frontend/.env.example 复制为 frontend/.env.local，调整 CAMPUS_API_TARGET 并重启 Vite。具体行为与验证见 [登录前端说明](docs/09-login-frontend.md)。
 
@@ -67,5 +67,6 @@ Vite 默认将 /api 代理至 http://127.0.0.1:8080。需要修改后端端口�
 - [公共请求与国际化](docs/07-frontend-api-and-i18n.md)
 - [登录后端与运行说明](docs/08-login-backend.md)
 - [登录前端与接口联调](docs/09-login-frontend.md)
+- [T06 导航、工作台与访问控制](docs/10-workspace-and-navigation.md)
 
 使用 CodeArts IDE 或码道 IDE 的内置 Git 面板查看差异、暂存和提交，再推送到 Gitee 的 FduStudyRoom 项目仓库。正式账号、密钥及本机 IDE 配置不提交。复旦认证接入依赖校方批准的参数，开发身份不会作为正式认证验收结果。

@@ -11,6 +11,7 @@ export function createLoginFlow(service: AuthApi = authApi, developmentBuild = i
   const busy = computed(() => phase.value !== 'idle')
   let controller: AbortController | undefined
   let disposed = false
+  let initialization: Promise<void> | undefined
 
   function validateIdentity(configuration: AuthConfig, identity: CurrentUser | null) {
     if (configuration.mode === 'development' && !developmentBuild) {
@@ -37,12 +38,16 @@ export function createLoginFlow(service: AuthApi = authApi, developmentBuild = i
     }
   }
 
-  async function initialize() {
-    await execute('loading', async signal => {
+  function initialize(): Promise<void> {
+    if (initialization) return initialization
+    initialization = execute('loading', async signal => {
+      config.value = null
+      user.value = null
       const [configuration, identity] = await Promise.all([service.configuration(signal), service.currentUser(signal)])
       validateIdentity(configuration, identity)
       return () => { config.value = configuration; user.value = identity }
-    })
+    }).finally(() => { initialization = undefined })
+    return initialization
   }
 
   async function signInDevelopment(account: DevelopmentAccountKey) {

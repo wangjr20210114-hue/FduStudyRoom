@@ -1,4 +1,4 @@
-import type zhCN from './zh-CN'
+import zhCN from './zh-CN'
 
 export default {
   "app": {
@@ -111,32 +111,17 @@ export default {
     "footer": "Development preview only · No authentication or reservation service"
   },
   "auth": {
-    "hero": {
-      "eyebrow": "Make room for focus",
-      "titleLine1": "A place to settle.",
-      "titleLine2": "A moment to focus.",
-      "description": "Find your seat and make the most of every study session on campus.",
-      "spaces": "Find a study space that suits you",
-      "schedule": "Make time for your next study session",
-      "records": "Keep your bookings and visits organized"
-    },
     "card": {
-      "label": "Sign-in area",
-      "title": "Welcome back",
-      "description": "Sign in with Fudan Unified Identity Authentication.",
-      "eligibility": "Student access is limited to Fudan students. Administrators and maintainers require prior authorization."
+      "title": "Sign in"
     },
     "official": {
       "action": "Sign in with Fudan UIS",
-      "unavailable": "Unified sign-in is not available yet. Please try again later.",
-      "password": "You will verify your identity on the university website. We do not collect your university password."
+      "unavailable": "University sign-in is unavailable"
     },
     "development": {
       "badge": "Development mode",
-      "localOnly": "Local testing only",
-      "notice": "These are simulated identities, not verified Fudan accounts. Do not enter a real student ID or university password.",
-      "label": "Choose a development identity",
-      "action": "Sign in for development",
+      "label": "Development account",
+      "action": "Sign in",
       "accounts": {
         "student": "Development student",
         "admin": "Development administrator",
@@ -150,9 +135,6 @@ export default {
     },
     "loading": "Checking your sign-in status…",
     "session": {
-      "title": "Signed in",
-      "welcome": "Welcome back. Here is to a focused day.",
-      "verified": "Fudan identity",
       "role": "Role",
       "identity": "Identity",
       "account": "Account",
@@ -171,12 +153,21 @@ export default {
       "disabled": "This account or role is disabled. Please contact an administrator.",
       "environment": "Sign-in is unavailable with this configuration. Please contact an administrator.",
       "unconfirmed": "Your sign-in could not be confirmed. Check again before retrying."
+    }
+  },
+  "shell": {
+    "navigation": {
+      "workspace": "Workspace",
+      "users": "User management"
     },
-    "help": {
-      "title": "Need help signing in?",
-      "description": "Confirm that you are an eligible Fudan student or have been granted administrator or maintainer access. If sign-in still fails, ask a system administrator to check your account."
-    },
-    "privacy": "Verify through the university. Your university password stays private.",
-    "footer": "A little more room for every focused moment"
+    "navigationLabel": "Main navigation",
+    "account": "My account",
+    "name": "Name",
+    "skip": "Skip to content",
+    "empty": "No content yet",
+    "pending": "Not available yet",
+    "forbidden": "Access denied",
+    "notFound": "Page not found",
+    "returnWorkspace": "Back to workspace"
   }
 } satisfies typeof zhCN

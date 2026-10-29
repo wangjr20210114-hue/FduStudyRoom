@@ -6,7 +6,7 @@
 
 T04 已实现 platform-common 安全基础和 resource-service 的 identity 模块，Java 21 / Spring Boot 4.1.2，通过 Maven Wrapper 构建；身份迁移和运行方法见 [登录后端](08-login-backend.md)。workflow-service 仍预留，尚未加入当前构建。
 
-T05 已实现 modules/auth 登录页面、接口封装和会话状态，首页与 /login 展示登录入口；本地 API 通过 Vite 同站点代理。登录后导航与工作台由 T06 交付，用法见 [登录前端](09-login-frontend.md)。
+T05 已实现登录接口接入，T06 已加入 Vue Router、共享身份状态、权限导航、个人信息及空工作台。/login 为精简登录页，首页进入工作台；本地 API 通过 Vite 同站点代理。用法见 [登录前端](09-login-frontend.md) 和 [T06 说明](10-workspace-and-navigation.md)。
 
 数据库字段、约束、外键和关系图见 [数据库表结构设计](02-database-design.md)。前端风格及复旦统一身份认证的新方案见 [前端与登录实施计划](03-ui-and-auth-plan.md)；用户表的旧本地密码设计在后续定稿时按该计划修订。
 
@@ -30,6 +30,7 @@ new-project/
 │   ├── 07-frontend-api-and-i18n.md        公共请求与国际化用法
 │   ├── 08-login-backend.md                身份后端与运行说明
 │   ├── 09-login-frontend.md               登录前端与接口联调
+│   ├── 10-workspace-and-navigation.md      T06 导航与访问控制
 │   ├── adr/                              架构与公共层归属决策
 │   └── acceptance/                       需求验收标准
 ├── contracts/
@@ -76,7 +77,10 @@ new-project/
 │   ├── public/favicon.svg                项目图标
 │   └── src/
 │       ├── app/
-│       │   ├── App.vue                   应用根组件与主题入口
+│       │   ├── App.vue                   主题、会话检查与路由显示
+│       │   ├── router/                   路由守卫、权限菜单与返回地址
+│       │   ├── layouts/AppShell.vue       导航、用户菜单与主内容区
+│       │   ├── pages/StatusPage.vue       工作台与必要状态页
 │       │   └── dev/ComponentPreview.vue  仅开发环境的组件预览
 │       ├── shared/
 │       │   ├── api/                     请求客户端、错误及公共导出
@@ -89,7 +93,7 @@ new-project/
 │           │   ├── types.ts              认证模式与当前用户
 │           │   ├── api/auth.ts           身份接口与 CSRF
 │           │   ├── model/                登录状态及错误文案
-│           │   └── pages/LoginPage.vue   登录与身份确认
+│           │   └── pages/                LoginPage.vue、AccountPage.vue
 │           ├── system/
 │           ├── resource/
 │           ├── notification/
