@@ -1,0 +1,258 @@
+openapi: 3.1.0
+info:
+  title: FduStudyRoom Identity API
+  version: 0.1.0
+  description: |
+    T04 登录后端。成功响应直接返回 JSON，失败返回 Error。
+    开发登录仅 local profile 且绑定回环地址时开放；UIS 未配置时返回 503。
+    生产 Cookie 为 __Host-FDU_SESSION；开发 Cookie 为 FDU_SESSION。
+    写操作先 GET /api/auth/csrf，携带响应中的 headerName/token；
+    登录及退出后重新获取 CSRF 令牌。跨源 CORS 未开放。
+servers:
+  - url: /
+security:
+  - SessionCookie: []
+paths:
+  /health:
+    get:
+      security: []
+      responses:
+        '200':
+          description: 服务已启动，不代表 UIS 已获批
+  /api/auth/config:
+    get:
+      security: []
+      responses:
+        '200':
+          description: 当前认证模式及可用性
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [mode, available, developmentAccounts, unavailableCode]
+                properties:
+                  mode: {type: string, enum: [development, fudan]}
+                  available: {type: boolean}
+                  developmentAccounts:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, label]
+                      properties:
+                        key: {type: string}
+                        label: {type: string}
+                  unavailableCode: {type: string}
+  /api/auth/csrf:
+    get:
+      security: []
+      responses:
+        '200':
+          description: 设置 HttpOnly CSRF Cookie，并返回掩码后的提交令牌
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [headerName, token]
+                properties:
+                  headerName: {type: string, const: X-XSRF-TOKEN}
+                  token: {type: string}
+  /api/auth/dev/login:
+    post:
+      security:
+        - CsrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [account]
+              properties:
+                account:
+                  type: string
+                  enum: [student, admin, maintainer, staff-user, inactive, disabled]
+                  description: 后三项为拒绝场景测试；不接收学号、密码、身份类型或角色
+      responses:
+        '200':
+          description: 设置 HttpOnly 登录 Cookie；响应中不返回凭据
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentUser'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404':
+          description: 生产环境不存在此控制器
+  /api/auth/me:
+    get:
+      responses:
+        '200':
+          description: 实时读取账号、身份资格、角色及权限
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentUser'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/auth/logout:
+    post:
+      security:
+        - SessionCookie: []
+          CsrfHeader: []
+      responses:
+        '204':
+          description: 递增 auth_version，使本系统所有设备旧凭据失效，清除登录与 CSRF Cookie
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+  /api/auth/fudan/login:
+    get:
+      security: []
+      responses:
+        '503':
+          description: UIS_NOT_CONFIGURED；T07 获得校方配置后实现正式跳转
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+  /api/auth/fudan/callback:
+    get:
+      security: []
+      responses:
+        '503':
+          description: UIS_NOT_CONFIGURED；不接受浏览器自报身份，不签发登录凭据
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+  /api/admin/roles:
+    get:
+      responses:
+        '200':
+          description: 具有 identity:users:read 权限时返回角色
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, code, name, enabled]
+                  properties:
+                    id: {type: string, format: uuid}
+                    code: {type: string}
+                    name: {type: string}
+                    enabled: {type: boolean}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+  /api/admin/users:
+    get:
+      responses:
+        '200':
+          description: 具有 identity:users:read 权限时按登录名排序返回前 100 个账号；分页在用户管理模块扩展
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, loginName, displayName, identityType, identitySource, roleId, role, enabled, authVersion]
+                  properties:
+                    id: {type: string, format: uuid}
+                    loginName: {type: string}
+                    displayName: {type: string}
+                    identityType: {type: string, enum: [STUDENT, STAFF]}
+                    identitySource: {type: string, enum: [DEVELOPMENT, FUDAN_UIS]}
+                    roleId: {type: string, format: uuid}
+                    role: {type: string}
+                    enabled: {type: boolean}
+                    authVersion: {type: integer, minimum: 1}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+  /api/admin/users/{id}/access:
+    patch:
+      security:
+        - SessionCookie: []
+          CsrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [roleId, enabled, expectedAuthVersion]
+              properties:
+                roleId: {type: string, format: uuid}
+                enabled: {type: boolean}
+                expectedAuthVersion: {type: integer, minimum: 1}
+      responses:
+        '204':
+          description: 具有 identity:users:update 权限时变更角色/启用状态并递增 auth_version
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /internal/auth/introspect:
+    post:
+      description: 仅供后续流程服务服务端调用，校验最新账号状态；不使用浏览器 Cookie
+      security:
+        - ServiceKey: []
+          BearerToken: []
+      responses:
+        '200':
+          description: 当前仍有效的身份
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentUser'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: FDU_SESSION
+      description: 生产改为 __Host-FDU_SESSION，Secure、HttpOnly、SameSite=Lax；不由前端读取
+    CsrfHeader:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+    ServiceKey:
+      type: apiKey
+      in: header
+      name: X-Service-Key
+    BearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CurrentUser:
+      type: object
+      required: [id, loginName, displayName, identityType, identitySource, role, permissions, authVersion, profileIncomplete]
+      properties:
+        id: {type: string, format: uuid}
+        loginName: {type: string}
+        displayName: {type: string}
+        identityType: {type: string, enum: [STUDENT, STAFF]}
+        identitySource: {type: string, enum: [DEVELOPMENT, FUDAN_UIS]}
+        role: {type: string}
+        permissions: {type: array, uniqueItems: true, items: {type: string}}
+        authVersion: {type: integer, minimum: 1}
+        profileIncomplete: {type: boolean}
+    Error:
+      type: object
+      required: [code, message, traceId]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        traceId: {type: string, format: uuid}
+  responses:
+    Error:
+      description: 安全的公共错误；X-Request-Id 与 traceId 一致，原始异常不返回
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}

@@ -3,6 +3,7 @@
 | 属性 | 作用 |
 | --- | --- |
 | 设计范围 | 覆盖 M1、M2、M3 和公共层；19 张应用表，另有两张 Flyway 工具历史表。 |
+| 当前实现 | T04 已实现 iam 的四张表与资源服务 Flyway 历史；其余业务表按后续任务迁移。 |
 | 简化原则 | 不建立组织层级、校区楼宇主表、多范围授权、通用审批模板、独立签到违约验收表或多源同步平台。 |
 | 非空 | 是表示不能保存 SQL NULL；否表示允许为空，条件必填另列。 |
 | 主键 | 唯一定位记录。业务创建重试复用同一个 UUID，同 ID 不同参数必须拒绝。 |
@@ -99,34 +100,43 @@
 | `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
 | `login_name` | `varchar(128)` | 是 | 否 | 否 | 是 | — | — | — |
 | `display_name` | `varchar(128)` | 是 | 否 | 否 | 否 | — | — | — |
-| `password_hash` | `text` | 是 | 否 | 否 | 否 | — | — | — |
-| `email` | `varchar(254)` | 是 | 否 | 否 | 否 | — | — | — |
+| `email` | `varchar(254)` | 否 | 否 | 否 | 否 | — | — | — |
+| `identity_type` | `varchar(16)` | 是 | 否 | 否 | 否 | — | CHECK：STUDENT、STAFF | — |
+| `identity_source` | `varchar(16)` | 是 | 否 | 否 | 否 | 'FUDAN_UIS' | CHECK：FUDAN_UIS、DEVELOPMENT | — |
+| `identity_active` | `boolean` | 是 | 否 | 否 | 否 | false | — | — |
 | `role_id` | `uuid` | 是 | 否 | 是 | 否 | — | — | iam.roles.id |
-| `department_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `department_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | CHECK：非 STUDENT 时必须为空 | — |
 | `can_apply_room` | `boolean` | 是 | 否 | 否 | 否 | false | — | — |
 | `enabled` | `boolean` | 是 | 否 | 否 | 否 | true | — | — |
 | `auth_version` | `integer` | 是 | 否 | 否 | 否 | 1 | CHECK：大于 0 | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `login_name`：账号登录标识；校内用户可使用学工号
-- `display_name`：显示用户姓名或名称
-- `password_hash`：保存本平台密码的哈希，不保存明文密码或学校账号密码
-- `email`：接收预约提醒、审批结果和报修进展邮件
-- `role_id`：第一版每个用户选择一个角色；维护人员的普通操作包含在其角色权限中
-- `department_code`：记录经核实的在读学生院系资格，非学生为空；仅用于院系专用自习室匹配
-- `can_apply_room`：控制该用户是否获得整教室申请资格；还需同时具备对应角色权限
-- `enabled`：控制账号是否允许登录和使用系统
-- `auth_version`：注销或认证信息变化时递增，使旧令牌失效
+- `id`：唯一标识用户，业务表使用该 ID 关联账号
+- `created_at`：记录账号首次建立时间
+- `updated_at`：记录最近修改时间，由应用更新
+- `login_name`：正式环境保存校方核验后的规范学工号；开发数据使用 DEV- 前缀
+- `display_name`：显示姓名或名称
+- `email`：保存可信来源或验证后的通知邮箱；未取得时允许为空，当前用户接口标记 profileIncomplete；邮件业务接入时要求补全，不猜测学号邮箱格式
+- `identity_type`：区分学生与教职工，不由浏览器提交决定；资格未知或不在允许类别内的身份不自动建立可登录账号
+- `identity_source`：区分正式校方身份与明确标记的开发数据，防止开发账号被正式认证流程复用；不引入多身份提供方平台
+- `identity_active`：记录可信来源核验的有效资格；未知、过期或失效时为 false，拒绝登录和已有凭据访问；开发值仅用于模拟
+- `role_id`：第一版每个账号关联一个角色，系统自行授权管理权限
+- `department_code`：保存经核实的学生院系资格；教职工为空，用于院系自习室的最小资格匹配
+- `can_apply_room`：标记是否获得整教室申请资格，还需对应操作权限
+- `enabled`：控制本系统账号是否启用，不替代校方身份资格
+- `auth_version`：退出本系统或变更访问权限时递增，使所有设备的旧凭据失效；身份资格变更时同样应递增
 
 | 约束类型 | 定义 |
 | --- | --- |
 | U1 | UNIQUE (login_name) |
-| 应用校验 | department_code 仅为经核实的在读学生填写，由管理员或可信导入维护，用户不能自行修改；账号及角色启用后才能访问 |
-| FOREIGN KEY | 所有实际外键 ON DELETE RESTRICT、ON UPDATE RESTRICT；有历史引用的账号和主数据采用停用 |
+| INDEX | (role_id) |
+| CHECK | identity_type IN ('STUDENT', 'STAFF')；identity_source IN ('FUDAN_UIS', 'DEVELOPMENT') |
+| CHECK | identity_type = 'STUDENT' OR department_code IS NULL；auth_version > 0 |
+| 应用校验 | 必须账号、角色启用且身份资格有效；正式模式仅接受 FUDAN_UIS 来源。普通角色仅学生可登录，教职工需已授予 SYSTEM_ADMIN 或 MAINTAINER |
+| 应用校验 | 院系、身份来源及资格不从浏览器自报值更新；角色与启用状态变更校验旧 auth_version，成功后递增 |
+| FOREIGN KEY | role_id 引用 iam.roles.id，ON DELETE RESTRICT、ON UPDATE RESTRICT；历史账号采用停用 |
+
 
 ## 2 教室座位与参数
 

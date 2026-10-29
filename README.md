@@ -1,6 +1,6 @@
 # 校园自习室预约系统
 
-前端采用 TypeScript、Vue 3 与 Vite，后端计划采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端运行骨架、公共主题与组件、公共请求层和中英文切换；登录及其他业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
+前端采用 TypeScript、Vue 3 与 Vite，后端采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端运行骨架、公共主题与组件、公共请求层和中英文切换；登录及其他业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
 
 ## 前端运行
 
@@ -46,6 +46,10 @@ npm run preview
 
 build 自带类型检查并生成 dist；preview 在 http://127.0.0.1:4173 预览产物。Node.js 与 npm 的实际验证版本、构建结果和当前停点见 [任务交接](docs/04-login-implementation-tasks.md)。macOS 运行步骤已提供，待在实际 macOS 环境验收。
 
+## 登录后端
+
+T04 已实现资源服务的身份接口、角色与权限校验、Cookie/CSRF 和 PostgreSQL 身份表迁移。使用 JDK 21 与 backend 内的 Maven Wrapper 构建，启动方式见 [登录后端说明](docs/08-login-backend.md)。正式复旦 UIS 仍等待校方配置；本地开发身份会明确标记。
+
 ## 文档与协作
 
 - [项目目录与模块归属](docs/01-project-structure.md)
@@ -55,5 +59,6 @@ build 自带类型检查并生成 dist；preview 在 http://127.0.0.1:4173 预�
 - [CodeArts IDE 与 Gitee 操作指南](docs/05-codearts-git-guide.md)
 - [公共样式与组件用法](docs/06-frontend-components.md)
 - [公共请求与国际化](docs/07-frontend-api-and-i18n.md)
+- [登录后端与运行说明](docs/08-login-backend.md)
 
 使用 CodeArts IDE 或码道 IDE 的内置 Git 面板查看差异、暂存和提交，再推送到 Gitee 的 FduStudyRoom 项目仓库。正式账号、密钥及本机 IDE 配置不提交。复旦认证接入依赖校方批准的参数，开发身份不会作为正式认证验收结果。

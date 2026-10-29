@@ -1,0 +1,4 @@
+campus:
+  auth:
+    mode: dev
+    secure-cookies: false

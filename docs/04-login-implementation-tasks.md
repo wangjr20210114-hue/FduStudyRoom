@@ -11,7 +11,7 @@
 | T01 | 前端运行骨架 | frontend 的依赖、入口、构建与类型配置，根目录启动说明及 Git 规则 | 可启动并返回前端资源；类型检查和正式打包通过 | 已完成 |
 | T02 | 公共样式与基础组件 | shared/styles、shared/components | 统一主题、按钮、面板、输入框、加载和错误提示；桌面与手机可用 | 已完成 |
 | T03 | 公共逻辑与国际化 | shared 的 API 客户端、工具和 i18n，zh-CN / en 字典 | 请求错误处理一致；语言可切换并保留选择；后续页面复用字典 | 已完成 |
-| T04 | 登录后端 | backend 构建、identity、security、认证契约和必要数据库迁移 | 用户与角色、当前用户、退出和后端鉴权；开发身份入口与正式模式隔离；关键安全行为有测试 | 待开始 |
+| T04 | 登录后端 | backend 构建、identity、security、认证契约和必要数据库迁移 | 用户与角色、当前用户、退出和后端鉴权；开发身份入口与正式模式隔离；关键安全行为有测试 | 已完成，待用户审查 |
 | T05 | 登录前端 | modules/auth 与公共组件组合 | 复旦认证入口、开发模式标识、处理中与失败状态，使用公共样式和字典 | 待开始 |
 | T06 | 登录后基础布局 | app 路由与布局、导航、用户菜单 | 已登录可进入空工作台；未登录不能访问；菜单按权限显示；可以退出 | 待开始 |
 | T07 | 正式复旦 UIS 联调 | identity 协议适配、回调和部署配置 | 真实校方凭据与资格核验通过；拒绝过期、重放及不符合资格的登录 | 待校方配置 |
@@ -137,19 +137,77 @@ T01 的交付范围为基础页面；公共组件体系由 T02 交付，国际�
 
 操作入口：http://127.0.0.1:5173/ 与 http://127.0.0.1:5173/dev/components 。详细用法见 [公共请求与国际化](07-frontend-api-and-i18n.md)。
 
-## 8 当前停点与 Git 审查
+## 8 T04 文件与用途
 
-T02 已按用户审查后的说明本地提交，提交号 1be62d3；当前尚未推送。远程仓库为 https://gitee.com/wangjr2021/fdu-study-room.git ，分支 main；T01 已推送，提交号 90d4e3c。
+| 文件 | 用途 |
+| --- | --- |
+| backend/pom.xml | Java 21、Spring Boot 4.1.2，构建公共库和资源身份服务 |
+| backend/platform-common/pom.xml、backend/resource-service/pom.xml | 公共安全依赖、数据库迁移与可运行 JAR |
+| backend/mvnw、mvnw.cmd、.mvn/wrapper/maven-wrapper.properties | Windows / Unix Maven Wrapper，锁定 3.9.16 及发行包校验和 |
+| backend/resource-service/src/main/java/com/campus/ResourceApplication.java | 资源服务启动入口 |
+| platform-common/.../error/ApiException.java、ApiErrors.java、ApiAdvice.java | 统一异常、错误响应及输入错误处理 |
+| platform-common/.../tracing/RequestTraceFilter.java | 生成请求追踪号与禁止缓存响应 |
+| platform-common/.../security/AuthSettings.java | 认证配置、密钥、开发环境及安全 Cookie 边界 |
+| platform-common/.../security/TokenService.java | 签发并校验短期凭据，验证模式、签名及期限 |
+| platform-common/.../security/AuthCookies.java | HttpOnly 登录 Cookie 设置、读取和清除 |
+| platform-common/.../security/IdentityPrincipal.java、IdentityLookup.java | 当前身份及后端资格校验接口 |
+| platform-common/.../security/CookieAuthenticationFilter.java、SecurityConfiguration.java | Cookie 认证、CSRF、请求与方法权限控制 |
+| resource-service/.../identity/domain/Account.java | 学生、教职工、开发/正式来源及有效资格规则 |
+| resource-service/.../identity/infrastructure/AccountRepository.java、DatabaseErrors.java | PostgreSQL 访问与安全的数据库异常响应 |
+| resource-service/.../identity/application/IdentityService.java | 登录资格、实时权限、全设备退出及带版本的改权 |
+| resource-service/.../identity/api/AuthController.java | 模式、CSRF、当前用户、退出、内部校验及 UIS 未配置响应 |
+| resource-service/.../identity/api/DevelopmentLoginController.java | 仅本地开发环境开放的固定身份入口 |
+| resource-service/.../identity/api/AccountAdminController.java | 受权限保护的账号、角色查询和账号授权接口 |
+| resource-service/.../identity/infrastructure/DevelopmentData.java | 只在本地开发模式初始化演示数据 |
+| resource-service/src/main/resources/application.yml、application-local.yml | 数据库、Flyway、Cookie、认证模式及故障超时 |
+| resource-service/src/main/resources/db/migration/V1__identity_schema.sql | 身份四表、真实外键和字段约束 |
+| resource-service/src/main/resources/db/seed/R__identity_defaults.sql | 默认角色和权限的幂等初始化，保留已有配置 |
+| resource-service/src/main/resources/db/demo/identity.sql | 与正式种子分离的开发与拒绝测试账号 |
+| platform-common/src/test/.../TokenServiceTest.java、AuthSettingsTest.java | 签名、过期、模式隔离与环境配置边界 |
+| resource-service/src/test/.../identity/domain/AccountTest.java | 身份资格与角色规则 |
+| tests/backend-auth-smoke.py | 真实 HTTP 登录、权限、CSRF、改权与退出验收 |
+| contracts/openapi/identity.yaml | 身份接口、响应及权限契约 |
+| infra/compose.yaml、infra/.env.example、backend/.env.example | 独立 PostgreSQL、持久数据卷及无真实秘密的配置模板 |
+| README.md、docs/01-project-structure.md | 运行入口与当前目录状态 |
+| docs/02-database-design.md、03-ui-and-auth-plan.md | 同步身份字段、非空、外键、来源及资格规则 |
+| docs/04-login-implementation-tasks.md、08-login-backend.md | 交接记录、启动方法与安全控制说明 |
 
-T03 已完成，用户已审查提交说明并授权本地提交；下一项为 T04 登录后端。每个任务完成后先报告文件、功能及验证结果，并展示拟用 Git 提交说明，等待用户审查；IDE 操作步骤见 [Git 指南](05-codearts-git-guide.md)。
+表中 platform-common 和 resource-service 路径均相对 backend；Java 省略部分为 src/main/java/com/campus（公共库位于 com/campus/common）。
 
-下一项为 T04 登录后端，收到继续指令后再开始。届时定稿身份接口、Cookie 与 CSRF、开发身份隔离和数据库用户字段；本阶段的公共请求工具不代表认证已经接通。
+## 9 T04 验证记录
 
-T03 已审查的提交说明：
+验证环境：Windows，隔离的 Amazon Corretto 21.0.13、Maven Wrapper 3.9.16、Spring Boot 4.1.2；独立 PostgreSQL 18.6 测试容器。未修改本机 Java 安装，不使用其他项目数据库。
+
+| 检查 | 结果 |
+| --- | --- |
+| Maven Wrapper verify | 通过；15 项单元测试、公共库及可运行资源服务 JAR |
+| 真实 HTTP | 39 项检查通过，覆盖开发身份、当前用户、权限、CSRF、改权、退出、重放及生产隔离 |
+| 账号资格 | 学生可登录；未授管理角色的教职工、资格失效及停用账号被拒绝 |
+| 角色与权限 | 浏览器自报角色被拒绝；普通用户不能访问账号管理接口 |
+| 凭据失效 | 改权与退出撤销旧版本，另一个设备和内部校验接口也拒绝旧凭据 |
+| CSRF 与 Cookie | 登录和写请求验证 CSRF；登录凭据不出现在 JSON；生产使用 Secure / HttpOnly / __Host- Cookie |
+| 生产配置 | 不加载开发控制器；拒绝开发凭据；UIS 缺少校方配置时返回 503，不退回模拟认证 |
+| 真实迁移 | 建立身份四表与 resource_meta Flyway 历史；无 password_hash |
+| 重复启动与种子 | 迁移重复验证通过；种子与开发数据重复执行不覆盖已修改名称、权限和账号 |
+| 数据库故障 | 暂停本任务测试数据库后约 5.03 秒返回 503；恢复后同一身份可重新访问 |
+| 构建入口与 Compose | Windows Wrapper 下载校验及运行通过；Unix 脚本语法和 Compose 配置检查通过 |
+| macOS / 正式 UIS / 流程服务 | 尚未在 macOS 实跑；真实校方登录和流程服务端接入仍按后续任务执行 |
+
+启动与验证说明见 [登录后端](08-login-backend.md)。当前安全事件写结构化日志；持久审计投递随公共审计模块接入，未宣称完整审计链完成。
+
+## 10 当前停点与 Git 审查
+
+T02 本地提交为 1be62d3，T03 已按用户审查的说明提交为 1cabf40。当前均未推送；origin/main 对应 T01 的 90d4e3c。远程仓库为 https://gitee.com/wangjr2021/fdu-study-room.git 。
+
+T04 已完成，改动保留在工作区，尚未暂存、提交或推送。每个任务完成后先报告文件、功能及验证结果，并展示拟用 Git 提交说明，等待用户审查。
+
+下一项为 T05 登录前端，接入本次的模式、CSRF、登录和当前用户接口；收到继续指令后再开始。T07 才完成获批配置下的正式复旦 UIS 认证验收。
+
+T04 拟用提交说明：
 
 ```text
-feat(frontend): 添加公共请求与中英文切换
+feat(auth): 添加身份接口与后端权限校验
 
-- 统一接口请求、超时取消和错误提示
-- 加入中英文字典及语言选择持久化
+- 添加开发登录、当前用户、退出及账号授权接口
+- 接入 PostgreSQL 迁移和 Cookie、CSRF 安全控制
 ```

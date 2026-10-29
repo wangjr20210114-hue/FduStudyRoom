@@ -1,8 +1,10 @@
 # 项目目录结构与模块归属
 
-日期：2026年10月25日。技术基线：前端 TypeScript 与 Vue 3，后端 Java 与 Spring Boot，数据库 PostgreSQL。四名开发分为后端 A、后端 B、前端 A、前端 B。
+更新：2026年10月26日。技术基线：前端 TypeScript 与 Vue 3，后端 Java 与 Spring Boot，数据库 PostgreSQL。四名开发分为后端 A、后端 B、前端 A、前端 B。
 
-当前已完成 T01 前端运行骨架、T02 公共样式组件和 T03 公共请求与国际化，入口为 frontend/src/main.ts。公共视觉参数位于 shared/styles，主题、基础组件及语言选择位于 shared/components；公共请求位于 shared/api，中英文字典位于 shared/i18n；开发预览入口为 /dev/components，用法见 [公共组件说明](06-frontend-components.md)。后端及业务模块仍为预留目录；空目录使用 `.gitkeep` 保留。登录按 [分步任务清单](04-login-implementation-tasks.md) 继续实施，每项完成后停止交接。
+当前已完成 T01 前端运行骨架、T02 公共样式组件和 T03 公共请求与国际化，入口为 frontend/src/main.ts。公共视觉参数位于 shared/styles，主题、基础组件及语言选择位于 shared/components；公共请求位于 shared/api，中英文字典位于 shared/i18n；开发预览入口为 /dev/components，用法见 [公共组件说明](06-frontend-components.md)。流程服务和其余业务模块仍为预留目录；空目录使用 `.gitkeep` 保留。登录按 [分步任务清单](04-login-implementation-tasks.md) 继续实施，每项完成后停止交接。
+
+T04 已实现 platform-common 安全基础和 resource-service 的 identity 模块，Java 21 / Spring Boot 4.1.2，通过 Maven Wrapper 构建；身份迁移和运行方法见 [登录后端](08-login-backend.md)。workflow-service 仍预留，尚未加入当前构建。
 
 数据库字段、约束、外键和关系图见 [数据库表结构设计](02-database-design.md)。前端风格及复旦统一身份认证的新方案见 [前端与登录实施计划](03-ui-and-auth-plan.md)；用户表的旧本地密码设计在后续定稿时按该计划修订。
 
@@ -24,11 +26,15 @@ new-project/
 │   ├── 05-codearts-git-guide.md           IDE 提交与推送操作
 │   ├── 06-frontend-components.md          公共样式与组件用法
 │   ├── 07-frontend-api-and-i18n.md        公共请求与国际化用法
+│   ├── 08-login-backend.md                身份后端与运行说明
 │   ├── adr/                              架构与公共层归属决策
 │   └── acceptance/                       需求验收标准
 ├── contracts/
 │   └── openapi/                          公共层和各模块的接口契约
 ├── backend/
+│   ├── pom.xml、mvnw、mvnw.cmd             当前两模块构建与 Wrapper
+│   ├── .mvn/wrapper/                      Maven 版本与下载校验
+│   ├── .env.example                       后端环境变量模板
 │   ├── platform-common/
 │   │   ├── src/main/java/com/campus/common/
 │   │   │   ├── api/
@@ -197,14 +203,14 @@ skills/campus-build 保存项目内可版本管理的 skill 源文件；SKILL.md
 
 ## 八 后续按阶段新增的文件
 
-下列文件仍待后续实现时创建。前端 package.json、锁文件、类型与构建配置，以及根目录 README.md、.gitignore、.gitattributes 已在 T01 加入；详情见分步任务清单。
+T04 已加入后端根构建、公共库和资源服务 pom.xml、Maven Wrapper、身份迁移，以及 PostgreSQL Compose 和环境模板。下列文件仍待后续实现时创建。前端 package.json、锁文件、类型与构建配置，以及根目录 README.md、.gitignore、.gitattributes 已在 T01 加入；详情见分步任务清单。
 
 | 文件 | 用途 | 负责人 |
 | --- | --- | --- |
 | AGENTS.md | 项目规则；启动说明已放入 README.md | 团队评审，后端 B 汇总 |
-| backend/pom.xml 与各模块 pom.xml | Java 多模块构建 | 后端 B 协调，服务负责人维护本模块 |
-| contracts/openapi 下各模块契约 | API 定义 | 接口提供方 |
-| infra/compose.yaml、配置模板 | 本地完整运行；项目 .gitignore 已在 T01 建立 | 后端 B |
+| backend/workflow-service/pom.xml | 后续流程工单服务构建 | 后端 B 协调，服务负责人维护本模块 |
+| contracts/openapi 下其余模块契约 | 身份契约已实现，按后续模块补充 | 接口提供方 |
+| infra 生产部署与完整服务编排 | 当前 Compose 已提供独立 PostgreSQL，完整部署随后续任务实现 | 后端 B |
 | scripts/build.ps1、scripts/build.sh | 两种平台的运行入口 | 后端 B 与前端 B |
 | skills/campus-build/SKILL.md | build skill 的判定和阶段流程 | 后端 B 汇总评审 |
 

@@ -1,0 +1,19 @@
+name: fdu-study-room
+services:
+  postgres:
+    image: postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+    environment:
+      POSTGRES_DB: fdu_study_room
+      POSTGRES_USER: campus_resource
+      POSTGRES_PASSWORD: ${CAMPUS_DB_PASSWORD:?Set CAMPUS_DB_PASSWORD in infra/.env}
+    ports:
+      - "127.0.0.1:${CAMPUS_DB_PORT:-55432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campus_resource -d fdu_study_room"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  postgres_data:
