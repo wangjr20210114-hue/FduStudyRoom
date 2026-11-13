@@ -1,0 +1,4 @@
+interface:
+  display_name: "项目一键构建"
+  short_description: "检查并补齐团队成员开发环境，按阶段构建启动主应用与本机协作缓冲站"
+  default_prompt: "使用 $campus-build 检查并构建运行当前 FduStudyRoom 项目。"

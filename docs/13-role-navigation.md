@@ -74,7 +74,8 @@ AppShell 的内容区使用 Vue Transition，页面以 160ms 淡入淡出并轻�
 | modules/reservation/routes.ts | 本人预约与预约管理入口 | 前端 A |
 | modules/approval/routes.ts | 教室申请与审批入口 | 前端 B |
 | modules/repair/routes.ts | 本人报修、派单和维修人员入口 | 前端 B |
-| modules/system/routes.ts | 账号、参数和统计入口 | 前端 B |
+| modules/system/routes.ts | 账号与参数入口 | 前端 B |
+| modules/statistics/routes.ts | 运营统计入口（M06） | 前端 B |
 | modules/audit/routes.ts、notification/routes.ts | 审计与消息入口 | 前端 B |
 | shared/i18n/locales/zh-CN.ts、en.ts | 必要导航、页面和状态文字 | 公共层 |
 

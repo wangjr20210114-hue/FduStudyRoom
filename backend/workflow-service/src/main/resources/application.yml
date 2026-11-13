@@ -1,0 +1,43 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8081}
+  error:
+    include-message: never
+    include-stacktrace: never
+spring:
+  application:
+    name: study-room-workflow
+  datasource:
+    url: ${CAMPUS_DB_URL:jdbc:postgresql://127.0.0.1:5432/fdu_workflow}
+    username: ${CAMPUS_DB_USER:campus_workflow}
+    password: ${CAMPUS_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 3000
+      data-source-properties:
+        connectTimeout: 3
+        socketTimeout: 5
+        tcpKeepAlive: true
+  flyway:
+    default-schema: workflow_meta
+    schemas: workflow_meta,m2,m3,support
+    locations: classpath:db/migration,classpath:db/seed
+    clean-disabled: true
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+campus:
+  migrations:
+    modules: approval,repair,support
+  auth:
+    mode: ${CAMPUS_AUTH_MODE:password}
+    signing-key: ${CAMPUS_AUTH_SIGNING_KEY:}
+    service-key: ${CAMPUS_AUTH_SERVICE_KEY:}
+    secure-cookies: true
+    token-ttl: 30m
+  bootstrap-admin:
+    login-name: ${CAMPUS_BOOTSTRAP_ADMIN_LOGIN:}
+    password: ${CAMPUS_BOOTSTRAP_ADMIN_PASSWORD:}
+logging:
+  level:
+    org.springframework.web: INFO

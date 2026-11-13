@@ -24,3 +24,6 @@
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Isolated team workspaces, credentials, evidence and service state
+.campus/

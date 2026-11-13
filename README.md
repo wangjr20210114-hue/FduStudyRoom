@@ -1,6 +1,6 @@
 # 校园自习室预约系统
 
-前端采用 TypeScript、Vue 3 与 Vite，后端采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端公共层、账号登录注册、三种角色导航和页面切换；预约等业务按 [分步任务清单](docs/04-login-implementation-tasks.md) 逐项实现，每完成一项停止交接。
+前端采用 TypeScript、Vue 3 与 Vite，后端采用 Java、Spring Boot，数据库采用 PostgreSQL。当前已完成前端公共层、账号登录注册、三种角色导航和页面切换；历史登录开发记录见 [分步任务清单](docs/04-login-implementation-tasks.md)，后续团队开发使用下方统一工作流。
 
 ## 前端运行
 
@@ -73,3 +73,15 @@ Vite 默认将 /api 代理至 http://127.0.0.1:8080。需要修改后端端口�
 - [T08 角色导航与页面切换](docs/13-role-navigation.md)
 
 使用 CodeArts IDE 或码道 IDE 的内置 Git 面板查看差异、暂存和提交，再推送到 Gitee 的 FduStudyRoom 项目仓库。正式账号、密钥及本机 IDE 配置不提交。本地账号不证明复旦身份，真实密码和初始化凭据不纳入 Git。
+
+## 团队技能与协作缓冲站
+
+业务功能与关系图见 [业务需求说明](docs/17-spec-topology-and-assignment.md)，具体场景见 [业务Spec索引](spec/README.md)。分工、环境、测试、报告和交付管理见 [workflow要求](docs/18-workflow-obligations.md)。这些仍是需求规划，不自动改变成员权限。
+
+六模块分工、机器可读需求、TDD边界、环境启动和72小时同步流程见 [团队工作流](docs/14-team-workflow.md)，完整需求与外部阻塞见 [需求基线](docs/15-requirements-baseline.md)。Windows入口为 scripts/build.ps1，macOS入口为 sh scripts/build.sh；缓冲站使用 -Buffer / --buffer。
+
+五个skill位于 skills/，统一入口是 `$campus-workflow 我的身份是 frontend-a，处理未完成需求`。环境、需求分解、测试设计和限界TDD按检查点推进，支持中断恢复。借鉴Harmony及本轮验证见 [全流程说明](docs/16-workflow-reference.md)。协调人先初始化真实成员和访问码，成员再只提供身份与需求状态；公共代码与锁文件保持冻结，模块路由、字典、测试和迁移各自维护。
+
+缓冲站默认仅本机 http://127.0.0.1:7780 ，专用PostgreSQL与业务数据分离。它自动接收diff草稿，人工审核和独立CI通过后才生成正式提交；72小时任务发布功能分支和MR，不直推main。首次需配置可信CI镜像、baseline和服务端Gitee凭据后启用同步，详见工作流说明。
+
+缓冲站的服务器部署、资源限额和 GitHub/Gitee 交付分流见 [部署说明](docs/19-buffer-server-deployment.md)。

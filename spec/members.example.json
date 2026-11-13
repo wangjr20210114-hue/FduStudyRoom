@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "members": [
+    {
+      "id": "backend-a",
+      "gitee": null,
+      "layer": "backend",
+      "modules": [
+        "M01",
+        "M02",
+        "M03"
+      ],
+      "example": true
+    },
+    {
+      "id": "backend-b",
+      "gitee": null,
+      "layer": "backend",
+      "modules": [
+        "M04",
+        "M05",
+        "M06"
+      ],
+      "example": true
+    },
+    {
+      "id": "frontend-a",
+      "gitee": null,
+      "layer": "frontend",
+      "modules": [
+        "M02",
+        "M03"
+      ],
+      "example": true
+    },
+    {
+      "id": "frontend-b",
+      "gitee": null,
+      "layer": "frontend",
+      "modules": [
+        "M01",
+        "M04",
+        "M05",
+        "M06"
+      ],
+      "example": true
+    }
+  ]
+}

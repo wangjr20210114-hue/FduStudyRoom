@@ -1,0 +1,70 @@
+name: fdu-gitbuffer
+services:
+  database:
+    image: postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+    restart: unless-stopped
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 128
+    environment:
+      POSTGRES_DB: campus_buffer
+      POSTGRES_USER: campus_buffer
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    command: ["postgres", "-c", "shared_buffers=32MB", "-c", "max_connections=20", "-c", "work_mem=2MB"]
+    volumes:
+      - buffer_database:/var/lib/postgresql
+      - ./private/db_password:/run/secrets/db_password:ro
+    networks:
+      database: {aliases: [fdu-gitbuffer-database]}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campus_buffer -d campus_buffer"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  api:
+    image: fdu-gitbuffer:local
+    build: {context: ./runtime, dockerfile: ../Dockerfile}
+    restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=32m -Xss512k"
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 7780
+      SERVER_TOMCAT_THREADS_MAX: 20
+      SERVER_TOMCAT_THREADS_MIN_SPARE: 2
+      CAMPUS_BUFFER_CONFIG: /data/.campus/buffer/config.local
+      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/data/database.properties
+    depends_on:
+      database: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7780/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    ports: ["127.0.0.1:7780:7780"]
+    volumes:
+      - ./state:/data
+      - /proc/meminfo:/host/proc/meminfo:ro
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m
+    networks:
+      database: {}
+      edge: {aliases: [fdu-gitbuffer-api]}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+networks:
+  database: {internal: true}
+  edge:
+    external: true
+    name: ${BUFFER_PROXY_NETWORK:-docker_default}
+volumes:
+  buffer_database: {}

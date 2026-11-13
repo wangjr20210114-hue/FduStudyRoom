@@ -1,0 +1,1940 @@
+{
+  "version": 1,
+  "status": "planned_not_implemented",
+  "reason": "按用户要求，业务spec与workflow义务分别管理；分类变更不表示工程工作或人工要求已完成。",
+  "catalog_path": "spec/requirements.json",
+  "catalog_sha256": "2d81f4d10992e69130b1bbb4201da8a913415466e563cc977831b1a87493cb4e",
+  "source_snapshot": "docs/workflow/previous-spec-plan.json",
+  "source_snapshot_sha256": "3303a3678a8053520df893e2ba289a5efedc5b4601372d1fd6e83422e436f6f1",
+  "user_extensions": [
+    {
+      "id": "USR-01",
+      "title": "六人a-f按领域负责前后端完整spec",
+      "basis": "本轮用户明确确认",
+      "acceptance": [
+        "每个spec有唯一责任人；个人报告按本人拆分",
+        "分工是计划，登记身份及权限另行配置，不以字母代号认证"
+      ]
+    },
+    {
+      "id": "USR-02",
+      "title": "细粒度spec、明确场景与依赖拓扑",
+      "basis": "本轮用户明确要求",
+      "acceptance": [
+        "全部任务书及附加需求可追到spec和稳定场景",
+        "场景包含确定初态、动作、结果及边界，设计建议与原文分开",
+        "图无环，区分契约准备、真实联调和外部条件"
+      ]
+    },
+    {
+      "id": "USR-03",
+      "title": "skill采用执行条件、输入、Stage、输出和完成条件",
+      "basis": "前一轮用户明确要求",
+      "acceptance": [
+        "五个技能入口直接呈现完整结构",
+        "总入口能恢复检查点、继续独立项，只有真实人工门禁才交接"
+      ]
+    },
+    {
+      "id": "USR-04",
+      "title": "公共组件、请求工具及中英字典先行",
+      "basis": "历史用户明确要求，沿用现有基线",
+      "acceptance": [
+        "统一样式、组件与请求/错误处理可复用",
+        "业务文案在本模块中英字典，公共层冻结"
+      ]
+    },
+    {
+      "id": "USR-05",
+      "title": "简洁文案、三角色骨架及平滑切换",
+      "basis": "历史用户明确要求，精细视觉后做",
+      "acceptance": [
+        "只保留标题、字段、操作、状态与必要错误，不放介绍性占位长文",
+        "导航切换保留外壳、不整页刷新，有可减少的过渡动画",
+        "精细视觉参考wisepen方向，但不把未确认视觉稿作为本轮像素验收"
+      ]
+    },
+    {
+      "id": "USR-06",
+      "title": "普通注册登录取代学校UIS认证",
+      "basis": "用户明确取消学校认证，允许注册",
+      "acceptance": [
+        "不要求复旦UIS、学号或学校密码，注册默认为普通用户",
+        "管理员维护院系/整室资格，本地账号不声称已证明复旦身份"
+      ]
+    },
+    {
+      "id": "USR-07",
+      "title": "Gitee仓库与可审查提交说明",
+      "basis": "用户指定FduStudyRoom及提交说明审查",
+      "acceptance": [
+        "目标为https://gitee.com/wangjr2021/fdu-study-room.git，正式提交说明可供真人审查",
+        "保留IDE内置Git操作说明，不提交凭据，不自动解冲突"
+      ]
+    },
+    {
+      "id": "USR-08",
+      "title": "简化数据库及可读表结构文档",
+      "basis": "历史用户明确要求",
+      "acceptance": [
+        "不建组织树等无必要结构；任务书院系限制用最小资格字段保留",
+        "每表列字段类型、非空、主外键和其他约束，字段作用置表下，附ER图"
+      ]
+    }
+  ],
+  "acceptance_routes": {
+    "AGT-01.AC1": {
+      "placement": "business"
+    },
+    "AGT-01.AC2": {
+      "placement": "business"
+    },
+    "AGT-01.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-01.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-01.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-01.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-02.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-02.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-02.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-03.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-03.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-03.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-04.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-04.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-04.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-05.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-05.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-05.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-06.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-06.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-06.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-07.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-07.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-07.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-08.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-08.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-08.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-09.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-09.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-09.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-10.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-10.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-10.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-11.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-11.AC2": {
+      "placement": "shared",
+      "business_part": "页面提供对应的中文和英文",
+      "workflow_part": "字典放本模块，两种语言的键一致并自动检查"
+    },
+    "ENG-11.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-12.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-12.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-12.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-12.AC4": {
+      "placement": "workflow"
+    },
+    "ENG-13.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-13.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-13.AC3": {
+      "placement": "workflow"
+    },
+    "ENG-14.AC1": {
+      "placement": "workflow"
+    },
+    "ENG-14.AC2": {
+      "placement": "workflow"
+    },
+    "ENG-14.AC3": {
+      "placement": "workflow"
+    },
+    "ETH-01.AC1": {
+      "placement": "workflow"
+    },
+    "ETH-01.AC2": {
+      "placement": "workflow"
+    },
+    "IAM-01.AC1": {
+      "placement": "business"
+    },
+    "IAM-01.AC2": {
+      "placement": "business"
+    },
+    "IAM-01.AC3": {
+      "placement": "business"
+    },
+    "IAM-02.AC1": {
+      "placement": "business"
+    },
+    "IAM-02.AC2": {
+      "placement": "business"
+    },
+    "IAM-03.AC1": {
+      "placement": "business"
+    },
+    "IAM-03.AC2": {
+      "placement": "business"
+    },
+    "IAM-04.AC1": {
+      "placement": "business"
+    },
+    "IAM-04.AC2": {
+      "placement": "business"
+    },
+    "IAM-05.AC1": {
+      "placement": "business"
+    },
+    "IAM-05.AC2": {
+      "placement": "business"
+    },
+    "IAM-05.AC3": {
+      "placement": "business"
+    },
+    "IAM-06.AC1": {
+      "placement": "business"
+    },
+    "IAM-06.AC2": {
+      "placement": "business"
+    },
+    "M1-01.AC1": {
+      "placement": "business"
+    },
+    "M1-01.AC2": {
+      "placement": "business"
+    },
+    "M1-02.AC1": {
+      "placement": "business"
+    },
+    "M1-02.AC2": {
+      "placement": "business"
+    },
+    "M1-02.AC3": {
+      "placement": "business"
+    },
+    "M1-03.AC1": {
+      "placement": "business"
+    },
+    "M1-03.AC2": {
+      "placement": "business"
+    },
+    "M1-03.AC3": {
+      "placement": "business"
+    },
+    "M1-04.AC1": {
+      "placement": "business"
+    },
+    "M1-04.AC2": {
+      "placement": "business"
+    },
+    "M1-04.AC3": {
+      "placement": "business"
+    },
+    "M1-05.AC1": {
+      "placement": "business"
+    },
+    "M1-05.AC2": {
+      "placement": "business"
+    },
+    "M1-05.AC3": {
+      "placement": "business"
+    },
+    "M1-06.AC1": {
+      "placement": "business"
+    },
+    "M1-06.AC2": {
+      "placement": "business"
+    },
+    "M1-07.AC1": {
+      "placement": "business"
+    },
+    "M1-07.AC2": {
+      "placement": "business"
+    },
+    "M1-07.AC3": {
+      "placement": "business"
+    },
+    "M1-08.AC1": {
+      "placement": "business"
+    },
+    "M1-08.AC2": {
+      "placement": "business"
+    },
+    "M1-08.AC3": {
+      "placement": "business"
+    },
+    "M2-01.AC1": {
+      "placement": "business"
+    },
+    "M2-01.AC2": {
+      "placement": "business"
+    },
+    "M2-01.AC3": {
+      "placement": "business"
+    },
+    "M2-02.AC1": {
+      "placement": "business"
+    },
+    "M2-02.AC2": {
+      "placement": "business"
+    },
+    "M2-02.AC3": {
+      "placement": "business"
+    },
+    "M2-03.AC1": {
+      "placement": "business"
+    },
+    "M2-03.AC2": {
+      "placement": "business"
+    },
+    "M2-03.AC3": {
+      "placement": "business"
+    },
+    "M2-04.AC1": {
+      "placement": "business"
+    },
+    "M2-04.AC2": {
+      "placement": "business"
+    },
+    "M2-04.AC3": {
+      "placement": "business"
+    },
+    "M2-05.AC1": {
+      "placement": "business"
+    },
+    "M2-05.AC2": {
+      "placement": "business"
+    },
+    "M2-05.AC3": {
+      "placement": "business"
+    },
+    "M2-06.AC1": {
+      "placement": "business"
+    },
+    "M2-06.AC2": {
+      "placement": "business"
+    },
+    "M2-06.AC3": {
+      "placement": "business"
+    },
+    "M3-01.AC1": {
+      "placement": "business"
+    },
+    "M3-01.AC2": {
+      "placement": "business"
+    },
+    "M3-01.AC3": {
+      "placement": "business"
+    },
+    "M3-02.AC1": {
+      "placement": "business"
+    },
+    "M3-02.AC2": {
+      "placement": "business"
+    },
+    "M3-02.AC3": {
+      "placement": "business"
+    },
+    "M3-03.AC1": {
+      "placement": "business"
+    },
+    "M3-03.AC2": {
+      "placement": "business"
+    },
+    "M3-03.AC3": {
+      "placement": "business"
+    },
+    "M3-04.AC1": {
+      "placement": "business"
+    },
+    "M3-04.AC2": {
+      "placement": "business"
+    },
+    "M3-04.AC3": {
+      "placement": "business"
+    },
+    "M3-05.AC1": {
+      "placement": "business"
+    },
+    "M3-05.AC2": {
+      "placement": "business"
+    },
+    "M3-05.AC3": {
+      "placement": "business"
+    },
+    "M3-06.AC1": {
+      "placement": "business"
+    },
+    "M3-06.AC2": {
+      "placement": "business"
+    },
+    "M3-06.AC3": {
+      "placement": "business"
+    },
+    "M3-07.AC1": {
+      "placement": "business"
+    },
+    "M3-07.AC2": {
+      "placement": "business"
+    },
+    "M3-07.AC3": {
+      "placement": "business"
+    },
+    "RES-01.AC1": {
+      "placement": "business"
+    },
+    "RES-01.AC2": {
+      "placement": "business"
+    },
+    "RES-02.AC1": {
+      "placement": "business"
+    },
+    "RES-02.AC2": {
+      "placement": "business"
+    },
+    "RES-03.AC1": {
+      "placement": "business"
+    },
+    "RES-03.AC2": {
+      "placement": "business"
+    },
+    "RES-03.AC3": {
+      "placement": "shared",
+      "business_part": "公共教室与院系限定教室按必要资格区分，不让用户建立复杂组织资料",
+      "workflow_part": "不建立无必要的院系组织树"
+    },
+    "RES-04.AC1": {
+      "placement": "business"
+    },
+    "RES-04.AC2": {
+      "placement": "business"
+    },
+    "RES-04.AC3": {
+      "placement": "business"
+    },
+    "RES-05.AC1": {
+      "placement": "business"
+    },
+    "RES-05.AC2": {
+      "placement": "business"
+    },
+    "RES-05.AC3": {
+      "placement": "business"
+    },
+    "RES-06.AC1": {
+      "placement": "business"
+    },
+    "RES-06.AC2": {
+      "placement": "business"
+    },
+    "RES-06.AC3": {
+      "placement": "business"
+    },
+    "RES-07.AC1": {
+      "placement": "business"
+    },
+    "RES-07.AC2": {
+      "placement": "business"
+    },
+    "RES-08.AC1": {
+      "placement": "business"
+    },
+    "RES-08.AC2": {
+      "placement": "business"
+    },
+    "SUP-01.AC1": {
+      "placement": "business"
+    },
+    "SUP-01.AC2": {
+      "placement": "business"
+    },
+    "SUP-01.AC3": {
+      "placement": "business"
+    },
+    "SUP-02.AC1": {
+      "placement": "business"
+    },
+    "SUP-02.AC2": {
+      "placement": "business"
+    },
+    "SUP-02.AC3": {
+      "placement": "business"
+    },
+    "SUP-03.AC1": {
+      "placement": "business"
+    },
+    "SUP-03.AC2": {
+      "placement": "business"
+    },
+    "SUP-03.AC3": {
+      "placement": "business"
+    },
+    "USR-01.AC1": {
+      "placement": "workflow"
+    },
+    "USR-01.AC2": {
+      "placement": "workflow"
+    },
+    "USR-02.AC1": {
+      "placement": "workflow"
+    },
+    "USR-02.AC2": {
+      "placement": "workflow"
+    },
+    "USR-02.AC3": {
+      "placement": "workflow"
+    },
+    "USR-03.AC1": {
+      "placement": "workflow"
+    },
+    "USR-03.AC2": {
+      "placement": "workflow"
+    },
+    "USR-04.AC1": {
+      "placement": "shared",
+      "business_part": "基础操作样式一致，请求失败提示清楚并能适当重试",
+      "workflow_part": "公共组件、样式和请求工具复用，不复制基础源码"
+    },
+    "USR-04.AC2": {
+      "placement": "shared",
+      "business_part": "业务页面的中文和英文内容完整",
+      "workflow_part": "模块字典目录和公共代码冻结规则"
+    },
+    "USR-05.AC1": {
+      "placement": "business"
+    },
+    "USR-05.AC2": {
+      "placement": "business"
+    },
+    "USR-05.AC3": {
+      "placement": "workflow"
+    },
+    "USR-06.AC1": {
+      "placement": "business"
+    },
+    "USR-06.AC2": {
+      "placement": "business"
+    },
+    "USR-07.AC1": {
+      "placement": "workflow"
+    },
+    "USR-07.AC2": {
+      "placement": "workflow"
+    },
+    "USR-08.AC1": {
+      "placement": "shared",
+      "business_part": "保留必要的院系资格限制，公共资源不增加复杂资格要求",
+      "workflow_part": "数据库不添加组织树等无必要结构"
+    },
+    "USR-08.AC2": {
+      "placement": "workflow"
+    }
+  },
+  "excluded_specifications": [
+    "S001",
+    "S010",
+    "S011",
+    "S012",
+    "S013",
+    "S023",
+    "S025",
+    "S035",
+    "S036",
+    "S037",
+    "S045",
+    "S046",
+    "S047",
+    "S048",
+    "S049",
+    "S057",
+    "S058",
+    "S059",
+    "S061",
+    "S065",
+    "S066",
+    "S067",
+    "S072",
+    "S073",
+    "S074",
+    "S075",
+    "S076",
+    "S077",
+    "S080"
+  ],
+  "split_specifications": {
+    "S009": "仅保留页面一致性、中英文和简洁提示；组件复用、字典检查和技术栈检查归workflow",
+    "S068": "保留助手追问、权限和不执行无关指令；模型/插件安装部署场景S068.SC01归workflow"
+  },
+  "assignments": {
+    "S001": {
+      "owner": "a",
+      "effort": 2
+    },
+    "S002": {
+      "owner": "a",
+      "effort": 2
+    },
+    "S003": {
+      "owner": "a",
+      "effort": 2
+    },
+    "S004": {
+      "owner": "a",
+      "effort": 3
+    },
+    "S005": {
+      "owner": "a",
+      "effort": 3
+    },
+    "S006": {
+      "owner": "a",
+      "effort": 3
+    },
+    "S007": {
+      "owner": "a",
+      "effort": 3
+    },
+    "S008": {
+      "owner": "a",
+      "effort": 2
+    },
+    "S009": {
+      "owner": "a",
+      "effort": 2
+    },
+    "S010": {
+      "owner": "a",
+      "effort": 3
+    },
+    "S011": {
+      "owner": "a",
+      "effort": 3
+    },
+    "S012": {
+      "owner": "a",
+      "effort": 3
+    },
+    "S013": {
+      "owner": "b",
+      "effort": 2
+    },
+    "S014": {
+      "owner": "b",
+      "effort": 3
+    },
+    "S015": {
+      "owner": "b",
+      "effort": 3
+    },
+    "S016": {
+      "owner": "b",
+      "effort": 3
+    },
+    "S017": {
+      "owner": "b",
+      "effort": 4
+    },
+    "S018": {
+      "owner": "b",
+      "effort": 4
+    },
+    "S019": {
+      "owner": "b",
+      "effort": 4
+    },
+    "S020": {
+      "owner": "b",
+      "effort": 3
+    },
+    "S021": {
+      "owner": "b",
+      "effort": 3
+    },
+    "S022": {
+      "owner": "b",
+      "effort": 3
+    },
+    "S023": {
+      "owner": "b",
+      "effort": 3
+    },
+    "S024": {
+      "owner": "b",
+      "effort": 3
+    },
+    "S025": {
+      "owner": "c",
+      "effort": 2
+    },
+    "S026": {
+      "owner": "c",
+      "effort": 3
+    },
+    "S027": {
+      "owner": "c",
+      "effort": 4
+    },
+    "S028": {
+      "owner": "c",
+      "effort": 3
+    },
+    "S029": {
+      "owner": "c",
+      "effort": 4
+    },
+    "S030": {
+      "owner": "c",
+      "effort": 3
+    },
+    "S031": {
+      "owner": "c",
+      "effort": 3
+    },
+    "S032": {
+      "owner": "c",
+      "effort": 4
+    },
+    "S033": {
+      "owner": "c",
+      "effort": 3
+    },
+    "S034": {
+      "owner": "c",
+      "effort": 4
+    },
+    "S035": {
+      "owner": "c",
+      "effort": 4
+    },
+    "S036": {
+      "owner": "f",
+      "effort": 4
+    },
+    "S037": {
+      "owner": "d",
+      "effort": 2
+    },
+    "S038": {
+      "owner": "d",
+      "effort": 3
+    },
+    "S039": {
+      "owner": "d",
+      "effort": 3
+    },
+    "S040": {
+      "owner": "d",
+      "effort": 4
+    },
+    "S041": {
+      "owner": "d",
+      "effort": 4
+    },
+    "S042": {
+      "owner": "d",
+      "effort": 4
+    },
+    "S043": {
+      "owner": "d",
+      "effort": 3
+    },
+    "S044": {
+      "owner": "d",
+      "effort": 4
+    },
+    "S045": {
+      "owner": "d",
+      "effort": 3
+    },
+    "S046": {
+      "owner": "d",
+      "effort": 2
+    },
+    "S047": {
+      "owner": "d",
+      "effort": 2
+    },
+    "S048": {
+      "owner": "d",
+      "effort": 3
+    },
+    "S049": {
+      "owner": "e",
+      "effort": 2
+    },
+    "S050": {
+      "owner": "e",
+      "effort": 3
+    },
+    "S051": {
+      "owner": "e",
+      "effort": 3
+    },
+    "S052": {
+      "owner": "e",
+      "effort": 4
+    },
+    "S053": {
+      "owner": "e",
+      "effort": 3
+    },
+    "S054": {
+      "owner": "e",
+      "effort": 4
+    },
+    "S055": {
+      "owner": "e",
+      "effort": 3
+    },
+    "S056": {
+      "owner": "e",
+      "effort": 4
+    },
+    "S057": {
+      "owner": "e",
+      "effort": 3
+    },
+    "S058": {
+      "owner": "e",
+      "effort": 3
+    },
+    "S059": {
+      "owner": "e",
+      "effort": 3
+    },
+    "S060": {
+      "owner": "e",
+      "effort": 4
+    },
+    "S061": {
+      "owner": "f",
+      "effort": 2
+    },
+    "S062": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S063": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S064": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S065": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S066": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S067": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S068": {
+      "owner": "f",
+      "effort": 4
+    },
+    "S069": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S070": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S071": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S072": {
+      "owner": "f",
+      "effort": 2
+    },
+    "S073": {
+      "owner": "a",
+      "effort": 2
+    },
+    "S074": {
+      "owner": "b",
+      "effort": 2
+    },
+    "S075": {
+      "owner": "c",
+      "effort": 2
+    },
+    "S076": {
+      "owner": "d",
+      "effort": 2
+    },
+    "S077": {
+      "owner": "e",
+      "effort": 2
+    },
+    "S078": {
+      "owner": "f",
+      "effort": 3
+    },
+    "S079": {
+      "owner": "c",
+      "effort": 3
+    },
+    "S080": {
+      "owner": "a",
+      "effort": 4
+    },
+    "S081": {
+      "owner": "a",
+      "effort": 3
+    }
+  },
+  "owners": {
+    "a": {
+      "domain": "账号权限、公共页面组件、任务安排和自动开发流程",
+      "module": "M01",
+      "engineering": "维护技能、流程命令入口、权限规则、个人隔离环境和测试记录",
+      "planned_paths": [
+        "frontend/src/modules/auth/",
+        "frontend/src/modules/system/",
+        "backend/resource-service/src/main/java/com/campus/identity/",
+        "backend/resource-service/src/test/java/com/campus/identity/",
+        "frontend/tests/modules/identity/",
+        "frontend/src/app/",
+        "frontend/src/shared/",
+        "skills/",
+        "tools/team/workflow.py",
+        "tools/team/policy.py",
+        "tools/team/recording.py",
+        "tools/team/test_reports.py",
+        "tools/team/sandbox/",
+        "tools/team/commands/workflow/",
+        "tools/spec_plan/",
+        "scripts/team.py",
+        "tools/team/environment.py",
+        "spec/",
+        "docs/ethics/a/"
+      ],
+      "baseline_note": "公共文件要用单独的公共任务工作单，经团队评审再改。environment.py拆分后，a只维护保留的兼容入口。"
+    },
+    "b": {
+      "domain": "教室座位、是否可用的共同规则和数据库升级",
+      "module": "M02",
+      "engineering": "维护数据库升级和初始化工具、数据库文档、资源接口约定",
+      "planned_paths": [
+        "frontend/src/modules/resource/",
+        "frontend/tests/modules/resource/",
+        "backend/resource-service/src/main/java/com/campus/resource/",
+        "backend/resource-service/src/test/java/com/campus/resource/",
+        "backend/platform-common/src/main/java/com/campus/common/migration/",
+        "contracts/openapi/modules/resource/",
+        "docs/02-database-design.md",
+        "docs/ethics/b/"
+      ],
+      "baseline_note": "b只维护公共升级工具和资源模块自己的脚本。其他模块的表和升级仍由各自负责人维护。"
+    },
+    "c": {
+      "domain": "个人预约、签到、提醒、违约和完整业务验证",
+      "module": "M03",
+      "engineering": "测试真实业务流程，并提供维修影响预约的接口",
+      "planned_paths": [
+        "frontend/src/modules/reservation/",
+        "frontend/tests/modules/reservation/",
+        "backend/resource-service/src/main/java/com/campus/reservation/",
+        "backend/resource-service/src/test/java/com/campus/reservation/",
+        "contracts/openapi/modules/reservation/",
+        "tests/integration/business/",
+        "docs/ethics/c/"
+      ],
+      "baseline_note": "在独立测试目录通过公开接口验证其他模块。发现问题交给原负责人修，不擅自改别人的内部代码。"
+    },
+    "d": {
+      "domain": "整室申请审批、自动测试和合并流程、课程评审",
+      "module": "M04",
+      "engineering": "配置自动检查，验证合并规则，准备两次评审和期末演示材料",
+      "planned_paths": [
+        "frontend/src/modules/approval/",
+        "frontend/tests/modules/approval/",
+        "backend/workflow-service/src/main/java/com/campus/approval/",
+        "backend/workflow-service/src/test/java/com/campus/approval/",
+        "contracts/openapi/modules/approval/",
+        "tools/ci/",
+        "infra/team/ci/",
+        "docs/reviews/",
+        "tests/integration/delivery/",
+        "docs/ethics/d/",
+        "infra/team/ci.Dockerfile"
+      ],
+      "baseline_note": "d验证流水线和合并流程；缓冲网站的实现文件由f维护，两者分开。"
+    },
+    "e": {
+      "domain": "报修维修、安全验收、本机运行和部署",
+      "module": "M05",
+      "engineering": "支持Windows和Mac构建启动，管理本项目进程，负责测试部署和生产回退",
+      "planned_paths": [
+        "frontend/src/modules/repair/",
+        "frontend/tests/modules/repair/",
+        "backend/workflow-service/src/main/java/com/campus/repair/",
+        "backend/workflow-service/src/test/java/com/campus/repair/",
+        "contracts/openapi/modules/repair/",
+        "tools/team/bootstrap/",
+        "tools/team/commands/build/",
+        "scripts/build.ps1",
+        "scripts/build.sh",
+        "infra/team/deploy/",
+        "tests/integration/deployment/",
+        "docs/ethics/e/"
+      ],
+      "baseline_note": "先通过S080把本机启动实现从environment.py分离，再开发自己的部分，不与a同时修改兼容入口。"
+    },
+    "f": {
+      "domain": "通知、操作记录、统计、缓冲网站和AI助手",
+      "module": "M06",
+      "engineering": "维护成员登录与审核、72小时同步、邮件发送、AI助手和故障验证",
+      "planned_paths": [
+        "frontend/src/modules/notification/",
+        "frontend/src/modules/audit/",
+        "frontend/src/modules/statistics/",
+        "frontend/src/modules/agent/",
+        "frontend/tests/modules/support/",
+        "backend/workflow-service/src/main/java/com/campus/notification/",
+        "backend/workflow-service/src/main/java/com/campus/audit/",
+        "backend/workflow-service/src/main/java/com/campus/statistics/",
+        "backend/workflow-service/src/main/java/com/campus/agent/",
+        "backend/workflow-service/src/test/java/com/campus/notification/",
+        "backend/workflow-service/src/test/java/com/campus/audit/",
+        "backend/workflow-service/src/test/java/com/campus/statistics/",
+        "backend/workflow-service/src/test/java/com/campus/agent/",
+        "contracts/openapi/modules/support/",
+        "tools/buffer/",
+        "tools/team/buffer_job.py",
+        "tools/team/commands/buffer/",
+        "docs/ethics/f/",
+        "tests/integration/resilience/"
+      ],
+      "baseline_note": "开发工具数据库与业务数据库分开。同一成员分别领取前后端任务是待做能力，不能说旧的单层账号已经支持。"
+    }
+  },
+  "implementation_dependencies": {
+    "S001": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S002": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": [
+        {
+          "requirement": "IAM-01",
+          "status": {
+            "backend": "accepted",
+            "frontend": "accepted"
+          },
+          "evidence": [
+            "docs/12-password-login.md",
+            "frontend/tests/login-flow.test.ts",
+            "backend/resource-service/src/test/java/com/campus/identity/application/PasswordAuthenticationTest.java"
+          ]
+        }
+      ]
+    },
+    "S003": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": [
+        {
+          "requirement": "IAM-01",
+          "status": {
+            "backend": "accepted",
+            "frontend": "accepted"
+          },
+          "evidence": [
+            "docs/12-password-login.md",
+            "frontend/tests/login-flow.test.ts",
+            "backend/resource-service/src/test/java/com/campus/identity/application/PasswordAuthenticationTest.java"
+          ]
+        }
+      ]
+    },
+    "S004": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S005": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S006": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S007": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S008": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": [
+        {
+          "requirement": "IAM-06",
+          "status": {
+            "backend": "accepted",
+            "frontend": "accepted"
+          },
+          "evidence": [
+            "docs/12-password-login.md",
+            "frontend/tests/login-flow.test.ts",
+            "backend/resource-service/src/test/java/com/campus/identity/application/PasswordAuthenticationTest.java"
+          ]
+        }
+      ]
+    },
+    "S009": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S010": {
+      "development_dependencies": [],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S011": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S012": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S013": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [
+        "S001"
+      ],
+      "baseline_evidence": []
+    },
+    "S014": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S015": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S016": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S017": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S018": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S019": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S020": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S021": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S022": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S023": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S024": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S025": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S061"
+      ],
+      "contract_dependencies": [
+        "S001",
+        "S013",
+        "S061"
+      ],
+      "baseline_evidence": []
+    },
+    "S026": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S027": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S028": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S029": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S030": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S031": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S032": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S033": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S034": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S035": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S037",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S036": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S037",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S037": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S061"
+      ],
+      "contract_dependencies": [
+        "S001",
+        "S013",
+        "S061"
+      ],
+      "baseline_evidence": []
+    },
+    "S038": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S037",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S039": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S037",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S040": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S037",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S041": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S037",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S042": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S037",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S043": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S037",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S044": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S037",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S045": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S046": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S047": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S048": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S037",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S049": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [
+        "S001",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "baseline_evidence": []
+    },
+    "S050": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S051": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S052": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S053": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S054": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S055": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S056": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S057": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S058": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S059": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S060": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S061": {
+      "development_dependencies": [
+        "S001",
+        "S010"
+      ],
+      "contract_dependencies": [
+        "S001"
+      ],
+      "baseline_evidence": []
+    },
+    "S062": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S063": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S064": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S065": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S066": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S067": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S068": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S037",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [
+        "S001",
+        "S025",
+        "S037",
+        "S049",
+        "S061"
+      ],
+      "baseline_evidence": []
+    },
+    "S069": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S037",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S070": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S037",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S071": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S037",
+        "S049",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S072": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S073": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S074": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S075": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S076": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S077": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S078": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S079": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S013",
+        "S025",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S080": {
+      "development_dependencies": [
+        "S010"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    },
+    "S081": {
+      "development_dependencies": [
+        "S001",
+        "S010",
+        "S061"
+      ],
+      "contract_dependencies": [],
+      "baseline_evidence": []
+    }
+  },
+  "scope_decision_date": "2026-11-13",
+  "dependency_adjustments": [
+    "移出工程节点，原业务前置关系沿有效业务能力保留。",
+    "页面一致性和中英文S009是跨页面的产品要求，与具体业务并列，不作为注册、预约等功能的先决条件。"
+  ]
+}

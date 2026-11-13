@@ -1,0 +1,21 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:7780}
+  error:
+    include-message: never
+    include-stacktrace: never
+spring:
+  datasource:
+    url: ${CAMPUS_BUFFER_DB_URL:jdbc:postgresql://127.0.0.1:55434/campus_buffer}
+    username: ${CAMPUS_BUFFER_DB_USER:campus_buffer}
+    password: ${CAMPUS_BUFFER_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 4
+      connection-timeout: 3000
+  flyway:
+    default-schema: buffer
+    schemas: buffer
+    clean-disabled: true
+campus:
+  buffer:
+    config: ${CAMPUS_BUFFER_CONFIG:}

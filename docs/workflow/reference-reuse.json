@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "date": "2026-11-13",
+  "source_package": "用户提供的 鸿蒙杯/提交物/system-config/skills",
+  "source_workflow_version": "2.5.1",
+  "source_files_modified": false,
+  "scope": "技能与说明的协调基线改造；未移植 Harmony 运行工具",
+  "comparison_note": "verbatim_nonempty_lines 按原始行逐字匹配，仅供审查，不是流程等价或平台完成比例。",
+  "files": [
+    {
+      "source": "harmony-req/SKILL.md",
+      "source_sha256": "69194394934b8299cc31542b5d5519468f19009c573b3e0f1a6d2896f65e6bc7",
+      "destination": "skills/campus-req/SKILL.md",
+      "destination_sha256": "12ab59402a51a61830abcb47825bfe68a12dcfb283cb26ba79bbe92a1530744f",
+      "mode": "主体以参考原文为底稿；替换输入 / JSON 产物、ID 与受阻交接",
+      "verbatim_nonempty_lines": 22,
+      "source_nonempty_lines": 78
+    },
+    {
+      "source": "harmony-test/SKILL.md",
+      "source_sha256": "f8574b43c30218574d260261b6cf7fc62dca6f77af53ba145d8a8d3bdda65a02",
+      "destination": "skills/campus-test/SKILL.md",
+      "destination_sha256": "a7c7fdaca1a6362b58bac7e8c49dafac5ec58686a6b10b58e23d448cfeec6c20",
+      "mode": "保留测试方法与编写规则；替换双测试、Harmony runner 和提交",
+      "verbatim_nonempty_lines": 26,
+      "source_nonempty_lines": 80
+    },
+    {
+      "source": "harmony-tdd-code/SKILL.md",
+      "source_sha256": "b2cba5f1ea02df35482099ab8df26d107d76ac45035cde69713b396f6810bcac",
+      "destination": "skills/campus-tdd/SKILL.md",
+      "destination_sha256": "3fb39feef2ae6e8f990394835c4bd74f87d4c51e53db74491ed9102a29002972",
+      "mode": "保留判据、归因、文件发现、最小实现与分级回归；替换轮次、阶段提交与证据",
+      "verbatim_nonempty_lines": 40,
+      "source_nonempty_lines": 123
+    },
+    {
+      "source": "harmony-test/references/check-plan.md",
+      "source_sha256": "8dbbba16665ec2e69a3fa3bdbefae4a339397ef0fd0f8ae020060fa46853c88b",
+      "destination": "skills/campus-test/references/check-plan.md",
+      "destination_sha256": "15fcaf9995e444ab8f37384b37bdd29081528f14a795a4f0291e3af903c154ed",
+      "mode": "保留设计步骤与示例；改 cells 映射、数据准备、后端类型与运行接口",
+      "verbatim_nonempty_lines": 39,
+      "source_nonempty_lines": 55
+    },
+    {
+      "source": "harmony-test/references/equivalence-classes.md",
+      "source_sha256": "09bccbed81e529ec69101d2caa129bf96e6a36ddb2836b6028f2b15d2783502c",
+      "destination": "skills/campus-test/references/equivalence-classes.md",
+      "destination_sha256": "3a54e341ae5a1adcd5f4ceec54693871fdca2b454fd8c6a8bd4464b150a0407c",
+      "mode": "保留原方法；替换路径、歧义依据与无依据持续时长规则",
+      "verbatim_nonempty_lines": 59,
+      "source_nonempty_lines": 64
+    },
+    {
+      "source": "harmony-test/references/boundary-and-recovery.md",
+      "source_sha256": "223597fa4769bf66d327d98d7f5c7da549ea3bd0bb52aec41c2175af6980712e",
+      "destination": "skills/campus-test/references/boundary-and-recovery.md",
+      "destination_sha256": "c01390e99846bb85c5bd99067956c4adf37ca638e39234d5c33d083da63f87f5",
+      "mode": "保留原方法；替换边界路径、清理方式与本项目必做独立变异",
+      "verbatim_nonempty_lines": 53,
+      "source_nonempty_lines": 56
+    },
+    {
+      "source": "harmony-boundary/SKILL.md",
+      "source_sha256": "28546b4cb17527bab6cbdf448ca9c2e924f5a60a7eb96e64dc2e77c217e98104",
+      "destination": "skills/campus-workflow/references/boundary.md",
+      "destination_sha256": "6f21ee9dab3a090fc51bc9c71daba2b8c3fe74e605a89f44dcb2df944caaaecc",
+      "mode": "保留事实确认步骤；替换 DOM、稳定 key 与 JSON / 私有产物",
+      "verbatim_nonempty_lines": 23,
+      "source_nonempty_lines": 43
+    },
+    {
+      "source": "harmony-single-problem-workflow/references/human-decision.md",
+      "source_sha256": "6c3e3e7a8ae9ba7cef6f749e1d5580d8ed1ab360dccab1be6a3d13731dce630f",
+      "destination": "skills/campus-workflow/references/human-decision.md",
+      "destination_sha256": "81e38b8c44ff9539449795797ccf998e0780e9b4e3e5d8ebb3780da208124539",
+      "mode": "保留提问方法；替换设备和回写位置，补受阻 / reset 交接",
+      "verbatim_nonempty_lines": 67,
+      "source_nonempty_lines": 70
+    },
+    {
+      "source": "harmony-tdd-code/references/tdd-evidence.md",
+      "source_sha256": "629abc43e0f8e951017757d92c18c4f2c207573df53cd53b3984ad8b08b9299f",
+      "destination": "skills/campus-tdd/references/protocol.md",
+      "destination_sha256": "47a172468afd3c427ca71c0a80aa9a52d7e6a1be306bf9a502f72db655a58d07",
+      "mode": "复用结果分类与恢复原则；使用现有 record 协议，不复制示例 JSON 冒充运行",
+      "verbatim_nonempty_lines": 12,
+      "source_nonempty_lines": 130
+    },
+    {
+      "source": "harmony-single-problem-workflow/SKILL.md",
+      "source_sha256": "3b428b7f42137a35c775eca4bd6e91ba8a4590e9db2925e9d5ff01fab0f4111a",
+      "destination": "skills/campus-workflow/SKILL.md",
+      "destination_sha256": "f7dda2bd5fc75c89a06e3e0698429b1806beee19f7fe9beaf1dab5cd785b6b5a",
+      "mode": "复用单题主线和边界先行；保留现有调度、检查点、缓冲站",
+      "verbatim_nonempty_lines": 7,
+      "source_nonempty_lines": 176
+    },
+    {
+      "source": "harmony-global-workflow/SKILL.md",
+      "source_sha256": "388a867f76f1e6fa1a8416cfdffb29ceb6b1897d0149948b16b6e62647ec01f6",
+      "destination": "skills/campus-workflow/SKILL.md",
+      "destination_sha256": "f7dda2bd5fc75c89a06e3e0698429b1806beee19f7fe9beaf1dab5cd785b6b5a",
+      "mode": "沿用版本核对、检查点、等待 / 恢复思路；不复制设备和 Claude 子会话启动器",
+      "verbatim_nonempty_lines": 8,
+      "source_nonempty_lines": 135
+    },
+    {
+      "source": "harmony-bootstrap/SKILL.md",
+      "source_sha256": "11246c8c092bb516abb4776132a193a7e6c5459fa54a683e869a59a395040924",
+      "destination": "skills/campus-build/SKILL.md",
+      "destination_sha256": "9e2b223d7a8eb7c66fc6ccb0f80d0acdae5a2a7faa3cdd71ce8f54558bc24082",
+      "mode": "只沿用全局一次准备、环境复用与摘要结构；保留 Web / Java 构建实现",
+      "verbatim_nonempty_lines": 6,
+      "source_nonempty_lines": 193
+    }
+  ]
+}

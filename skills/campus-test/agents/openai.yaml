@@ -1,0 +1,4 @@
+interface:
+  display_name: "场景测试与证据"
+  short_description: "按场景设计等价类与观察断言，解析真实测试报告并验证必测项实际执行"
+  default_prompt: "使用 $campus-test 为当前场景设计检查方案并运行测试取证。"

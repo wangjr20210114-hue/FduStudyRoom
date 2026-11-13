@@ -1,0 +1,332 @@
+{
+  "version": 1,
+  "baseline_commit": "124d5814d2980122e64c3c5bee2363d1ed85a691",
+  "stack": {
+    "frontend": "TypeScript + Vue 3 + Vite + vue-i18n",
+    "backend": "Java 21 + Spring Boot 4.1.2",
+    "database": "PostgreSQL 18; UUID; timestamptz; Flyway",
+    "node_major": 24,
+    "locales": [
+      "zh-CN",
+      "en"
+    ]
+  },
+  "modules": [
+    {
+      "id": "M01",
+      "key": "identity",
+      "title": "账号、角色与系统配置",
+      "service": "resource-service",
+      "frontend_modules": [
+        "auth",
+        "system"
+      ],
+      "java_modules": [
+        "identity"
+      ],
+      "database_schemas": [
+        "iam"
+      ],
+      "write_paths": {
+        "frontend": [
+          "frontend/src/modules/auth/",
+          "frontend/src/modules/system/",
+          "frontend/tests/modules/identity/",
+          "spec/progress/identity/frontend/"
+        ],
+        "backend": [
+          "backend/resource-service/src/main/java/com/campus/identity/",
+          "backend/resource-service/src/test/java/com/campus/identity/",
+          "backend/resource-service/src/main/resources/db/modules/identity/",
+          "contracts/openapi/modules/identity/",
+          "spec/progress/identity/backend/",
+          "backend/resource-service/src/test/resources/modules/identity/"
+        ]
+      },
+      "read_only": [
+        "frontend/src/shared/",
+        "backend/platform-common/",
+        "contracts/",
+        "spec/",
+        "docs/"
+      ],
+      "migration_history": "identity_meta.flyway_schema_history",
+      "ports": {
+        "api": 8100,
+        "frontend": 5200,
+        "postgres": 5600
+      }
+    },
+    {
+      "id": "M02",
+      "key": "resource",
+      "title": "教室、座位与统一占用",
+      "service": "resource-service",
+      "frontend_modules": [
+        "resource"
+      ],
+      "java_modules": [
+        "resource"
+      ],
+      "database_schemas": [
+        "resource",
+        "integration"
+      ],
+      "write_paths": {
+        "frontend": [
+          "frontend/src/modules/resource/",
+          "frontend/tests/modules/resource/",
+          "spec/progress/resource/frontend/"
+        ],
+        "backend": [
+          "backend/resource-service/src/main/java/com/campus/resource/",
+          "backend/resource-service/src/test/java/com/campus/resource/",
+          "backend/resource-service/src/main/resources/db/modules/resource/",
+          "contracts/openapi/modules/resource/",
+          "spec/progress/resource/backend/",
+          "backend/resource-service/src/test/resources/modules/resource/"
+        ]
+      },
+      "read_only": [
+        "frontend/src/shared/",
+        "backend/platform-common/",
+        "contracts/",
+        "spec/",
+        "docs/"
+      ],
+      "migration_history": "resource_module_meta.flyway_schema_history",
+      "ports": {
+        "api": 8110,
+        "frontend": 5210,
+        "postgres": 5610
+      }
+    },
+    {
+      "id": "M03",
+      "key": "reservation",
+      "title": "座位预约、签到与违约",
+      "service": "resource-service",
+      "frontend_modules": [
+        "reservation"
+      ],
+      "java_modules": [
+        "reservation"
+      ],
+      "database_schemas": [
+        "m1"
+      ],
+      "write_paths": {
+        "frontend": [
+          "frontend/src/modules/reservation/",
+          "frontend/tests/modules/reservation/",
+          "spec/progress/reservation/frontend/"
+        ],
+        "backend": [
+          "backend/resource-service/src/main/java/com/campus/reservation/",
+          "backend/resource-service/src/test/java/com/campus/reservation/",
+          "backend/resource-service/src/main/resources/db/modules/reservation/",
+          "contracts/openapi/modules/reservation/",
+          "spec/progress/reservation/backend/",
+          "backend/resource-service/src/test/resources/modules/reservation/"
+        ]
+      },
+      "read_only": [
+        "frontend/src/shared/",
+        "backend/platform-common/",
+        "contracts/",
+        "spec/",
+        "docs/"
+      ],
+      "migration_history": "reservation_meta.flyway_schema_history",
+      "ports": {
+        "api": 8120,
+        "frontend": 5220,
+        "postgres": 5620
+      }
+    },
+    {
+      "id": "M04",
+      "key": "approval",
+      "title": "整教室申请与多级审批",
+      "service": "workflow-service",
+      "frontend_modules": [
+        "approval"
+      ],
+      "java_modules": [
+        "approval"
+      ],
+      "database_schemas": [
+        "m2"
+      ],
+      "write_paths": {
+        "frontend": [
+          "frontend/src/modules/approval/",
+          "frontend/tests/modules/approval/",
+          "spec/progress/approval/frontend/"
+        ],
+        "backend": [
+          "backend/workflow-service/src/main/java/com/campus/approval/",
+          "backend/workflow-service/src/test/java/com/campus/approval/",
+          "backend/workflow-service/src/main/resources/db/modules/approval/",
+          "contracts/openapi/modules/approval/",
+          "spec/progress/approval/backend/",
+          "backend/workflow-service/src/test/resources/modules/approval/"
+        ]
+      },
+      "read_only": [
+        "frontend/src/shared/",
+        "backend/platform-common/",
+        "contracts/",
+        "spec/",
+        "docs/"
+      ],
+      "migration_history": "approval_meta.flyway_schema_history",
+      "ports": {
+        "api": 8130,
+        "frontend": 5230,
+        "postgres": 5630
+      }
+    },
+    {
+      "id": "M05",
+      "key": "repair",
+      "title": "报修、维修与验收",
+      "service": "workflow-service",
+      "frontend_modules": [
+        "repair"
+      ],
+      "java_modules": [
+        "repair"
+      ],
+      "database_schemas": [
+        "m3"
+      ],
+      "write_paths": {
+        "frontend": [
+          "frontend/src/modules/repair/",
+          "frontend/tests/modules/repair/",
+          "spec/progress/repair/frontend/"
+        ],
+        "backend": [
+          "backend/workflow-service/src/main/java/com/campus/repair/",
+          "backend/workflow-service/src/test/java/com/campus/repair/",
+          "backend/workflow-service/src/main/resources/db/modules/repair/",
+          "contracts/openapi/modules/repair/",
+          "spec/progress/repair/backend/",
+          "backend/workflow-service/src/test/resources/modules/repair/"
+        ]
+      },
+      "read_only": [
+        "frontend/src/shared/",
+        "backend/platform-common/",
+        "contracts/",
+        "spec/",
+        "docs/"
+      ],
+      "migration_history": "repair_meta.flyway_schema_history",
+      "ports": {
+        "api": 8140,
+        "frontend": 5240,
+        "postgres": 5640
+      }
+    },
+    {
+      "id": "M06",
+      "key": "support",
+      "title": "通知、审计、统计与工程验收",
+      "service": "workflow-service",
+      "frontend_modules": [
+        "notification",
+        "audit",
+        "statistics",
+        "agent"
+      ],
+      "java_modules": [
+        "notification",
+        "audit",
+        "statistics",
+        "agent"
+      ],
+      "database_schemas": [
+        "support"
+      ],
+      "write_paths": {
+        "frontend": [
+          "frontend/src/modules/notification/",
+          "frontend/src/modules/audit/",
+          "frontend/src/modules/statistics/",
+          "frontend/src/modules/agent/",
+          "frontend/tests/modules/support/",
+          "spec/progress/support/frontend/"
+        ],
+        "backend": [
+          "backend/workflow-service/src/main/java/com/campus/notification/",
+          "backend/workflow-service/src/main/java/com/campus/audit/",
+          "backend/workflow-service/src/test/java/com/campus/notification/",
+          "backend/workflow-service/src/test/java/com/campus/audit/",
+          "backend/workflow-service/src/main/resources/db/modules/support/",
+          "contracts/openapi/modules/support/",
+          "spec/progress/support/backend/",
+          "backend/workflow-service/src/test/resources/modules/support/",
+          "backend/workflow-service/src/main/java/com/campus/statistics/",
+          "backend/workflow-service/src/main/java/com/campus/agent/",
+          "backend/workflow-service/src/test/java/com/campus/statistics/",
+          "backend/workflow-service/src/test/java/com/campus/agent/"
+        ]
+      },
+      "read_only": [
+        "frontend/src/shared/",
+        "backend/platform-common/",
+        "contracts/",
+        "spec/",
+        "docs/"
+      ],
+      "migration_history": "support_meta.flyway_schema_history",
+      "ports": {
+        "api": 8150,
+        "frontend": 5250,
+        "postgres": 5650
+      }
+    }
+  ],
+  "protected_paths": [
+    "AGENTS.md",
+    "spec/modules.json",
+    "spec/requirements.json",
+    "spec/members.example.json",
+    "frontend/package.json",
+    "frontend/package-lock.json",
+    "frontend/src/app/",
+    "frontend/src/shared/",
+    "backend/pom.xml",
+    "backend/platform-common/",
+    "backend/resource-service/pom.xml",
+    "backend/resource-service/src/main/resources/db/migration/",
+    "backend/resource-service/src/main/resources/db/seed/",
+    "infra/",
+    "scripts/",
+    "skills/",
+    "tools/",
+    "frontend/src/modules/auth/model/auth-session.ts",
+    "frontend/src/modules/auth/model/role-label.ts",
+    "frontend/src/modules/auth/types.ts"
+  ],
+  "buffer": {
+    "origin": "http://127.0.0.1:7780",
+    "gitee_remote": "https://gitee.com/wangjr2021/fdu-study-room.git",
+    "target_branch": "main",
+    "interval_seconds": 259200,
+    "publication": "reviewed_feature_branches_and_pull_requests",
+    "direct_main_push": false,
+    "github_remote": "https://github.com/wangjr20210114-hue/FduStudyRoom.git",
+    "github_publication": "direct_development_branches",
+    "memory_threshold_percent": 85,
+    "pressure_cooldown_seconds": 300
+  },
+  "public_imports": [
+    "frontend/src/modules/auth/model/auth-session.ts",
+    "frontend/src/modules/auth/model/role-label.ts",
+    "frontend/src/modules/auth/types.ts"
+  ],
+  "strict_docker_min_major": 28
+}

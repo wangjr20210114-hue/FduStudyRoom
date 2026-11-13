@@ -27,6 +27,8 @@ spring:
     deserialization:
       fail-on-unknown-properties: true
 campus:
+  migrations:
+    modules: identity,resource,reservation
   auth:
     mode: ${CAMPUS_AUTH_MODE:password}
     signing-key: ${CAMPUS_AUTH_SIGNING_KEY:}

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FduStudyRoom 业务需求关系图</title>
+<style>
+:root{color-scheme:light dark;--bg:#f5f7fa;--panel:#fff;--fg:#1d2939;--muted:#536176;--line:#8c99ac;--border:#d7dee8;--selected:#1d67d9}*{box-sizing:border-box}body{height:100vh;display:flex;flex-direction:column;margin:0;font:14px/1.5 system-ui,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--fg)}header{flex-shrink:0;padding:18px 24px;background:var(--panel);border-bottom:1px solid var(--border)}h1{font-size:21px;margin:0 0 10px}.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end}label{display:grid;gap:4px;font-size:12px;color:var(--muted)}select,input,button{font:inherit;padding:7px 10px;background:var(--panel);color:var(--fg);border:1px solid var(--border);border-radius:5px}button{cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--selected)}.legend{margin:10px 0 0;color:var(--muted);font-size:12px}.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(400px,40vw);flex:1;min-height:0}.canvas{overflow:auto;padding:16px}svg{display:block;background:var(--panel)}aside{font-size:15px;line-height:1.75;overflow:auto;padding:18px;background:var(--panel);border-left:1px solid var(--border)}aside h2{font-size:18px;margin-top:0}aside h3{font-size:14px;margin-bottom:6px}aside p{margin:6px 0}aside ul{padding-left:20px}aside li{margin-bottom:6px}aside{overflow-wrap:anywhere}aside h4{font-size:13px;margin:14px 0 5px}aside ol{padding-left:23px}.scene,.info-block{border:1px solid var(--border);border-radius:7px;padding:12px;margin:10px 0}.scene summary,.info-block summary{cursor:pointer;font-weight:600}.scene summary:focus-visible,.info-block summary:focus-visible{outline:2px solid var(--selected)}.scene h4.goal{color:var(--selected)}.technical{margin:12px 0;color:var(--muted);font-size:13px}.technical summary{font-weight:400}.scenario-steps li{margin-bottom:10px}.scene-overview{line-height:1.8}.scene-actions{display:flex;gap:8px;margin:8px 0}.note{color:var(--muted);font-size:13px}.scene ul,.scene ol{margin:5px 0}.coverage-item{border-bottom:1px solid var(--border);padding:8px 0}#jump{max-width:min(380px,85vw)}a{color:var(--selected)}.tag{display:inline-block;padding:2px 6px;margin:0 5px 4px 0;background:var(--bg);border-radius:4px;font-size:12px}.edge{fill:none;stroke:var(--line);stroke-width:1.3;opacity:.22;pointer-events:none}.edge.contract{stroke-dasharray:5 4}.edge.active{opacity:.95;stroke:var(--selected);stroke-width:2}.edge.dim{opacity:.035}.node{cursor:pointer}.node rect{fill:var(--nodefill);stroke:var(--border);stroke-width:1}.node text{fill:var(--fg);font-size:14px}.node .code{font-weight:700;font-size:14px}.node.extra rect{stroke-dasharray:6 3}.node.active rect{stroke:var(--selected);stroke-width:2}.node.selected rect{stroke-width:3}.node.dim{opacity:.12}.lane{fill:var(--muted);font-size:15px;font-weight:700}.level{fill:var(--muted);font-size:12px}.node:focus{outline:none}.node:focus rect{stroke:var(--selected);stroke-width:3}@media(prefers-color-scheme:dark){:root{--bg:#141a23;--panel:#202936;--fg:#edf2f9;--muted:#b8c3d3;--line:#abb8cc;--border:#46556b;--selected:#8cbcff}.node rect{fill:var(--nodedark)}}@media(max-width:850px){body{height:auto}.layout{grid-template-columns:1fr;height:auto}.canvas{height:65vh}aside{max-height:65vh;border-left:0;border-top:1px solid var(--border)}}
+</style></head><body>
+<header><h1>业务需求关系图</h1><div class="controls">
+<label>业务模块<select id="module"><option value="">全部模块</option></select></label>
+<label>范围<select id="scope"><option value="">全部业务</option><option value="core">核心业务</option><option value="extra">附加AI助手</option></select></label>
+<label>搜索<input id="search" type="search" placeholder="功能编号、名称或场景"></label>
+<button id="minus" type="button" aria-label="缩小">−</button><span id="zoom">80%</span><button id="plus" type="button" aria-label="放大">＋</button><button id="reset" type="button">重置</button>
+<label>查看功能<select id="jump"><option value="">选择业务功能，查看具体场景</option></select></label>
+<button id="guide" type="button">业务规则</button><button id="coverage" type="button">要求与场景对照</button></div>
+<p class="legend">每列是一类业务。箭头从被使用的能力指向使用它的功能；虚线框是附加AI助手。点击节点，在右侧阅读场景概述、操作步骤与预期结果。当前均为需求草案。</p></header>
+<main class="layout"><section class="canvas" aria-label="业务功能关系图"><svg id="graph" role="img" aria-labelledby="graph-title graph-desc"><title id="graph-title">业务功能之间的关系</title><desc id="graph-desc">按业务模块分列，点击功能查看场景。</desc></svg></section><aside id="detail" aria-live="polite"><h2>选择一项业务功能</h2><p>点击图中节点，或在上方“查看功能”选择一项，阅读场景概述、操作步骤与预期结果。</p><p>这里只展示系统业务，不把开发分工、环境和交付流程作为功能节点。</p></aside></main>
+<script type="application/json" id="spec-data">__SPEC_DATA__</script>
+<script>
+(()=>{
+'use strict';
+const D=JSON.parse(document.getElementById('spec-data').textContent),nodes=D.specifications,by=new Map(nodes.map(n=>[n.id,n])),modules=new Map(D.modules.map(m=>[m.id,m]));
+const criteria=new Map(D.requirements.flatMap(q=>q.criteria.map(c=>[c.ref,c.text]))),policies=new Map(D.policies.map(p=>[p.id,p]));
+const graph=document.getElementById('graph'),detail=document.getElementById('detail'),moduleSelect=document.getElementById('module'),scope=document.getElementById('scope'),search=document.getElementById('search'),jump=document.getElementById('jump');
+document.querySelector('h1').textContent='业务需求关系图 · '+D.summary.specs+'项功能 / '+D.summary.scenarios+'个场景';
+const palette=[['#e8efff','#283e64'],['#e5f5eb','#244837'],['#fff1db','#59472c'],['#f0eaff','#473a61'],['#ffeaec','#603741'],['#ddf3f8','#294e57']];
+let scale=.8,selected='',width=1520,height=0;
+const esc=s=>String(s).replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+const deps=n=>n.depends_on;
+function layout(){
+ const remaining=new Map(nodes.map(n=>[n.id,new Set(deps(n))])),levels=[];
+ while(remaining.size){const ready=[...remaining].filter(([,v])=>!v.size).map(([id])=>id).sort();if(!ready.length)throw Error('业务依赖有循环');levels.push(ready);ready.forEach(id=>remaining.delete(id));remaining.forEach(v=>ready.forEach(id=>v.delete(id)));}
+ const positions=new Map();let y=84;
+ levels.forEach((ids,level)=>{const counts={};ids.forEach(id=>{const n=by.get(id),i=counts[n.module]||0;counts[n.module]=i+1;positions.set(id,{x:74+D.modules.findIndex(m=>m.id===n.module)*240,y:y+i*112,level});});y+=Math.max(...Object.values(counts))*112+55;});
+ return {levels,positions,height:y+20};
+}
+function zoom(){graph.setAttribute('width',String(width*scale));graph.setAttribute('height',String(height*scale));document.getElementById('zoom').textContent=Math.round(scale*100)+'%';}
+function render(){
+ const L=layout();height=L.height;graph.setAttribute('viewBox',`0 0 ${width} ${height}`);
+ let html='<title id="graph-title">业务功能关系图</title><desc id="graph-desc">按业务模块分列，点击查看场景。</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="var(--line)"/></marker></defs>';
+ D.modules.forEach((m,i)=>{const x=74+i*240;html+=`<text class="lane" x="${x}" y="25">${esc(m.title)}</text><text class="level" x="${x}" y="47">${m.id} · ${nodes.filter(n=>n.module===m.id).length}项功能</text>`;});
+ L.levels.forEach((ids,i)=>{const p=L.positions.get(ids[0]);html+=`<text class="level" x="12" y="${p.y+20}">L${i}</text>`;});
+ nodes.forEach(n=>deps(n).forEach(id=>{const a=L.positions.get(id),b=L.positions.get(n.id),x1=a.x+106,y1=a.y+94,x2=b.x+106,y2=b.y;html+=`<path class="edge" data-from="${id}" data-to="${n.id}" d="M${x1},${y1} C${x1},${(y1+y2)/2} ${x2},${(y1+y2)/2} ${x2},${y2-3}" marker-end="url(#arrow)"/>`;}));
+ nodes.forEach(n=>{const p=L.positions.get(n.id),letters=Array.from(n.title),color=palette[D.modules.findIndex(m=>m.id===n.module)];html+=`<g class="node ${n.scope==='extra'?'extra':''}" data-id="${n.id}" data-module="${n.module}" tabindex="0" role="button" aria-label="${esc(n.id+' '+n.title+'，'+modules.get(n.module).title)}" transform="translate(${p.x},${p.y})" style="--nodefill:${color[0]};--nodedark:${color[1]}"><title>${esc(n.title)}</title><rect width="212" height="94" rx="7"/><text class="code" x="12" y="20">${n.id}${n.scope==='extra'?' · 附加':''}</text>${[0,1,2].map(i=>`<text x="12" y="${41+i*18}">${esc(letters.slice(i*13,(i+1)*13).join(''))}</text>`).join('')}</g>`;});
+ graph.innerHTML=html;zoom();graph.querySelectorAll('.node').forEach(el=>{el.addEventListener('click',()=>select(el.dataset.id));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(el.dataset.id);}});});filter();
+}
+function closure(id,reverse){const found=new Set([id]),todo=[id];while(todo.length){const x=todo.pop(),next=reverse?nodes.filter(n=>deps(n).includes(x)).map(n=>n.id):deps(by.get(x));for(const y of next)if(!found.has(y)){found.add(y);todo.push(y);}}return found;}
+function filter(){
+ const term=search.value.trim().toLowerCase();let visible=new Set(nodes.filter(n=>(!moduleSelect.value||n.module===moduleSelect.value)&&(!scope.value||n.scope===scope.value)&&(!term||(n.id+' '+n.title+' '+n.scenarios.map(s=>s.title).join(' ')).toLowerCase().includes(term))).map(n=>n.id));
+ if(selected)visible=new Set([...closure(selected,false),...closure(selected,true)]);
+ graph.querySelectorAll('.node').forEach(el=>{el.classList.toggle('dim',!visible.has(el.dataset.id));el.classList.toggle('active',Boolean(selected)&&visible.has(el.dataset.id));el.classList.toggle('selected',el.dataset.id===selected);});
+ graph.querySelectorAll('.edge').forEach(el=>{const yes=visible.has(el.dataset.from)&&visible.has(el.dataset.to);el.classList.toggle('dim',!yes);el.classList.toggle('active',Boolean(selected)&&yes);});
+}
+function lines(items,ordered=false){const tag=ordered?'ol':'ul';return `<${tag}>${items.map(x=>`<li>${esc(x)}</li>`).join('')}</${tag}>`;}
+function links(ids){return ids.length?'<ul>'+ids.map(id=>`<li><button type="button" data-select="${id}">${id}</button> ${esc(by.get(id).title)}</li>`).join('')+'</ul>':'<p>无</p>';}
+function policyText(ids){return ids.map(id=>{const p=policies.get(id),status=({proposal_requires_review:'待评审',test_fixture_not_production_default:'场景示例值',existing_baseline_design:'沿用现有设计',external_delivery_limit:'邮件服务能力限制'})[p.status];return `<p><strong>${esc(id)} · ${status}</strong></p><p>${esc(p.rule)}</p><details class="technical"><summary>精确规则补充</summary><p>${esc(p.technical_rule)}</p></details>`;}).join('');}
+function fixtures(){return Object.entries(D.fixtures).map(([key,value])=>`<p><strong>${esc(({clock:'示例时间',accounts:'示例账号',resources:'教室和座位',interval:'默认时段',cleanliness:'示例数据'})[key]||key)}</strong>：${esc(value)}</p>`).join('');}
+function sceneNumber(n){const digits='一二三四五六七八九';if(n<=9)return digits[n-1];if(n===10)return '十';if(n<20)return '十'+digits[n-11];if(n<=99)return digits[Math.floor(n/10)-1]+'十'+(n%10?digits[n%10-1]:'');return String(n);}
+function scene(s,i){const raw=s.technical_reference;return `<details class="scene" id="${s.id.toLowerCase().replace('.','')}" ${i===0?'open':''}><summary>场景${sceneNumber(i+1)}：${esc(s.title)}</summary><h4>场景概述</h4><p class="scene-overview">${esc(s.overview)}</p><h4 class="goal">操作步骤与预期结果</h4><ol class="scenario-steps">${s.steps.map(text=>`<li>${esc(text)}</li>`).join('')}</ol><details class="technical"><summary>场景编号与精确规则补充（${s.id}）</summary><p><strong>对应的业务要求</strong></p>${lines(s.acceptance_refs.map(ref=>ref+'：'+criteria.get(ref)))}<p><strong>条件</strong></p>${lines(raw.preconditions)}<p><strong>动作</strong></p>${lines(raw.actions,true)}<p><strong>结果和约束</strong></p>${lines(raw.expected,true)}</details></details>`;}
+function select(id){
+ selected=id;jump.value=id;const n=by.get(id),children=nodes.filter(x=>deps(x).includes(id)).map(x=>x.id);
+ detail.innerHTML=`<h2>${n.id} ${esc(n.title)}</h2><p><span class="tag">${esc(modules.get(n.module).title)}</span><span class="tag">${n.scope==='extra'?'附加业务':'核心业务'}</span><span class="tag">草案</span></p><p class="note">${esc(D.reading_style.page_names)}</p><h3>具体场景（${n.scenarios.length}）</h3><div class="scene-actions"><button type="button" data-scenes="open">展开全部场景</button><button type="button" data-scenes="close">收起全部场景</button></div>${n.scenarios.map(scene).join('')}<details class="info-block"><summary>场景中的账号、教室和时间</summary>${fixtures()}</details><h3>相关业务规则</h3>${n.policy_refs.length?policyText(n.policy_refs):'<p>按场景中的要求执行。</p>'}<h3>需要的外部业务条件</h3><p>${esc(n.external_dependencies.map(x=>D.external_labels[x]).join('、')||'无')}</p><h3>需要这些业务能力</h3>${links(deps(n))}<h3>会用到这项能力的功能</h3>${links(children)}`;
+ detail.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',()=>select(b.dataset.select)));
+ detail.querySelectorAll('[data-scenes]').forEach(b=>b.addEventListener('click',()=>detail.querySelectorAll('.scene').forEach(s=>{s.open=b.dataset.scenes==='open';})));
+ detail.scrollTop=0;filter();
+}
+function guide(){
+ selected='';jump.value='';filter();detail.innerHTML=`<h2>业务规则和场景说明</h2><p>场景说明产品要怎样工作，目前仍是草案。待评审规则没有自动生效。</p><p>${esc(D.reading_style.page_names)}</p><h3>场景里的示例数据</h3>${fixtures()}<h3>相关业务规则</h3>${D.policies.map(p=>`<details class="info-block"><summary>${esc(p.id)} · ${p.status==='proposal_requires_review'?'待评审':'业务规则'}</summary>${policyText([p.id])}</details>`).join('')}`;detail.scrollTop=0;
+}
+function coverage(){
+ selected='';jump.value='';filter();const covered=new Map();nodes.forEach(n=>n.scenarios.forEach(s=>s.acceptance_refs.forEach(ref=>{if(!covered.has(ref))covered.set(ref,[]);covered.get(ref).push(s.id);}))); 
+ detail.innerHTML=`<h2>业务要求与场景对照</h2><p>${D.summary.covered_points} / ${D.summary.acceptance_points}条业务相关要求都有场景；这是文档对应关系，不是已实现数量。</p><p class="note">其中${D.summary.shared_points}条原要求还包含工程部分，这里只列业务部分。</p>${D.requirements.map(q=>`<details class="info-block"><summary>${q.id} ${esc(q.title)}</summary>${q.criteria.map(c=>`<div class="coverage-item"><p><strong>${c.ref}</strong> ${esc(c.text)}${c.shared?'（业务部分）':''}</p>${(covered.get(c.ref)||[]).map(id=>`<button type="button" data-scene="${id}">${id}</button>`).join(' ')}</div>`).join('')}</details>`).join('')}`;
+ detail.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.scene;select(id.split('.')[0]);const el=document.getElementById(id.toLowerCase().replace('.',''));el.open=true;el.scrollIntoView({block:'nearest'});}));detail.scrollTop=0;
+}
+D.modules.forEach(m=>{const option=document.createElement('option');option.value=m.id;option.textContent=m.title;moduleSelect.append(option);});
+nodes.forEach(n=>{const option=document.createElement('option');option.value=n.id;option.textContent=n.id+' · '+n.title;jump.append(option);});
+jump.addEventListener('change',()=>{if(jump.value)select(jump.value);});document.getElementById('guide').addEventListener('click',guide);document.getElementById('coverage').addEventListener('click',coverage);
+[moduleSelect,scope].forEach(el=>el.addEventListener('change',()=>{selected='';jump.value='';filter();}));search.addEventListener('input',()=>{selected='';jump.value='';filter();});
+document.getElementById('plus').addEventListener('click',()=>{scale=Math.min(1.6,scale+.1);zoom();});document.getElementById('minus').addEventListener('click',()=>{scale=Math.max(.3,scale-.1);zoom();});document.getElementById('reset').addEventListener('click',()=>{selected='';jump.value='';moduleSelect.value='';scope.value='';search.value='';scale=.8;render();detail.innerHTML='<h2>选择一项业务功能</h2><p>点击节点或选择功能，查看具体场景。</p>';});render();
+})();
+</script></body></html>

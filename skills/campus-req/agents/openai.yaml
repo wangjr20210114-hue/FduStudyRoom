@@ -1,0 +1,4 @@
+interface:
+  display_name: "场景需求分解"
+  short_description: "按授权需求分解稳定场景，核对页面接口与数据对象，记录覆盖和实质歧义"
+  default_prompt: "使用 $campus-req 分解当前模块需求，保存场景、对象映射和依赖。"

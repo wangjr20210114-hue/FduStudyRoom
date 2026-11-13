@@ -1,10 +1,12 @@
 # 项目目录结构与模块归属
 
+> 当前[业务Spec与关系图](17-spec-topology-and-assignment.md)只分解产品功能；开发分工和环境等由[workflow文档](18-workflow-obligations.md)管理。本页保留目录与基线记录，规划不自动改变账号和权限。
+
 更新：2026年10月29日。技术基线：前端 TypeScript 与 Vue 3，后端 Java 与 Spring Boot，数据库 PostgreSQL。四名开发分为后端 A、后端 B、前端 A、前端 B。
 
-当前已完成 T01 前端运行骨架、T02 公共样式组件和 T03 公共请求与国际化，入口为 frontend/src/main.ts。公共视觉参数位于 shared/styles，主题、基础组件及语言选择位于 shared/components；公共请求位于 shared/api，中英文字典位于 shared/i18n；开发预览入口为 /dev/components，用法见 [公共组件说明](06-frontend-components.md)。流程服务及业务逻辑仍待实现，前端各业务模块已登记页面路由；空目录使用 `.gitkeep` 保留。登录按 [分步任务清单](04-login-implementation-tasks.md) 继续实施，每项完成后停止交接。
+当前已完成 T01 前端运行骨架、T02 公共样式组件和 T03 公共请求与国际化，入口为 frontend/src/main.ts。公共视觉参数位于 shared/styles，主题、基础组件及语言选择位于 shared/components；公共请求位于 shared/api，中英文字典位于 shared/i18n；开发预览入口为 /dev/components，用法见 [公共组件说明](06-frontend-components.md)。业务逻辑仍待实现，前端各业务模块已登记页面路由；空目录使用 `.gitkeep` 保留。登录按 [分步任务清单](04-login-implementation-tasks.md) 继续实施，每项完成后停止交接。
 
-T04 已实现 platform-common 安全基础和 resource-service 的 identity 模块，Java 21 / Spring Boot 4.1.2，通过 Maven Wrapper 构建；身份迁移和运行方法见 [登录后端](08-login-backend.md)。workflow-service 仍预留，尚未加入当前构建。
+T04 已实现 platform-common 安全基础和 resource-service 的 identity 模块，Java 21 / Spring Boot 4.1.2，通过 Maven Wrapper 构建；身份迁移和运行方法见 [登录后端](08-login-backend.md)。workflow-service 已加入构建及公开HTTP身份核验基础，审批和报修业务仍待实现；六模块限界和独立迁移见 [团队工作流](14-team-workflow.md)。
 
 T05 已实现登录接口接入，T06 已加入 Vue Router、共享身份状态、权限导航、个人信息及空工作台。/login 为精简登录页，首页进入工作台；本地 API 通过 Vite 同站点代理。用法见 [登录前端](09-login-frontend.md) 和 [T06 历史说明](10-workspace-and-navigation.md)。T08 已增加三种角色的侧栏、工作台入口与业务页面切换，当前菜单与路径见 [角色导航](13-role-navigation.md)。
 
@@ -39,7 +41,7 @@ new-project/
 ├── contracts/
 │   └── openapi/                          公共层和各模块的接口契约
 ├── backend/
-│   ├── pom.xml、mvnw、mvnw.cmd             当前两模块构建与 Wrapper
+│   ├── pom.xml、mvnw、mvnw.cmd             当前三模块构建与 Wrapper
 │   ├── .mvn/wrapper/                      Maven 版本与下载校验
 │   ├── .env.example                       后端环境变量模板
 │   ├── platform-common/
@@ -99,7 +101,8 @@ new-project/
 │           │   ├── api/auth.ts           身份接口与 CSRF
 │           │   ├── model/                登录状态及错误文案
 │           │   └── pages/                LoginPage.vue、AccountPage.vue
-│           ├── system/routes.ts            账号、参数和统计路由
+│           ├── system/routes.ts            账号与参数路由
+│           ├── statistics/routes.ts        运营统计路由
 │           ├── resource/routes.ts          座位预约与资源管理路由
 │           ├── notification/routes.ts      消息路由
 │           ├── audit/routes.ts             审计路由
@@ -245,7 +248,7 @@ T04 已加入后端根构建、公共库和资源服务 pom.xml、Maven Wrapper�
 
 ## 十 数据库精简决策
 
-完整保留任务书的 M1、M2、M3、公共层与工程要求，数据库从 40 张应用表精简到 19 张；工具维护的两张迁移历史表另计。字段、约束、每个字段的用途以及最终关系图统一见数据库设计文档。
+完整保留任务书的 M1、M2、M3、公共层与工程要求，数据库从 40 张应用表精简到 19 张；既有服务历史和六模块独立迁移历史另计。字段、约束、每个字段的用途以及最终关系图统一见数据库设计文档。
 
 | 原设计 | 当前处理 | 保留的能力 |
 | --- | --- | --- |
@@ -273,4 +276,6 @@ service_tasks 只处理本项目公开接口的占用、释放、维修下架、
 
 用户决定取消学校认证，采用本系统账号密码登录并允许注册，新账号固定 USER。管理员与维护人员由系统管理员授权，首个管理员通过环境变量初始化。V2 迁移保留旧账号和身份记录，新增密码哈希与本地账号约束，详见 [T07 普通账号登录](12-password-login.md)。
 
-build skill 后续负责数据库、密钥、可选首个管理员与运行配置，不再等待校方接口。当前流程服务和完整 build skill 尚未实现。
+build skill 负责数据库、密钥、可选首个管理员与运行配置，不再等待校方接口。当前构建技能及流程服务基础已建立，业务实现和完整发布流水线的剩余项见团队工作流与需求基线。
+
+当前协作方式以 [六模块团队工作流](14-team-workflow.md) 为准；本文件原A/B分工仍用于解释服务边界，具体可写路径由 spec/modules.json 决定。

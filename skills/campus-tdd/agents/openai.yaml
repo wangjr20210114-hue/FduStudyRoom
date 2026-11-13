@@ -1,0 +1,4 @@
+interface:
+  display_name: "限界 TDD 执行"
+  short_description: "按批准场景在所属模块执行 TDD 和独立变异验证，交付缓冲站"
+  default_prompt: "使用 $campus-tdd，我的身份是 frontend-a，处理本模块未完成需求。"

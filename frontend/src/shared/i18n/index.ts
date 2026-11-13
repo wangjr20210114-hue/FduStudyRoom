@@ -2,6 +2,8 @@ import { watch } from 'vue'
 import { createI18n } from 'vue-i18n'
 import zhCN from './locales/zh-CN'
 import en from './locales/en'
+import { moduleMessages } from './module-messages'
+const modules = moduleMessages(import.meta.glob<{ default: Record<string, unknown> }>('../../modules/*/i18n/*.ts', { eager: true }))
 import { defaultLocale, isAppLocale, readSavedLocale, saveLocale, type AppLocale } from './locale'
 
 export const i18n = createI18n({
@@ -9,7 +11,7 @@ export const i18n = createI18n({
   globalInjection: false,
   locale: readSavedLocale(),
   fallbackLocale: defaultLocale,
-  messages: { 'zh-CN': zhCN, en },
+  messages: { 'zh-CN': { ...zhCN, modules: modules['zh-CN'] }, en: { ...en, modules: modules.en } },
 })
 
 watch(i18n.global.locale, (locale) => {
