@@ -3,7 +3,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ResourcePanel from './ResourcePanel.vue'
 const { t, locale, te }=useI18n()
-const identity=ref(''), token=ref(''), me=ref<{id:string;gitee?:string;admin:boolean}|null>(null)
+const token=ref(''), me=ref<{id:string;gitee?:string;admin:boolean}|null>(null)
 const requirements=ref<any[]>([]), submissions=ref<any[]>([]), schedule=ref<any>(null)
 const tab=ref<'requirements'|'submissions'>('submissions'), busy=ref(false), error=ref(''), patch=ref('')
 const note=ref(''), confirmed=ref(false), status=ref<any>(null)
@@ -18,7 +18,7 @@ async function refresh(){
  [requirements.value,submissions.value,status.value]=await Promise.all([request('/requirements'),request('/submissions'),request('/status')])
  if(me.value?.admin)schedule.value=await request('/schedule')
 }
-async function login(){await action(async()=>{const profile=await request('/me');if(profile.id!==identity.value.trim()&&profile.gitee!==identity.value.trim())throw new Error('AUTHENTICATION_REQUIRED');me.value=profile;await refresh()})}
+async function login(){await action(async()=>{me.value=await request('/me');await refresh()})}
 function logout(){token.value='';me.value=null;requirements.value=[];submissions.value=[];schedule.value=null;status.value=null;patch.value='';error.value=''}
 async function review(id:string,approved=true){await action(async()=>{await request('/submissions/'+id+'/review',{approved,note:note.value});confirmed.value=false;note.value='';await refresh()})}
 async function verify(id:string){await action(async()=>{await request('/submissions/'+id+'/verify',{});await refresh()})}
@@ -32,7 +32,6 @@ onBeforeUnmount(()=>clearInterval(timer))
   <header><h1>{{ t('title') }}</h1><select v-model="locale" aria-label="Language"><option value="zh-CN">中文</option><option value="en">English</option></select><template v-if="me"><span>{{ me.id }}</span><button @click="logout">{{ t('logout') }}</button></template></header>
   <p v-if="error" role="alert" class="error">{{ error }}</p>
   <form v-if="!me" class="login" @submit.prevent="login">
-   <label>{{ t('identity') }}<input v-model="identity" autocomplete="username" required></label>
    <label>{{ t('token') }}<input v-model="token" type="password" autocomplete="current-password" required></label>
    <button :disabled="busy">{{ busy?t('loading'):t('login') }}</button>
   </form>

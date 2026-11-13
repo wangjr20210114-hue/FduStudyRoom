@@ -2,7 +2,6 @@ import { createI18n } from 'vue-i18n'
 export const messages = {
   "zh-CN": {
     "title": "协作缓冲站",
-    "identity": "身份",
     "token": "访问码",
     "login": "登录",
     "logout": "退出",
@@ -35,7 +34,7 @@ export const messages = {
     "scope": "验证范围",
     "integrationPending": "模块验证通过；真实集成和合并验收另行完成。",
     "close": "关闭",
-    "AUTHENTICATION_REQUIRED": "身份或访问码无效",
+    "AUTHENTICATION_REQUIRED": "访问码无效",
     "ADMIN_REQUIRED": "需要协调人权限",
     "SYNC_DISABLED_OR_CREDENTIALS_MISSING": "同步未启用或凭据未配置",
     "CI_UNAVAILABLE_OR_FAILED": "独立验证不可用或失败",
@@ -82,7 +81,6 @@ export const messages = {
   },
   "en": {
     "title": "Team buffer",
-    "identity": "Identity",
     "token": "Access code",
     "login": "Sign in",
     "logout": "Sign out",
@@ -115,7 +113,7 @@ export const messages = {
     "scope": "Verification scope",
     "integrationPending": "Module verification passed; real integration and merge acceptance remain separate.",
     "close": "Close",
-    "AUTHENTICATION_REQUIRED": "Invalid identity or access code",
+    "AUTHENTICATION_REQUIRED": "Invalid access code",
     "ADMIN_REQUIRED": "Coordinator access required",
     "SYNC_DISABLED_OR_CREDENTIALS_MISSING": "Sync is disabled or credentials are missing",
     "CI_UNAVAILABLE_OR_FAILED": "Independent verification unavailable or failed",

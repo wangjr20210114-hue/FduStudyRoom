@@ -6,6 +6,7 @@
   "description": "Build with the frozen frontend/package-lock.json; no independent dependency installation.",
   "scripts": {
     "build": "node ../../../frontend/node_modules/vue-tsc/bin/vue-tsc.js --noEmit && node ../../../frontend/node_modules/vite/bin/vite.js build",
-    "test": "node ../../../frontend/node_modules/vitest/vitest.mjs run --config vite.config.ts"
+    "test": "node ../../../frontend/node_modules/vitest/vitest.mjs run --config vite.config.ts",
+    "test:browser": "node --test tests/login.browser.mjs"
   }
 }
