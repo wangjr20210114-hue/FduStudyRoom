@@ -24,7 +24,7 @@ class SandboxEnvironmentTests(unittest.TestCase):
         context = {"module": "M02", "base": "a" * 40, "policy_root": str(root)}
         member = {"id": "b", "layer": layer, "modules": ["M02"]}
         # No real engine or host credentials are needed to inspect the emitted configuration.
-        with patch.object(environment, "docker", return_value=["docker"]), patch.object(environment, "run", return_value="29.8.1") as invoke, patch.object(environment, "bind_identity", return_value="1000:1000"):
+        with patch.dict(os.environ, {"GH_TOKEN": "host-only-helper-token", "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "credential.helper", "GIT_CONFIG_VALUE_0": "host-only-helper"}), patch.object(environment, "docker", return_value=["docker"]), patch.object(environment, "run", return_value="29.8.1") as invoke, patch.object(environment, "bind_identity", return_value="1000:1000"):
             environment.sandbox(root, worktree, load(ROOT), member, context, start=start)
         config = json.loads((worktree / ".campus/sandbox.local.json").read_text(encoding="utf-8"))
         return worktree, config, invoke.call_args_list
@@ -46,6 +46,18 @@ class SandboxEnvironmentTests(unittest.TestCase):
                       "Maven must consume the cache warmed for this member instead of /root/.m2")
         self.assertTrue(any(volume.get("target") == "/cache/m2" and volume["type"] == "volume" for volume in runner["volumes"]))
 
+    def test_warming_and_private_volumes_follow_the_assigned_layer(self):
+        for layer, wanted, unwanted in (("backend", "/opt/warm/m2", "/opt/warm/frontend/node_modules"),
+                                         ("frontend", "/opt/warm/frontend/node_modules", "/opt/warm/m2")):
+            with self.subTest(layer=layer):
+                _, config, commands = self.configuration(layer, start=True)
+                warming = next(call for call in commands if "--user" in call.args[0])
+                self.assertIn(wanted, warming.args[0])
+                self.assertNotIn(unwanted, warming.args[0], "Do not scan another layer's dependency tree")
+                volumes = {v["target"] for v in config["services"]["runner"]["volumes"] if v["type"] == "volume"}
+                self.assertEqual({"/cache/m2"} if layer == "backend" else {"/workspace/frontend/node_modules"}, volumes,
+                                 "Each layer needs only its own private dependency volume")
+
     def test_private_workflow_files_are_hidden_from_member_container(self):
         _, config, _ = self.configuration()
         self.assertTrue(any(value.startswith("/workspace/.campus:") and "ro" in value.split(":", 1)[1].split(",")
@@ -62,6 +74,8 @@ class SandboxEnvironmentTests(unittest.TestCase):
                 self.assertEqual(["no-new-privileges:true"], runner["security_opt"])
                 self.assertFalse(runner.get("privileged", False))
                 self.assertNotIn("env_file", runner)
+                for key in ("GH_TOKEN", "GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"):
+                    self.assertNotIn(key, runner["environment"], "Host Git authentication must never enter the member runner")
                 for volume in runner["volumes"]:
                     self.assertNotIn("docker.sock", volume["target"])
                     if volume["type"] == "bind":
@@ -75,12 +89,10 @@ class SandboxEnvironmentTests(unittest.TestCase):
                     self.assertNotIn("ports", config["services"]["postgres"])
 
     @unittest.skipUnless(os.name == "posix", "The streamed helper executes inside the Linux runner")
-    def test_sandbox_streamed_helper_repairs_both_private_cache_trees(self):
+    def test_sandbox_streamed_helper_repairs_the_assigned_private_cache(self):
         _, _, commands = self.configuration(start=True)
         warming = next(call for call in commands if "--user" in call.args[0])
-        self.assertEqual(["python3", "-", "/opt/warm/m2", "/cache/m2",
-                          "/opt/warm/frontend/node_modules", "/workspace/frontend/node_modules"],
-                         warming.args[0][-6:])
+        self.assertEqual(["python3", "-", "/opt/warm/m2", "/cache/m2"], warming.args[0][-4:])
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             maven, private_maven = root / "warm-m2", root / "private-m2"
@@ -95,11 +107,15 @@ class SandboxEnvironmentTests(unittest.TestCase):
             executable.write_text("#!/bin/sh\nprintf 'streamed-bin-ready'\n", encoding="utf-8")
             executable.chmod(0o755)
             (node / ".bin/cli").symlink_to("../package/cli")
-            result = subprocess.run([sys.executable, "-", str(maven), str(private_maven),
-                                     str(node), str(private_node)], input=warming.kwargs["input"],
+            result = subprocess.run([sys.executable, "-", str(maven), str(private_maven)], input=warming.kwargs["input"],
                                     capture_output=True, text=True)
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(b"trusted pom", (private_maven / "parent.pom").read_bytes())
+            _, _, frontend_commands = self.configuration("frontend", start=True)
+            frontend_warming = next(call for call in frontend_commands if "--user" in call.args[0])
+            result = subprocess.run([sys.executable, "-", str(node), str(private_node)], input=frontend_warming.kwargs["input"],
+                                    capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stderr)
             command = subprocess.run([str(private_node / ".bin/cli")], capture_output=True,
                                      text=True, check=True)
             self.assertEqual("streamed-bin-ready", command.stdout)

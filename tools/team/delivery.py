@@ -1,7 +1,7 @@
 """Export an acknowledged module patch to a development branch, never main."""
-import json,os,re,subprocess
+import json,os,re
 from pathlib import Path
-from policy import PolicyError,git,load,guard
+from policy import PolicyError,git,git_run,load,guard
 from commits import message
 
 def github_export(root,worktree,context,ack,kind,title,details,requirements,patch=None):
@@ -28,7 +28,7 @@ def github_export(root,worktree,context,ack,kind,title,details,requirements,patc
         # WSL-owned source repository. Trust remains per-command and per-path.
         git(root,'bundle','create',str(bundle),'HEAD')
         checkout.mkdir();git(checkout,'init');git(checkout,'fetch',str(bundle),'HEAD');git(checkout,'checkout','--detach','FETCH_HEAD')
-        apply=subprocess.run(['git','-c','safe.directory='+str(checkout.resolve()),'-C',str(checkout),'apply','--index','--'],input=patch,capture_output=True)
+        apply=git_run(checkout,'apply','--index','--',input=patch,check=False)
         if apply.returncode:raise PolicyError('GITHUB_EXPORT_CONFLICT_REQUIRES_HUMAN')
         guard(checkout,policy,context['member'],context['module'],context['base'])
         text=message(kind,context['module'],title,details,requirements)
@@ -36,7 +36,7 @@ def github_export(root,worktree,context,ack,kind,title,details,requirements,patc
         result={'branch':branch,'commit':git(checkout,'rev-parse','HEAD').decode().strip(),'patch_sha256':fingerprint,'buffer_id':identifier,'state':'prepared'}
         receipt.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     env={**os.environ,'GIT_TERMINAL_PROMPT':'0','GCM_INTERACTIVE':'Never'}
-    pushed=subprocess.run(['git','-c','safe.directory='+str(checkout.resolve()),'-C',str(checkout),'push',remote,result['commit']+':refs/heads/'+branch],env=env,capture_output=True,timeout=120)
+    pushed=git_run(checkout,'push',remote,result['commit']+':refs/heads/'+branch,env=env,timeout=120,check=False)
     if pushed.returncode:raise PolicyError('GITHUB_PUSH_FAILED: buffer draft is preserved; fix this member credentials and retry github-retry --submission <buffer-id>')
     result['state']='pushed';receipt.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     return result

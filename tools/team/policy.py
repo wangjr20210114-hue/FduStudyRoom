@@ -1,9 +1,13 @@
 """Frozen ownership policy shared by the team CLI; no application business logic."""
 import hashlib
 import json
+import os
 import re
 import posixpath
 import subprocess
+import tempfile
+import uuid
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 
 class PolicyError(ValueError): pass
@@ -39,9 +43,72 @@ def authorize(policy, member, module, paths):
 
     return m
 
+def git_command(root,*args):
+    """Host Git only: exact-path trust and bounded settings for this process."""
+    return ['git','-c','safe.directory='+str(Path(root).resolve()),
+            '-c','core.longpaths=true','-c','http.postBuffer=1048576',
+            '-c','pack.threads=1','-c','pack.windowMemory=32m',
+            '-C',str(root),*[str(value) for value in args]]
+
+def _git_diagnostic(root,stderr,env):
+    text=stderr.decode('utf-8',errors='replace') if isinstance(stderr,bytes) else str(stderr or '')
+    # Only stderr is retained: never record arguments, auth helpers or environment.
+    text=re.sub(r'(?i)\b[a-z][a-z0-9+.-]*://[^\s<>\x22\x27]+','[REDACTED_URL]',text)
+    text=re.sub(r'(?i)(authorization|proxy-authorization)\s*[:=][^\r\n]*',r'\1: [REDACTED]',text)
+    for key,value in env.items():
+        if value and any(tag in key.lower() for tag in ('token','password','secret','credential','signing_key','service_key')):
+            text=text.replace(value,'[REDACTED]')
+    folder=Path(root)/'.campus/git-diagnostics'
+    try:
+        folder.mkdir(mode=0o700,parents=True,exist_ok=True)
+        path=folder/(uuid.uuid4().hex+'.local')
+        descriptor=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(descriptor,'w',encoding='utf-8') as handle:handle.write(text)
+        return '.campus/git-diagnostics/'+path.name
+    except OSError:
+        return None
+
+@contextmanager
+def _git_environment(root,args,env):
+    effective=os.environ.copy() if env is None else dict(env)
+    if os.name!='nt' or not any(args[index:index+2]==('worktree','add') for index in range(len(args)-1)):
+        yield effective
+        return
+    # Native Git worktree clears -c/GIT_CONFIG_COUNT before its child checkout.
+    # An invocation-only global overlay survives that boundary. Include original
+    # files (and their relative/conditional includes) to preserve host auth/trust;
+    # never modify them, copy credential values, or persist a repository setting.
+    origins=subprocess.run(git_command(root,'var','GIT_CONFIG_GLOBAL'),env=effective,capture_output=True,timeout=30)
+    if origins.returncode:
+        raise PolicyError('GIT_GLOBAL_CONFIG_DISCOVERY_FAILED: update Git for Windows before creating deep worktrees')
+    with tempfile.TemporaryDirectory(prefix='campus-git-') as temporary:
+        config=Path(temporary)/'process.config'
+        includes=''.join('[include]\npath='+json.dumps(value.replace('\\','/'),ensure_ascii=False)+'\n'
+                         for value in origins.stdout.decode('utf-8').splitlines() if value)
+        config.write_text(includes+'[core]\nlongpaths=true\n',encoding='utf-8')
+        effective['GIT_CONFIG_GLOBAL']=str(config)
+        yield effective
+
+def git_run(root,*args,check=True,input=None,env=None,timeout=None):
+    """Run host Git; return CompletedProcess without exporting host auth to runners."""
+    effective=os.environ.copy() if env is None else env
+    try:
+        with _git_environment(root,args,env) as process_env:
+            result=subprocess.run(git_command(root,*args),input=input,env=process_env,
+                                  capture_output=True,timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        diagnostic=_git_diagnostic(root,error.stderr or b'Git operation timed out',effective)
+        raise PolicyError('GIT_TIMEOUT: check network access and retry; '+('private diagnostic='+diagnostic if diagnostic else 'private diagnostic unavailable')) from None
+    except OSError:
+        raise PolicyError('GIT_UNAVAILABLE: check that Git is installed and the repository is accessible') from None
+    if result.returncode:
+        diagnostic=_git_diagnostic(root,result.stderr,effective)
+        if check:
+            raise PolicyError('GIT_FAILED: exit='+str(result.returncode)+'; check repository access, host credentials and conflicts before retrying; '+('private diagnostic='+diagnostic if diagnostic else 'private diagnostic unavailable'))
+    return result
+
 def git(root,*args,check=True):
-    result=subprocess.run(['git','-c','safe.directory='+str(Path(root).resolve()),'-C',str(root),*args],capture_output=True,check=check)
-    return result.stdout
+    return git_run(root,*args,check=check).stdout
 
 def changed_paths(root,base):
     paths=git(root,'diff','--name-only','--no-renames','-z',base).decode('utf-8').split('\0')

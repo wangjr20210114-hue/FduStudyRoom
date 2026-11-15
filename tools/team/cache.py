@@ -208,9 +208,9 @@ def repair_cache(source, destination):
 
 
 def main():
-    if len(sys.argv) != 5:
-        raise SystemExit("Usage: cache.py SOURCE DESTINATION SOURCE DESTINATION")
-    repaired = sum(repair_cache(sys.argv[index], sys.argv[index + 1]) for index in (1, 3))
+    if len(sys.argv) < 3 or len(sys.argv) % 2 != 1:
+        raise SystemExit("Usage: cache.py SOURCE DESTINATION [SOURCE DESTINATION ...]")
+    repaired = sum(repair_cache(sys.argv[index], sys.argv[index + 1]) for index in range(1, len(sys.argv), 2))
     print("Private cache entries repaired: " + str(repaired))
 
 

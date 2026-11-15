@@ -12,3 +12,5 @@
 9. 真实健康/API冒烟，输出地址、版本、日志和受阻项；任何失败保留stage，不清理持久化数据。
 
 官方来源：Node https://nodejs.org/en/download ，Temurin API https://adoptium.net/installation/ci-scripts ，Docker https://docs.docker.com/desktop/setup/install/ 。Git使用系统包管理器或 https://git-scm.com/downloads 。
+
+成员沙箱仅修复所属层的私有依赖缓存：backend使用镜像内Maven缓存，frontend使用镜像内node_modules；仍使用原子校验修复，不挂载共享可写缓存或下载新增公共依赖。宿主Git入口按进程启用长路径和受限HTTP/pack内存，保留精确路径信任与宿主认证助手，不修改全局Git配置。Windows的worktree子进程会清除命令行配置，因此必须经过`policy.git`/`git_run`：它们创建一次性配置overlay，include原global文件并覆盖longpaths，命令结束删除；Git不支持全局配置路径查询时提示升级。失败查看`.campus/git-diagnostics/`私有脱敏诊断，冲突仍交人工处理。
