@@ -10,6 +10,7 @@ from policy import PolicyError, guard, load, git
 from environment import docker, docker_path, sandbox_project
 from workflow import source_snapshot, save, read, now
 from test_reports import parse_report, merge_reports, validate_result
+from pilot import resolve_pilot, validate_receipt_scope
 
 def report_path(value, context):
     path=PurePosixPath(value)
@@ -31,12 +32,16 @@ def record(root,args,execute=subprocess.run):
     allowed=("npm","node") if member["layer"]=="frontend" else ("mvn","java")
     if not command or command[0] not in allowed:raise PolicyError("COMMAND_OUTSIDE_LAYER")
     catalogue={q["id"]:q for q in read(Path(ctx["policy_root"])/"spec/requirements.json")["requirements"]}
+    scenario=getattr(args,"scenario",None)
+    pilot_scope=resolve_pilot(ctx["policy_root"],member,ctx["module"],scenario,args.requirement) if scenario else None
     module_run=args.requirement==ctx["module"]
     if module_run and stage not in ("baseline","regression","check"):raise PolicyError("MODULE_RUN_STAGE_INVALID")
     if not module_run and (args.requirement not in catalogue or catalogue[args.requirement]["module"]!=ctx["module"] or member["layer"] not in catalogue[args.requirement]["layers"]):raise PolicyError("REQUIREMENT_SCOPE_MISMATCH")
     output=Path(args.output).resolve()
     permitted=[Path(ctx["policy_root"]).resolve()/".campus",worktree/".campus"]
     if not any(output.is_relative_to(folder) for folder in permitted):raise PolicyError("RECEIPTS_MUST_STAY_IN_PRIVATE_CAMPUS_DIRECTORY")
+    data=read(output) if output.exists() else {}
+    validate_receipt_scope(data,pilot_scope)
     reports=[report_path(p,ctx) for p in (args.report or [])]
     if stage!="check" and not reports:raise PolicyError("ACTUAL_TEST_REPORT_REQUIRED")
     if len(reports)!=len(set(reports)):raise PolicyError("DUPLICATE_REPORT_PATH")
@@ -92,8 +97,15 @@ def record(root,args,execute=subprocess.run):
         item["result"]="ERROR";item["reason"]=str(error);save(directory/"run.local",item)
         raise
     save(directory/"run.local",item)
-    data=read(output) if output.exists() else {}
-    if module_run:data.setdefault("module",{})[stage]=item
+    if pilot_scope:
+        current=resolve_pilot(ctx["policy_root"],member,ctx["module"],scenario,args.requirement)
+        if current["source"]["sha256"]!=pilot_scope["source"]["sha256"]:raise PolicyError("PILOT_SOURCE_CHANGED_DURING_RUN")
+        data["scope"]="scenario_pilot"
+        receipt=data.setdefault("scenarios",{}).setdefault(scenario,{**pilot_scope,"version":2,"stages":{}})
+        receipt["completion_mode"]="baseline_satisfied" if item.get("existing_behavior") else args.completion_mode or receipt.get("completion_mode","tdd")
+        receipt["stages"][stage]=item
+        if item.get("existing_behavior"):receipt["stages"]["green"]=item
+    elif module_run:data.setdefault("module",{})[stage]=item
     else:
         receipt=data.setdefault("requirements",{}).setdefault(args.requirement,{})
         receipt["version"]=2
@@ -101,7 +113,7 @@ def record(root,args,execute=subprocess.run):
         receipt[stage]=item
         if item.get("existing_behavior"):receipt["green"]=item
     save(output,data)
-    print(json.dumps({"run_id":run_id,"stage":stage,"result":item["result"],"counts":item.get("test_result",{}).get("counts"),"receipt":str(output)},ensure_ascii=False))
+    print(json.dumps({"run_id":run_id,"stage":stage,"result":item["result"],"counts":item.get("test_result",{}).get("counts"),"receipt":str(output),**({"scope":"scenario_pilot","scenario":scenario,"parent_requirement":args.requirement,"status":"partial"} if pilot_scope else {})},ensure_ascii=False))
 
 def mutation(root,args):
     parent=Path(args.worktree).resolve();context=read(parent/".campus/task.local")

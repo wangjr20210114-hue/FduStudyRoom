@@ -38,7 +38,7 @@ def skill_manifest(root):
             if path.is_file() and path.suffix in (".md", ".yaml"):
                 entries[path.relative_to(root).as_posix()] = digest(path.read_bytes())
     engine={}
-    for name in ("scripts/team.py","tools/team/workflow.py","tools/team/recording.py","tools/team/test_reports.py","tools/team/policy.py","tools/team/environment.py","tools/team/members.py","tools/team/commits.py","tools/team/delivery.py"):
+    for name in ("scripts/team.py","tools/team/workflow.py","tools/team/recording.py","tools/team/pilot.py","tools/team/test_reports.py","tools/team/policy.py","tools/team/environment.py","tools/team/members.py","tools/team/commits.py","tools/team/delivery.py"):
         path=Path(root)/name
         if path.is_file():engine[name]=digest(path.read_bytes())
     return {"files":entries,"engine":engine,"sha256":digest(json.dumps({"files":entries,"engine":engine},sort_keys=True).encode())}

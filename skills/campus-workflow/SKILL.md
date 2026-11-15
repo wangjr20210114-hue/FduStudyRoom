@@ -53,7 +53,7 @@ Stage 0 启动与恢复
 
 ### Stage 0：启动、认证与恢复
 
-**执行**：核对加载的五个技能与项目源版本；需要时用install-skills的--check比较。调用campus-build检查环境，已有兼容工具与有效构建可复用；缓冲站不可达先诊断，不冒充协调人新建身份。运行 `python scripts/team.py plan <身份> --status 全部`，核对已完成项所指文件及真实审核/CI记录，再运行 `python scripts/team.py workflow <身份>`，取得workflow_id和next。指定模块加--module，仅查看用--preview。仅查询时输出状态后结束，不执行Stage 1—9。
+**执行**：核对加载的五个技能与项目源版本；需要时用install-skills的--check比较。调用campus-build检查环境，已有兼容工具与有效构建可复用；缓冲站不可达先诊断，不冒充协调人新建身份。运行 `python scripts/team.py plan <身份> --layer backend --status 全部`，核对已完成项所指文件及真实审核/CI记录，再运行 `python scripts/team.py workflow <身份> --layer backend`，取得workflow_id和next。指定模块加--module，仅查看用--preview。仅查询时输出状态后结束，不执行Stage 1—9。
 
 **输出**：已认证身份、冻结基线、已完成证据核对、本人待办及恢复点。
 
@@ -71,6 +71,10 @@ python scripts/team.py worktree b M02 --layer frontend
 ```
 
 前后端测试各自通过后，还需验证本领域的实际前后端联调。示例配置不会替换已运行缓冲站的旧成员；协调人核对交接后再调整私有配置。
+
+### 小范围场景试运行
+
+用户明确要求先试跑部分场景时，按 [场景试运行](references/pilot.md) 建立独立施工单和收据。仍须真实认证、模块容器、原文分析、行为 Red/Green、独立变异和回归；局部通过不推进正式需求完成、正式上传或生产发布。
 
 ### Stage 1：建立限界工作区（workspace）
 

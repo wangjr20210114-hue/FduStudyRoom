@@ -69,6 +69,21 @@ def plan(args):
     items=[q for q in data if (not args.module or q['module']==args.module) and (status=='all' or (q['state']=='accepted')==(status=='accepted'))]
     print(json.dumps({'member':member['id'],'layer':member['layer'],'requirements':items},ensure_ascii=False,indent=2))
 
+def pilot_command(args):
+    cfg,member=session(args)
+    if args.identity not in (member['id'],member.get('gitee')):raise PolicyError('IDENTITY_DOES_NOT_MATCH_TOKEN')
+    from pilot import resolve_pilot
+    scope=resolve_pilot(ROOT,member,args.module,args.scenario,args.requirement) if args.module else None
+    if scope is None:
+        matches=[]
+        for module in member['modules']:
+            try:matches.append(resolve_pilot(ROOT,member,module,args.scenario,args.requirement))
+            except PolicyError as error:
+                if str(error)!='PILOT_REQUIREMENT_SCOPE_MISMATCH':raise
+        if len(matches)!=1:raise PolicyError('PILOT_SCENARIO_NOT_ASSIGNED')
+        scope=matches[0]
+    print(json.dumps(scope,ensure_ascii=False,indent=2))
+
 def worktree(args):
     cfg,member=session(args);policy=load(ROOT);m=module_for(policy,args.module)
     if args.identity not in (member['id'],member.get('gitee')) or m['id'] not in member['modules']:raise PolicyError('MODULE_NOT_ASSIGNED')
@@ -220,13 +235,14 @@ def main():
     p=sub.add_parser('workflow-unblock');p.add_argument('--run',required=True);p.add_argument('--module',required=True);p.add_argument('--requirement',required=True);p.add_argument('--resolution',required=True)
     p=sub.add_parser('mutation');p.add_argument('--worktree',required=True)
     p=sub.add_parser('plan');p.add_argument('identity');p.add_argument('--layer',choices=['frontend','backend']);p.add_argument('--status',default='未完成');p.add_argument('--module')
+    p=sub.add_parser('pilot');p.add_argument('identity');p.add_argument('--layer',choices=['frontend','backend']);p.add_argument('--module');p.add_argument('--scenario',required=True);p.add_argument('--requirement')
     p=sub.add_parser('worktree');p.add_argument('identity');p.add_argument('module');p.add_argument('--layer',choices=['frontend','backend'])
     for name in ['guard','sandbox','submit']:
         p=sub.add_parser(name);p.add_argument('--worktree',required=True)
         if name=='sandbox':p.add_argument('--start',action='store_true')
         if name=='submit':
             p.add_argument('--evidence',required=True);p.add_argument('--requirements',required=True);p.add_argument('--summary',required=True);p.add_argument('--type',choices=['feat','fix','refactor'],required=True);p.add_argument('--detail',action='append',required=True);p.add_argument('--workflow');p.add_argument('--no-github',action='store_true')
-    p=sub.add_parser('record');p.add_argument('--worktree',required=True);p.add_argument('--requirement',required=True);p.add_argument('--stage',choices=['baseline','red','green','mutation','regression','check'],required=True);p.add_argument('--output',required=True);p.add_argument('--assertion',default='');p.add_argument('--report',action='append');p.add_argument('--require-test',action='append');p.add_argument('--kind',choices=['unit','component','api','db','e2e','contract','build']);p.add_argument('--completion-mode',choices=['tdd','baseline_satisfied']);p.add_argument('test_command',nargs=argparse.REMAINDER)
+    p=sub.add_parser('record');p.add_argument('--scenario');p.add_argument('--worktree',required=True);p.add_argument('--requirement',required=True);p.add_argument('--stage',choices=['baseline','red','green','mutation','regression','check'],required=True);p.add_argument('--output',required=True);p.add_argument('--assertion',default='');p.add_argument('--report',action='append');p.add_argument('--require-test',action='append');p.add_argument('--kind',choices=['unit','component','api','db','e2e','contract','build']);p.add_argument('--completion-mode',choices=['tdd','baseline_satisfied']);p.add_argument('test_command',nargs=argparse.REMAINDER)
     p=sub.add_parser('provision-member');p.add_argument('identity');p.add_argument('--gitee');p.add_argument('--layer',choices=['frontend','backend','fullstack'],required=True);p.add_argument('--modules',required=True);p.add_argument('--replace',help='Replace the retired example member without keeping overlapping ownership')
     p=sub.add_parser('build');p.add_argument('--install',action='store_true');p.add_argument('--start',action='store_true');p.add_argument('--buffer',action='store_true')
     args=parser.parse_args()
@@ -234,6 +250,7 @@ def main():
     elif args.command=='github-retry':github_retry(args)
     elif args.command=='install-skills':install_skills(args)
     elif args.command=='plan':plan(args)
+    elif args.command=='pilot':pilot_command(args)
     elif args.command=='worktree':worktree(args)
     elif args.command=='workflow':workflow_command(args)
     elif args.command=='workflow-checkpoint':workflow_checkpoint(args)

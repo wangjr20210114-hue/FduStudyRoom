@@ -47,4 +47,12 @@ class TddEvidenceTest {
   assertEquals("MUTATION_ASSERTIONS_CHANGED",assertThrows(GateException.class,()->TddEvidence.check(data,List.of("RES-01"))).code);
  }
  @Test void legacyTddStillAccepted(){var data=receipt();data.remove("version");for(String stage:List.of("red","green","mutation")){stage(data,stage).remove("test_result");stage(data,stage).remove("source");stage(data,stage).remove("run_id");}assertDoesNotThrow(()->TddEvidence.check(data,List.of("RES-01")));}
+ @Test void scenarioPilotCannotBecomeFormalReceipt(){
+  var data=receipt();data.put("scope","scenario_pilot");
+  assertEquals("PILOT_EVIDENCE_IS_NOT_FORMAL_DELIVERY",assertThrows(GateException.class,()->TddEvidence.check(data,List.of("RES-01"))).code);
+ }
+ @Test void extractedPilotReceiptCannotBecomeFormalRequirement(){
+  var data=receipt();data.put("scope","scenario_pilot");
+  assertEquals("PILOT_EVIDENCE_IS_NOT_FORMAL_DELIVERY",assertThrows(GateException.class,()->TddEvidence.check(Map.of("requirements",Map.of("RES-01",data)),List.of("RES-01"))).code);
+ }
 }

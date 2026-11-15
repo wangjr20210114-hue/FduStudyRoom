@@ -5,6 +5,7 @@ final class TddEvidence {
  private TddEvidence(){}
  static void fail(String code){throw new GateException(400,code);}
  @SuppressWarnings("unchecked") static void check(Map<String,Object> evidence,List<String> ids){
+  if(evidence!=null&&"scenario_pilot".equals(evidence.get("scope")))fail("PILOT_EVIDENCE_IS_NOT_FORMAL_DELIVERY");
   if(evidence!=null&&evidence.get("requirements") instanceof Map<?,?>){
    var receipts=(Map<String,Map<String,Object>>)evidence.get("requirements");
    if(!receipts.keySet().equals(new HashSet<>(ids)))fail("TDD_REQUIREMENT_RECEIPTS_MISMATCH");
@@ -12,6 +13,7 @@ final class TddEvidence {
   }else{if(ids.size()!=1)fail("PER_REQUIREMENT_TDD_RECEIPTS_REQUIRED");receipt(evidence);}
  }
  @SuppressWarnings("unchecked") static void receipt(Map<String,Object> evidence){
+  if(evidence!=null&&"scenario_pilot".equals(evidence.get("scope")))fail("PILOT_EVIDENCE_IS_NOT_FORMAL_DELIVERY");
   if(evidence==null)fail("TDD_EVIDENCE_REQUIRED");
   String mode=Objects.toString(evidence.getOrDefault("completion_mode","tdd"));
   if(!Set.of("tdd","baseline_satisfied").contains(mode))fail("UNKNOWN_COMPLETION_MODE");

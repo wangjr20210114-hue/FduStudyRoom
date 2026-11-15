@@ -21,10 +21,12 @@ def save(path,data):
     except OSError:pass
 
 def docker(root):
-    found=shutil.which('docker')
-    if found:return [found]
+    # A WSL source path belongs to that distribution's engine, even if Docker
+    # Desktop has also installed a native Windows CLI on PATH.
     match=re.match(r'^\\\\wsl(?:\.localhost|\$)\\([^\\]+)',str(root),re.I)
     if os.name=='nt' and match:return ['wsl.exe','-d',match[1],'--exec','docker']
+    found=shutil.which('docker')
+    if found:return [found]
     raise PolicyError('DOCKER_MISSING: install Docker Desktop/Engine and start it; IDE absence is only a notice')
 
 def docker_path(path):
@@ -126,11 +128,11 @@ def sandbox(root,worktree,policy,member,ctx,start=False):
     for frozen in policy.get('protected_paths',[]):
         if not frozen.endswith('/') and any(frozen.startswith(prefix) for prefix in m['write_paths'][member['layer']]) and (worktree/frozen).is_file():volumes.append({'type':'bind','source':docker_path(worktree/frozen),'target':'/workspace/'+frozen,'read_only':True})
     volumes+=[{'type':'volume','source':'m2','target':'/cache/m2'},{'type':'volume','source':'node_modules','target':'/workspace/frontend/node_modules'}]
-    data={'services':{'postgres':{'image':PG,'environment':{'POSTGRES_USER':'module_user','POSTGRES_PASSWORD':password,'POSTGRES_DB':'module_test'},'volumes':['postgres:/var/lib/postgresql'],'networks':['private'],'healthcheck':{'test':['CMD-SHELL','pg_isready -U module_user -d module_test'],'interval':'2s','retries':20}},'runner':{'image':'fdu-campus-ci:baseline','read_only':True,'working_dir':'/workspace','command':['sleep','infinity'],'cap_drop':['ALL'],'security_opt':['no-new-privileges:true'],'pids_limit':256,'mem_limit':'2g','cpus':2,'tmpfs':['/tmp:rw,nosuid,nodev,size=1g','/workspace/backend/platform-common/target:rw','/workspace/backend/resource-service/target:rw','/workspace/backend/workflow-service/target:rw','/workspace/frontend/dist:rw'],'volumes':volumes,'environment':{'CAMPUS_SANDBOX':'1','CAMPUS_DB_URL':'jdbc:postgresql://postgres:5432/module_test','CAMPUS_DB_USER':'module_user','CAMPUS_DB_PASSWORD':password},'networks':['private'],'depends_on':{'postgres':{'condition':'service_healthy'}}}},'networks':{'private':{'internal':True,'driver_opts':{'com.docker.network.bridge.gateway_mode_ipv4':'isolated'}}},'volumes':{'postgres':{},'m2':{},'node_modules':{}}}
+    data={'services':{'postgres':{'image':PG,'environment':{'POSTGRES_USER':'module_user','POSTGRES_PASSWORD':password,'POSTGRES_DB':'module_test'},'volumes':['postgres:/var/lib/postgresql'],'networks':['private'],'healthcheck':{'test':['CMD-SHELL','pg_isready -U module_user -d module_test'],'interval':'2s','retries':20}},'runner':{'image':'fdu-campus-ci:baseline','read_only':True,'working_dir':'/workspace','command':['sleep','infinity'],'cap_drop':['ALL'],'security_opt':['no-new-privileges:true'],'pids_limit':256,'mem_limit':'2g','cpus':2,'tmpfs':['/tmp:rw,nosuid,nodev,size=1g','/workspace/.campus:ro,nosuid,nodev,noexec,size=1m,mode=0555','/workspace/backend/platform-common/target:rw','/workspace/backend/resource-service/target:rw','/workspace/backend/workflow-service/target:rw','/workspace/frontend/dist:rw'],'volumes':volumes,'environment':{'CAMPUS_SANDBOX':'1','CAMPUS_DB_URL':'jdbc:postgresql://postgres:5432/module_test','CAMPUS_DB_USER':'module_user','CAMPUS_DB_PASSWORD':password},'networks':['private'],'depends_on':{'postgres':{'condition':'service_healthy'}}}},'networks':{'private':{'internal':True,'driver_opts':{'com.docker.network.bridge.gateway_mode_ipv4':'isolated'}}},'volumes':{'postgres':{},'m2':{},'node_modules':{}}}
     if member['layer']=='frontend':
         del data['services']['postgres'];data['services']['runner'].pop('depends_on',None);data['services']['runner'].pop('networks',None);data['services']['runner']['network_mode']='none';data['services']['runner']['environment']={'CAMPUS_SANDBOX':'1'};data.pop('networks',None);data['volumes'].pop('postgres',None)
     if start:data['services']['runner']['user']=bind_identity(root,'fdu-campus-ci:baseline',worktree)
-    data['services']['runner']['environment'].update({'HOME':'/tmp/campus-home','MAVEN_USER_HOME':'/cache/m2','MAVEN_CONFIG':'/cache/m2','npm_config_cache':'/tmp/npm-cache'})
+    data['services']['runner']['environment'].update({'HOME':'/tmp/campus-home','MAVEN_USER_HOME':'/cache/m2','MAVEN_CONFIG':'/cache/m2','MAVEN_ARGS':'-Dmaven.repo.local=/cache/m2/repository','npm_config_cache':'/tmp/npm-cache'})
     compose=home/'sandbox.local.json';save(compose,data)
     if start:
         run(dc+['compose','-p',project,'-f',docker_path(compose),'up','-d','--wait'])

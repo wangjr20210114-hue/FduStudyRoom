@@ -78,6 +78,7 @@ def guard(root,policy,member,module,base):
 
 def evidence_valid(evidence,requirements=None,strict=False):
     if not isinstance(evidence,dict):raise PolicyError('TDD_EVIDENCE_REQUIRED')
+    if evidence.get('scope')=='scenario_pilot' or 'scenarios' in evidence:raise PolicyError('SCENARIO_PILOT_IS_NOT_FORMAL_REQUIREMENT_EVIDENCE')
     if 'requirements' in evidence:
         receipts=evidence['requirements']
         if not isinstance(receipts,dict) or not receipts or (requirements is not None and set(receipts)!=set(requirements)):raise PolicyError('TDD_REQUIREMENT_RECEIPTS_MISMATCH')

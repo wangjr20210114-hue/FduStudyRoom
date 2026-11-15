@@ -91,6 +91,10 @@ class WorkflowTests(unittest.TestCase):
   state=block(self.root,self.state["id"],"M02","RES-01","external","no API","authorized endpoint reachable")
   self.assertEqual("blocked",next_action(state)["stage"])
   self.assertEqual("no API",state["modules"]["M02"]["blocked"]["RES-01"]["reason"])
+ def test_pilot_engine_change_invalidates_workflow_fingerprint(self):
+  engine=self.root/"tools/team/pilot.py";engine.parent.mkdir(parents=True,exist_ok=True);engine.write_text("pilot changed")
+  with self.assertRaisesRegex(PolicyError,"WORKFLOW_SKILL_VERSION_CHANGED"):
+   open_workflow(self.root,self.member,[self.q])
  def test_skill_change_requires_explicit_upgrade(self):
   (self.root/"skills/campus-test/SKILL.md").write_text("changed fixture")
   with self.assertRaises(PolicyError):open_workflow(self.root,self.member,[self.q])
