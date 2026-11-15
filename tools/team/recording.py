@@ -9,7 +9,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
-from policy import PolicyError, guard, load, git
+from policy import PolicyError, guard, load, git, git_run
 from environment import docker, docker_path, sandbox_project
 from workflow import source_snapshot, save, read, now
 from test_reports import parse_report, merge_reports, validate_result
@@ -193,7 +193,7 @@ def mutation(root,args):
     patch=git(parent,"diff","--binary","--no-renames",context["base"])
     git(parent,"worktree","add","--detach",str(target),context["base"])
     if patch:
-        process=subprocess.run(["git","-c","safe.directory="+str(target),"-C",str(target),"apply","--binary","-"],input=patch,capture_output=True)
+        process=git_run(target,"apply","--binary","-",input=patch,check=False)
         if process.returncode:raise PolicyError("MUTATION_COPY_PATCH_FAILED: preserve the copy for review")
     for name in git(parent,"ls-files","--others","--exclude-standard","-z").decode().split("\0"):
         if name:

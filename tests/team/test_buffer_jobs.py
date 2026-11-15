@@ -81,6 +81,89 @@ class BufferJobTests(unittest.TestCase):
              patch.object(buffer_job.subprocess, 'run', side_effect=self.fake_run):
             return buffer_job.verify(self.config, self.item)
 
+    def advance_baseline(self):
+        original = self.config['baseline']
+        (self.repo / 'README.md').write_text('new current baseline\n', encoding='utf-8')
+        git(self.repo, 'add', 'README.md')
+        git(self.repo, 'commit', '-m', 'advance coordinator baseline')
+        self.config['baseline'] = git(self.repo, 'rev-parse', 'HEAD').decode().strip()
+        return original
+
+    def assert_original_base_delivery(self, result, original):
+        home = self.root / '.campus/buffer/jobs' / self.item['id'] / 'workspace'
+        self.assertEqual('VERIFIED', result['state'])
+        self.assertEqual(original, git(home, 'rev-parse', 'HEAD^').decode().strip(),
+                         'Historical delivery must retain its original parent, never rebase onto current')
+        self.assertEqual('fixture\n', (home / 'README.md').read_text(encoding='utf-8'))
+        target = home / 'backend/workflow-service/src/main/java/com/campus/notification/Fixture.java'
+        self.assertEqual('package com.campus.notification;\nclass Fixture {}\n', target.read_text(encoding='utf-8'))
+        self.assertEqual(hashlib.sha256(base64.b64decode(self.item['patch'])).hexdigest(), result['patch_sha256'])
+        self.assertEqual(self.config['baseline'], git(self.repo, 'rev-parse', 'HEAD').decode().strip())
+        self.assertEqual('new current baseline\n', (self.repo / 'README.md').read_text(encoding='utf-8'))
+
+    def test_explicitly_approved_history_verifies_original_base_and_patch_after_advance(self):
+        original = self.advance_baseline()
+        self.config['approvedBaselines'] = [original]
+        try:
+            result = self.run_verify()
+        except PolicyError as error:
+            self.fail('A server-approved historical submission must remain verifiable after baseline advance: ' + str(error))
+        self.assert_original_base_delivery(result, original)
+
+    def test_unapproved_ancestor_and_member_supplied_approval_are_rejected(self):
+        original = self.advance_baseline()
+        for forged in [None, [original]]:
+            with self.subTest(member_approval=forged):
+                if forged is not None: self.item['metadata']['approvedBaselines'] = forged
+                with self.assertRaisesRegex(PolicyError, 'BASELINE_CHANGED'):
+                    self.run_verify()
+                self.assertEqual([], self.commands)
+        self.assertFalse((self.root / '.campus/buffer/jobs').exists())
+
+    def test_omitted_approval_list_preserves_current_baseline_behavior(self):
+        self.assertNotIn('approvedBaselines', self.config)
+        self.assertEqual('VERIFIED', self.run_verify()['state'])
+
+    def test_malformed_server_approval_configuration_is_rejected(self):
+        for values in [None, 'a' * 40, {}, [None], ['main'], ['a' * 39], ['A' * 40]]:
+            with self.subTest(approved=values):
+                self.config['approvedBaselines'] = values
+                with self.assertRaisesRegex(PolicyError, 'INVALID_APPROVED_BASELINES'):
+                    self.run_verify()
+                self.assertEqual([], self.commands)
+        self.config.pop('approvedBaselines')
+        self.config['baseline'] = 'main'
+        with self.assertRaisesRegex(PolicyError, 'INVALID_APPROVED_BASELINES'):
+            self.run_verify()
+
+    def test_missing_or_noncommit_approved_objects_are_rejected_even_for_current_item(self):
+        blob = git(self.repo, 'hash-object', '-w', 'README.md').decode().strip()
+        for value in ['f' * 40, blob]:
+            with self.subTest(approved=value):
+                self.config['approvedBaselines'] = [value]
+                with self.assertRaisesRegex(PolicyError, 'APPROVED_BASELINE_NOT_COMMIT'):
+                    self.run_verify()
+                self.assertEqual([], self.commands)
+        self.config.pop('approvedBaselines')
+        self.config['baseline'] = self.item['metadata']['base'] = 'f' * 40
+        with self.assertRaisesRegex(PolicyError, 'APPROVED_BASELINE_NOT_COMMIT'):
+            self.run_verify()
+
+    def test_historical_approval_does_not_replace_human_review(self):
+        original = self.advance_baseline()
+        self.config['approvedBaselines'] = [original]
+        self.item['reviewer'] = self.item['member_id']
+        with self.assertRaisesRegex(PolicyError, 'HUMAN_REVIEW_REQUIRED'):
+            self.run_verify()
+        self.assertEqual([], self.commands)
+
+    def real_docker_services_from_approved_history(self):
+        original = self.advance_baseline()
+        self.config['approvedBaselines'] = [original]
+        self.real_docker_services()
+        result = json.loads((self.root / '.campus/buffer/jobs' / self.item['id'] / 'verified.local').read_text())
+        self.assert_original_base_delivery(result, original)
+
     def test_backend_runner_gets_own_mailpit_and_separate_databases(self):
         result = self.run_verify()
         self.assertEqual('VERIFIED', result['state'])
@@ -251,7 +334,7 @@ print('REAL_SMTP_DB_ISOLATION_PASS')
             self.assertIn('REAL_SMTP_DB_ISOLATION_PASS', (home / 'ci.log').read_text())
             if fail:
                 self.assertFalse((home / 'verified.local').exists())
-                self.assertEqual(self.config['baseline'], git(home / 'workspace', 'rev-parse', 'HEAD').decode().strip())
+                self.assertEqual(self.item['metadata']['base'], git(home / 'workspace', 'rev-parse', 'HEAD').decode().strip())
             dc = buffer_job.docker(self.root)
             for suffix in ('-db', '-smtp', '-runner'):
                 self.assertNotEqual(0, subprocess.run(dc + ['container', 'inspect', 'fdu-ci-' + identifier + suffix], capture_output=True).returncode)
