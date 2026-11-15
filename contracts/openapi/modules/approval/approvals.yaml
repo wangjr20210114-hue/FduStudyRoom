@@ -1,0 +1,159 @@
+openapi: 3.1.0
+info:
+  title: M04 Multi-level approval decisions
+  version: 1.0.0
+  description: |
+    M2-02 only. Operates on an existing M2-01 request and immutable workflow snapshot.
+    This change does not implement request submission, global workflow configuration,
+    notification delivery, expiration scheduling, or resource allocation.
+    Request IDs and task IDs are local persisted objects; actor identity and permissions
+    are resolved by the common Cookie security chain and RemoteIdentityLookup on every request.
+    No caller-supplied user ID, role or permission is accepted.
+paths:
+  /api/approvals/requests/{requestId}:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    get:
+      operationId: readClassroomApproval
+      security:
+        - session: []
+      description: Requires approval:read AND applicant/assigned-approver participation.
+      responses:
+        '200':
+          description: Submission-time snapshot, ordered tasks and current version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Approval'
+        '401':
+          description: Missing, invalid or revoked session.
+        '403':
+          description: Missing current permission or not a participant.
+        '404':
+          description: Unknown request.
+  /api/approvals/requests/{requestId}/tasks/{taskId}/decision:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - in: path
+        name: taskId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: decideClassroomApproval
+      security:
+        - session: []
+          csrf: []
+      description: |
+        Requires approval:decide and the exact assigned approver of the current task.
+        At least two contiguous distinct non-applicant approvers are required.
+        Actual prior decision makers are checked independently from assignments.
+        Each accepted decision increments request.version once. A row lock and version
+        condition serialize competing decisions. Rejection requires a nonblank reason
+        and cancels later tasks. The last approval produces RESOURCE_PENDING;
+        it never produces APPROVED or acquires a room/seat allocation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, decision]
+              properties:
+                expectedVersion:
+                  type: integer
+                  minimum: 1
+                decision:
+                  type: string
+                  enum: [APPROVE, REJECT]
+                comment:
+                  type: [string, 'null']
+                  maxLength: 2000
+      responses:
+        '200':
+          description: Persisted decision and next snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Approval'
+        '400':
+          description: Invalid decision, version, unknown fields or blank rejection reason.
+        '401':
+          description: Missing, invalid or revoked session.
+        '403':
+          description: CSRF failure, permission failure, wrong actor, self approval or repeated actor.
+        '404':
+          description: Unknown request/task pair.
+        '409':
+          description: Version conflict, expired request/task, terminal request or non-current step.
+        '422':
+          description: Invalid stored plan (fewer than two, noncontiguous or invalid approvers).
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-FDU_SESSION
+      description: FDU_SESSION in the approved local HTTP profile.
+    csrf:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Common Spring Security CSRF token paired with its CSRF cookie.
+  parameters:
+    RequestId:
+      in: path
+      name: requestId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    Approval:
+      type: object
+      required: [requestId, status, version, flowVersion, expiresAt, tasks]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, RESOURCE_PENDING, APPROVED, REJECTED, CANCELLED, EXPIRED, CONFLICT]
+        version:
+          type: integer
+        flowVersion:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        tasks:
+          type: array
+          items:
+            type: object
+            required: [id, stepNo, approverId, status]
+            properties:
+              id:
+                type: string
+                format: uuid
+              stepNo:
+                type: integer
+                minimum: 1
+              approverId:
+                type: string
+                format: uuid
+              status:
+                type: string
+                enum: [WAITING, PENDING, APPROVED, REJECTED, EXPIRED, CANCELLED]
+              dueAt:
+                type: [string, 'null']
+                format: date-time
+              actedAt:
+                type: [string, 'null']
+                format: date-time
+              decidedBy:
+                type: [string, 'null']
+                format: uuid
+              comment:
+                type: [string, 'null']
