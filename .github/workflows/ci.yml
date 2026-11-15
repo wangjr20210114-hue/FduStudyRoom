@@ -2,6 +2,7 @@ name: Product CI
 on:
   push:
     branches: ['**']
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,6 +32,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 2
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -43,8 +45,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Commit description
+        env:
+          DESCRIPTION_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          git show -s --format=%B "$GITHUB_SHA" > /tmp/commit-description.txt
+          git show -s --format=%B "$DESCRIPTION_COMMIT" > /tmp/commit-description.txt
           python3 scripts/check-commit.py /tmp/commit-description.txt
       - name: Prepare isolated PostgreSQL test databases
         env:
@@ -101,7 +105,7 @@ jobs:
           path: /tmp/product.tar.gz
           retention-days: 7
   deploy-huawei:
-    if: vars.HUAWEI_SITE_READY == 'true'
+    if: github.event_name != 'pull_request' && vars.HUAWEI_SITE_READY == 'true'
     needs: verify-package
     runs-on: ubuntu-latest
     timeout-minutes: 20
