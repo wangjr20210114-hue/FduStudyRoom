@@ -1,0 +1,361 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "M04 room request lifecycle",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/api/approvals/requests": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Applied or idempotent result"
+          },
+          "400": {
+            "description": "Invalid fields"
+          },
+          "401": {
+            "description": "Current session or service key required"
+          },
+          "403": {
+            "description": "Permission and object scope denied"
+          },
+          "409": {
+            "description": "Version/idempotency/business conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable"
+          },
+          "201": {
+            "description": "Created PENDING request"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "roomId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "attendeeCount": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "operationId",
+                  "roomId",
+                  "startsAt",
+                  "endsAt",
+                  "purpose",
+                  "attendeeCount"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Applied or idempotent result"
+          },
+          "400": {
+            "description": "Invalid fields"
+          },
+          "401": {
+            "description": "Current session or service key required"
+          },
+          "403": {
+            "description": "Permission and object scope denied"
+          },
+          "409": {
+            "description": "Version/idempotency/business conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable"
+          }
+        }
+      }
+    },
+    "/api/approvals/tasks": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Applied or idempotent result"
+          },
+          "400": {
+            "description": "Invalid fields"
+          },
+          "401": {
+            "description": "Current session or service key required"
+          },
+          "403": {
+            "description": "Permission and object scope denied"
+          },
+          "409": {
+            "description": "Version/idempotency/business conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable"
+          }
+        }
+      }
+    },
+    "/api/approvals/configuration": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Applied or idempotent result"
+          },
+          "400": {
+            "description": "Invalid fields"
+          },
+          "401": {
+            "description": "Current session or service key required"
+          },
+          "403": {
+            "description": "Permission and object scope denied"
+          },
+          "409": {
+            "description": "Version/idempotency/business conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable"
+          }
+        }
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Applied or idempotent result"
+          },
+          "400": {
+            "description": "Invalid fields"
+          },
+          "401": {
+            "description": "Current session or service key required"
+          },
+          "403": {
+            "description": "Permission and object scope denied"
+          },
+          "409": {
+            "description": "Version/idempotency/business conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "approverIds": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 20,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                },
+                "required": [
+                  "expectedVersion",
+                  "approverIds"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/approvals/candidates": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Applied or idempotent result"
+          },
+          "400": {
+            "description": "Invalid fields"
+          },
+          "401": {
+            "description": "Current session or service key required"
+          },
+          "403": {
+            "description": "Permission and object scope denied"
+          },
+          "409": {
+            "description": "Version/idempotency/business conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable"
+          }
+        }
+      }
+    },
+    "/api/approvals/requests/{id}/cancel": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Applied or idempotent result"
+          },
+          "400": {
+            "description": "Invalid fields"
+          },
+          "401": {
+            "description": "Current session or service key required"
+          },
+          "403": {
+            "description": "Permission and object scope denied"
+          },
+          "409": {
+            "description": "Version/idempotency/business conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "operationId",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/internal/approvals/maintenance-events": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Applied or idempotent result"
+          },
+          "400": {
+            "description": "Invalid fields"
+          },
+          "401": {
+            "description": "Current session or service key required"
+          },
+          "403": {
+            "description": "Permission and object scope denied"
+          },
+          "409": {
+            "description": "Version/idempotency/business conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sourceVersion": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "roomId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "effectiveAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "operationId",
+                  "sourceId",
+                  "sourceVersion",
+                  "roomId",
+                  "active",
+                  "effectiveAt"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

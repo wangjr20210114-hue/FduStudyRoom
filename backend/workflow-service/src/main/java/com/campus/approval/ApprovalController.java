@@ -12,7 +12,7 @@ public class ApprovalController {
     public ApprovalController(ApprovalService service) { this.service = service; }
 
     @GetMapping("/{requestId}")
-    public ApprovalService.ApprovalView read(@PathVariable UUID requestId,
+    public Object read(@PathVariable UUID requestId,
             @AuthenticationPrincipal IdentityPrincipal actor) {
         return service.read(requestId, actor);
     }

@@ -2,68 +2,714 @@
   "version": 2,
   "module": "M04",
   "layer": "backend",
-  "source_snapshots": [
-    {
-      "path": "spec/requirements.json",
-      "sha256": "2d81f4d10992e69130b1bbb4201da8a913415466e563cc977831b1a87493cb4e",
-      "full_value": {
-        "id": "M2-02",
-        "module": "M04",
-        "title": "多级审批通过与驳回",
-        "source": {
-          "kind": "derived",
-          "pdf_pages": [
-            1
-          ],
-          "note": "由任务书约束推导，属于需验收的设计决策"
-        },
-        "acceptance": [
-          "至少两级审批，处理顺序和处理人明确",
-          "禁止申请人自审，同一人不能重复通过同一申请多级",
-          "并发处理通过版本或锁防止重复决策"
-        ],
-        "layers": [
-          "backend",
-          "frontend"
-        ],
-        "baseline_status": {
-          "backend": "pending",
-          "frontend": "pending"
-        },
-        "external_dependencies": [],
-        "verification": {
-          "red": "新增行为测试，未实现时必须以目标断言失败",
-          "green": "实现后同一测试通过，相关回归通过",
-          "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
-        },
-        "evidence": [],
-        "execution_owner": "member",
-        "integration_dependencies": [
-          "IAM-05",
-          "RES-04",
-          "RES-06",
-          "SUP-01",
-          "SUP-02"
-        ]
-      }
-    },
-    {
-      "path": "spec/specs/S040.md",
-      "sha256": "058bfd32aa668adfc9d0c5c38179045d4485f55e8856cea54ff5301ac8f18f9d",
-      "full_text": "# 审批人依次通过或说明理由后驳回\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s040sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n审批人按顺序办理，越级操作被拒绝。最后一级通过后仍需确认教室占用，不能立即宣称资源已落实。\n\n### 操作步骤与预期结果\n\n1. Q1当前等admin1一级审批，二级为admin2。\n2. admin2先尝试办理，系统拒绝，状态不变。\n3. admin1通过后，再由admin2通过，每次合法决定只推进一级。\n4. 最后进入资源确认阶段，尚不直接显示已落实。\n\n<details>\n<summary>场景编号与精确规则补充（S040.SC01）</summary>\n\n- 场景名称：按顺序审批，不能跳过前一级\n- 场景编号：S040.SC01\n\n**对应的业务要求**\n\n- M2-02.AC1：至少两级，先后顺序和每级办理人明确\n\n**精确条件**\n\n- Q1当前一级admin1，二级admin2\n\n**精确动作**\n\n- 先由admin2尝试，再由admin1通过，最后admin2通过\n\n**结果与约束**\n\n- 越级拒绝且状态不变；每次合法决策仅推进一级，最终进入资源确认而非直接宣称已落实\n\n</details>\n\n<a id=\"s040sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n申请人不能审批自己的申请，同一个管理员也不能包办同一申请的多个审批级别。\n\n### 操作步骤与预期结果\n\n1. 申请人尝试审批自己的申请，系统拒绝。\n2. 另在旧配置中，同一管理员兼任两级，并尝试跨级重复通过。\n3. 系统同样拒绝，不因管理员身份而免除自审和多级人员限制。\n\n<details>\n<summary>场景编号与精确规则补充（S040.SC02）</summary>\n\n- 场景名称：申请人不能自审，同一个人不能包办两级\n- 场景编号：S040.SC02\n\n**对应的业务要求**\n\n- M2-02.AC2：不能审批自己的申请，同一人不能包办同一申请的多个审批级\n\n**精确条件**\n\n- 申请人尝试审批；另有管理员兼任两级的旧配置\n\n**精确动作**\n\n- 分别提交自审及重复跨级决策\n\n**结果与约束**\n\n- 自审和重复跨级均拒绝；不因同为管理员就放行\n\n</details>\n\n<a id=\"s040sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n同一级审批的通过和驳回同时提交时，只能一个决定生效；另一个收到旧版本冲突，驳回还必须提供理由。\n\n### 操作步骤与预期结果\n\n1. Q1处于同一级、同一版本，admin1准备通过与带理由的驳回。\n2. 两份决定同时提交。\n3. 系统只保存一次该版本决定，另一份提示资料已变化，不能覆盖。\n4. 驳回没有理由时不能提交。\n\n<details>\n<summary>场景编号与精确规则补充（S040.SC03）</summary>\n\n- 场景名称：同时点击通过和驳回，只能有一个结果生效\n- 场景编号：S040.SC03\n\n**对应的业务要求**\n\n- M2-02.AC3：同时作决定时，用版本检查或锁保证不重复生效\n\n**精确条件**\n\n- Q1同一级同版本，admin1分别发通过和附理由驳回\n\n**精确动作**\n\n- 用事务屏障并发提交两决策\n\n**结果与约束**\n\n- 恰有一个生效，另一个旧版本冲突；历史只有一次该版本决策，驳回必须非空理由\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S040\n- 业务分组：整室申请与审批\n- 范围：核心业务\n- 对应要求：M2-02\n- 有关业务功能：[S039 管理员设置逐级审批的人选和期限](S039.md)。\n- 相关业务规则：[P04](../policies.md#p04)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
-    }
-  ],
-  "boundary": {
-    "observed": [
-      "approval模块Java为空；公共SecurityConfiguration使用Cookie/CSRF；RemoteIdentityLookup每请求HTTP校验权限。"
-    ],
-    "unverified": [
-      "前端、共同IAM/资源/通知服务联调；M2-01申请提交和M2-03资源占用不属于本轮。"
-    ]
-  },
   "requirements": [
     {
-      "id": "M2-02",
+      "id": "M2-01",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1,
+          2
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "通过权限和资格门槛后提交，普通用户不得自授资格",
+        "申请人、教室、时段、用途经校验",
+        "提交不等于审批通过，不向用户承诺已占用"
+      ],
+      "scenarios": [
+        {
+          "id": "M2-01.S01",
+          "business_scene_refs": [
+            "S038.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n有整室申请资格的用户填写教室、时段和用途，提交后得到待审批申请，此时不表示已经订到教室。\n\n### 操作步骤与预期结果\n\n1. applicant1已获申请权限和资格，打开整室申请页面。\n2. 选择R101、10:00—12:00，用途填写“课程讨论”，点击提交。\n3. 系统保存申请人、教室、时段和用途，生成本人待审批申请。\n4. 页面不显示已通过或已占用教室。\n\n<details>\n<summary>场景编号与精确规则补充（S038.SC01）</summary>\n\n- 场景名称：填好教室、时间和用途后，进入待审批\n- 场景编号：S038.SC01\n\n**对应的业务要求**\n\n- M2-01.AC1：先检查权限和资格，普通用户不能自己给自己资格\n- M2-01.AC2：检查申请人、教室、时段和用途\n- M2-01.AC3：提交后只是待审批，不说已经通过或订到教室\n\n**精确条件**\n\n- applicant1已获权限和can_apply_room=true；R101存在\n\n**精确动作**\n\n- 提交R101的10:00—12:00及用途“课程讨论”\n\n**结果与约束**\n\n- 创建本人待审批申请，保存申请人/时段/用途，界面不显示已占用或已审批通过\n\n</details>\n\n",
+          "preconditions": [
+            "applicant1已获整室申请权限和资格；R101存在。"
+          ],
+          "actions": [
+            "打开整室申请页面，选择R101和10:00—12:00。",
+            "用途填写“课程讨论”，点击“提交”。"
+          ],
+          "expected": [
+            "生成本人待审批申请，保存申请人、时段和用途。页面不能在此时显示已审批通过或已占用教室。"
+          ],
+          "covers": [
+            1,
+            2,
+            3
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-01.S01#1",
+              "criterion": 1,
+              "basis": "通过权限和资格门槛后提交，普通用户不得自授资格",
+              "kind": "api",
+              "expected": "生成本人待审批申请，保存申请人、时段和用途。页面不能在此时显示已审批通过或已占用教室。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#submitsQualifiedPendingAndIdempotent",
+                "com.campus.approval.ApprovalLifecycleTest#rejectsUnqualifiedForgedAndInvalidSubmission",
+                "com.campus.approval.ApprovalLifecycleTest#configurationValidatesPermissionsAndSnapshots",
+                "com.campus.approval.ApprovalLifecycleTest#missingConfigurationAndSelfApproverRejected"
+              ]
+            },
+            {
+              "id": "M2-01.S01#2",
+              "criterion": 2,
+              "basis": "申请人、教室、时段、用途经校验",
+              "kind": "api",
+              "expected": "生成本人待审批申请，保存申请人、时段和用途。页面不能在此时显示已审批通过或已占用教室。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#submitsQualifiedPendingAndIdempotent",
+                "com.campus.approval.ApprovalLifecycleTest#rejectsUnqualifiedForgedAndInvalidSubmission",
+                "com.campus.approval.ApprovalLifecycleTest#configurationValidatesPermissionsAndSnapshots",
+                "com.campus.approval.ApprovalLifecycleTest#missingConfigurationAndSelfApproverRejected"
+              ]
+            },
+            {
+              "id": "M2-01.S01#3",
+              "criterion": 3,
+              "basis": "提交不等于审批通过，不向用户承诺已占用",
+              "kind": "api",
+              "expected": "生成本人待审批申请，保存申请人、时段和用途。页面不能在此时显示已审批通过或已占用教室。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#submitsQualifiedPendingAndIdempotent",
+                "com.campus.approval.ApprovalLifecycleTest#rejectsUnqualifiedForgedAndInvalidSubmission",
+                "com.campus.approval.ApprovalLifecycleTest#configurationValidatesPermissionsAndSnapshots",
+                "com.campus.approval.ApprovalLifecycleTest#missingConfigurationAndSelfApproverRejected"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-01.S02",
+          "business_scene_refs": [
+            "S038.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n无整室资格的用户在请求中自称有资格或冒充他人，系统仍按实际登录身份拒绝，不创建申请或占座。\n\n### 操作步骤与预期结果\n\n1. user1没有整室申请资格。\n2. user1提交请求，把资格填为有，并把申请人写成applicant1。\n3. 系统仍以user1检查并拒绝，不生成申请或资源占用。\n\n<details>\n<summary>场景编号与精确规则补充（S038.SC02）</summary>\n\n- 场景名称：自己在请求里填写资格，不能获得申请权限\n- 场景编号：S038.SC02\n\n**对应的业务要求**\n\n- M2-01.AC1：先检查权限和资格，普通用户不能自己给自己资格\n\n**精确条件**\n\n- user1无整室资格\n\n**精确动作**\n\n- 在请求体填写can_apply_room=true和applicant1身份后提交\n\n**结果与约束**\n\n- 仍按user1拒绝；不建申请、不占座，不通过前端伪造资格\n\n</details>\n\n",
+          "preconditions": [
+            "user1没有整室申请资格。"
+          ],
+          "actions": [
+            "开发者用user1提交申请，把请求中的资格改为有，并把申请人写成applicant1。"
+          ],
+          "expected": [
+            "后端仍按user1拒绝，不创建申请、不占座位。不能依靠篡改页面请求获得资格。"
+          ],
+          "covers": [
+            1
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-01.S02#1",
+              "criterion": 1,
+              "basis": "通过权限和资格门槛后提交，普通用户不得自授资格",
+              "kind": "api",
+              "expected": "后端仍按user1拒绝，不创建申请、不占座位。不能依靠篡改页面请求获得资格。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#submitsQualifiedPendingAndIdempotent",
+                "com.campus.approval.ApprovalLifecycleTest#rejectsUnqualifiedForgedAndInvalidSubmission",
+                "com.campus.approval.ApprovalLifecycleTest#configurationValidatesPermissionsAndSnapshots",
+                "com.campus.approval.ApprovalLifecycleTest#missingConfigurationAndSelfApproverRejected"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-01.S03",
+          "business_scene_refs": [
+            "S038.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n有资格的申请人填写空用途、无效教室或不合理时段时，系统指出输入问题，不留下半份申请或占用。\n\n### 操作步骤与预期结果\n\n1. applicant1打开整室申请页面。\n2. 分别提交空用途、不存在教室、结束早于开始以及超出开放时间的请求。\n3. 每次均提示输入问题，不创建部分申请，也不占用资源。\n\n<details>\n<summary>场景编号与精确规则补充（S038.SC03）</summary>\n\n- 场景名称：用途空着、教室不对或时间不合理，都不能提交\n- 场景编号：S038.SC03\n\n**对应的业务要求**\n\n- M2-01.AC2：检查申请人、教室、时段和用途\n- M2-01.AC3：提交后只是待审批，不说已经通过或订到教室\n\n**精确条件**\n\n- applicant1有资格\n\n**精确动作**\n\n- 分别提交空用途、不存在教室、结束早于开始或超出开放时段\n\n**结果与约束**\n\n- 各次输入校验失败；没有部分申请或资源占用\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S038\n- 业务分组：整室申请与审批\n- 范围：核心业务\n- 对应要求：M2-01\n- 有关业务功能：[S005 管理员修改账号权限和使用资格](S005.md)、[S007 所有功能都按当前登录人的身份和权限处理](S007.md)、[S014 管理员新增、修改和停用教室](S014.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P04](../policies.md#p04)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "preconditions": [
+            "applicant1有申请资格。"
+          ],
+          "actions": [
+            "分别提交空用途、不存在的教室、结束早于开始的时段，以及超出开放时间的时段。"
+          ],
+          "expected": [
+            "每次都提示输入问题，不留下只填了一部分的申请，也不占用资源。"
+          ],
+          "covers": [
+            2,
+            3
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-01.S03#1",
+              "criterion": 2,
+              "basis": "申请人、教室、时段、用途经校验",
+              "kind": "api",
+              "expected": "每次都提示输入问题，不留下只填了一部分的申请，也不占用资源。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#submitsQualifiedPendingAndIdempotent",
+                "com.campus.approval.ApprovalLifecycleTest#rejectsUnqualifiedForgedAndInvalidSubmission",
+                "com.campus.approval.ApprovalLifecycleTest#configurationValidatesPermissionsAndSnapshots",
+                "com.campus.approval.ApprovalLifecycleTest#missingConfigurationAndSelfApproverRejected"
+              ]
+            },
+            {
+              "id": "M2-01.S03#2",
+              "criterion": 3,
+              "basis": "提交不等于审批通过，不向用户承诺已占用",
+              "kind": "api",
+              "expected": "每次都提示输入问题，不留下只填了一部分的申请，也不占用资源。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#submitsQualifiedPendingAndIdempotent",
+                "com.campus.approval.ApprovalLifecycleTest#rejectsUnqualifiedForgedAndInvalidSubmission",
+                "com.campus.approval.ApprovalLifecycleTest#configurationValidatesPermissionsAndSnapshots",
+                "com.campus.approval.ApprovalLifecycleTest#missingConfigurationAndSelfApproverRejected"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M2-03",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          2
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "最终审批通过通过HTTP请求统一占用",
+        "座位冲突则申请不能展示为已落实成功",
+        "覆盖整个时段全部座位且保留M2来源"
+      ],
+      "scenarios": [
+        {
+          "id": "M2-03.S01",
+          "business_scene_refs": [
+            "S041.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n最后一级审批通过后，系统通过资源接口确认整间教室占用。只有所有座位都订下，申请才显示已落实。\n\n### 操作步骤与预期结果\n\n1. Q1两级审批已通过，R101两个座位在指定时段空闲。\n2. 审批服务通过真实资源接口提交整室占用请求。\n3. 所有座位确认后，用户打开Q1看到已落实，来源记录对应Q1和该时段。\n4. 同步不直接改资源数据库。\n\n<details>\n<summary>场景编号与精确规则补充（S041.SC01）</summary>\n\n- 场景名称：所有座位都确认占用后，申请才显示已落实\n- 场景编号：S041.SC01\n\n**对应的业务要求**\n\n- M2-03.AC1：最后一级通过后，调用资源接口统一占用\n- M2-03.AC3：整个时段的全部座位都覆盖，并能追到对应整室申请\n\n**精确条件**\n\n- Q1两级通过，R101两座在T无冲突\n\n**精确动作**\n\n- 最终审批通过后调用资源公开HTTP并查询申请\n\n**结果与约束**\n\n- 全部座位占用确认后才展示已落实；来源M2/Q1覆盖T，不写资源私库\n\n</details>\n\n",
+          "preconditions": [
+            "Q1两级审批均通过，R101两个座位在指定时段空闲。"
+          ],
+          "actions": [
+            "由审批服务通过真实资源接口占用教室，再打开Q1查看结果。"
+          ],
+          "expected": [
+            "全部座位确认占用后，申请才显示已落实；占用记录对应这笔整室申请和时段，不直接修改资源数据库。"
+          ],
+          "covers": [
+            1,
+            3
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-03.S01#1",
+              "criterion": 1,
+              "basis": "最终审批通过通过HTTP请求统一占用",
+              "kind": "api",
+              "expected": "全部座位确认占用后，申请才显示已落实；占用记录对应这笔整室申请和时段，不直接修改资源数据库。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#confirmsAtomicRoomOnlyAfterAcknowledgment",
+                "com.campus.approval.ApprovalLifecycleTest#conflictsRemainPendingAndRetrySameCommand",
+                "com.campus.approval.ApprovalLifecycleTest#unknownAcknowledgmentReconcilesWithoutDuplicateAllocation",
+                "com.campus.approval.ApprovalLifecycleTest#permissionRemovedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#departmentChangedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#revokedDuringAcknowledgmentCompensatesAndRetriesHigherVersion"
+              ]
+            },
+            {
+              "id": "M2-03.S01#2",
+              "criterion": 3,
+              "basis": "覆盖整个时段全部座位且保留M2来源",
+              "kind": "api",
+              "expected": "全部座位确认占用后，申请才显示已落实；占用记录对应这笔整室申请和时段，不直接修改资源数据库。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#confirmsAtomicRoomOnlyAfterAcknowledgment",
+                "com.campus.approval.ApprovalLifecycleTest#conflictsRemainPendingAndRetrySameCommand",
+                "com.campus.approval.ApprovalLifecycleTest#unknownAcknowledgmentReconcilesWithoutDuplicateAllocation",
+                "com.campus.approval.ApprovalLifecycleTest#permissionRemovedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#departmentChangedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#revokedDuringAcknowledgmentCompensatesAndRetriesHigherVersion"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-03.S02",
+          "business_scene_refs": [
+            "S041.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n整室审批通过时，如果已有个人预约占了一个座位，申请仍不能显示已落实，也不能把剩余座位先占下来。\n\n### 操作步骤与预期结果\n\n1. A01在该时段已有个人预约，Q1完成最终审批。\n2. 系统尝试落实整室占用。\n3. 申请显示资源冲突或未落实，不显示已通过并落实。\n4. A02不留下这次整室占用，A01的原预约不变。\n\n<details>\n<summary>场景编号与精确规则补充（S041.SC02）</summary>\n\n- 场景名称：有人已经订走一个座位，就不能把整室显示为成功\n- 场景编号：S041.SC02\n\n**对应的业务要求**\n\n- M2-03.AC2：座位冲突时不能显示申请已落实\n\n**精确条件**\n\n- A01的T有个人预约，Q1最终审批完成\n\n**精确动作**\n\n- 尝试落实整室占用\n\n**结果与约束**\n\n- 申请显示资源冲突/未落实而非APPROVED；A02无本申请残留，原预约不变\n\n</details>\n\n",
+          "preconditions": [
+            "A01在该时段有个人预约，Q1已完成最终审批。"
+          ],
+          "actions": [
+            "让系统尝试落实整室占用。"
+          ],
+          "expected": [
+            "Q1显示资源冲突或未落实，不显示已通过并落实。A02不能留下这次整室占用，原个人预约不变。"
+          ],
+          "covers": [
+            2
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-03.S02#1",
+              "criterion": 2,
+              "basis": "座位冲突则申请不能展示为已落实成功",
+              "kind": "api",
+              "expected": "Q1显示资源冲突或未落实，不显示已通过并落实。A02不能留下这次整室占用，原个人预约不变。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#confirmsAtomicRoomOnlyAfterAcknowledgment",
+                "com.campus.approval.ApprovalLifecycleTest#conflictsRemainPendingAndRetrySameCommand",
+                "com.campus.approval.ApprovalLifecycleTest#unknownAcknowledgmentReconcilesWithoutDuplicateAllocation",
+                "com.campus.approval.ApprovalLifecycleTest#permissionRemovedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#departmentChangedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#revokedDuringAcknowledgmentCompensatesAndRetriesHigherVersion"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-03.S03",
+          "business_scene_refs": [
+            "S041.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n落实整室占用时遇到网络超时，页面先显示资源确认中，系统沿用原操作核对，得到真实结果后才显示成功。\n\n### 操作步骤与预期结果\n\n1. 资源接口调用超时，结果暂时不明。\n2. 用户打开Q1，页面显示资源确认中。\n3. 系统使用同一申请编号和版本重试核对，不新增另一份整室占用。\n4. 取得真实确认后，申请才显示成功。\n\n<details>\n<summary>场景编号与精确规则补充（S041.SC03）</summary>\n\n- 场景名称：网络超时看不清结果时，先显示正在确认\n- 场景编号：S041.SC03\n\n**对应的业务要求**\n\n- M2-03.AC1：最后一级通过后，调用资源接口统一占用\n- M2-03.AC2：座位冲突时不能显示申请已落实\n\n**精确条件**\n\n- 资源调用超时无法确认结果\n\n**精确动作**\n\n- 查询Q1并重试同一命令\n\n**结果与约束**\n\n- 先显示资源确认中；相同业务ID/版本对账，不新建整室占用，取得真实确认后才成功\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S041\n- 业务分组：整室申请与审批\n- 范围：核心业务\n- 对应要求：M2-03\n- 有关业务功能：[S018 整间教室要么全部订到，要么全部不订](S018.md)、[S020 查清座位为什么被占用，并避免重复操作](S020.md)、[S040 审批人依次通过或说明理由后驳回](S040.md)。\n- 相关业务规则：[P01](../policies.md#p01)、[P04](../policies.md#p04)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "preconditions": [
+            "调用资源接口超时，暂时无法判断是否成功。"
+          ],
+          "actions": [
+            "打开Q1查看状态，让系统用同一次命令重试核对。"
+          ],
+          "expected": [
+            "先显示资源确认中，不重复新建占用；按原申请和版本查清，得到真实确认后才显示成功。"
+          ],
+          "covers": [
+            1,
+            2
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-03.S03#1",
+              "criterion": 1,
+              "basis": "最终审批通过通过HTTP请求统一占用",
+              "kind": "api",
+              "expected": "先显示资源确认中，不重复新建占用；按原申请和版本查清，得到真实确认后才显示成功。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#confirmsAtomicRoomOnlyAfterAcknowledgment",
+                "com.campus.approval.ApprovalLifecycleTest#conflictsRemainPendingAndRetrySameCommand",
+                "com.campus.approval.ApprovalLifecycleTest#unknownAcknowledgmentReconcilesWithoutDuplicateAllocation",
+                "com.campus.approval.ApprovalLifecycleTest#permissionRemovedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#departmentChangedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#revokedDuringAcknowledgmentCompensatesAndRetriesHigherVersion"
+              ]
+            },
+            {
+              "id": "M2-03.S03#2",
+              "criterion": 2,
+              "basis": "座位冲突则申请不能展示为已落实成功",
+              "kind": "api",
+              "expected": "先显示资源确认中，不重复新建占用；按原申请和版本查清，得到真实确认后才显示成功。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#confirmsAtomicRoomOnlyAfterAcknowledgment",
+                "com.campus.approval.ApprovalLifecycleTest#conflictsRemainPendingAndRetrySameCommand",
+                "com.campus.approval.ApprovalLifecycleTest#unknownAcknowledgmentReconcilesWithoutDuplicateAllocation",
+                "com.campus.approval.ApprovalLifecycleTest#permissionRemovedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#departmentChangedBeforeAllocationDoesNotApply",
+                "com.campus.approval.ApprovalLifecycleTest#revokedDuringAcknowledgmentCompensatesAndRetriesHigherVersion"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M2-04",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1,
+          2
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "到expires_at自动撤销；申请人按规则可撤销",
+        "驳回/撤销只幂等释放本申请资源",
+        "超时与审批并发不产生已撤销却继续占用"
+      ],
+      "scenarios": [
+        {
+          "id": "M2-04.S01",
+          "business_scene_refs": [
+            "S039.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n审批至少两级，且由不同、非申请人的人员办理。无效配置不能保存，未落实申请到截止可撤销，已落实的不会因此结束使用。\n\n### 操作步骤与预期结果\n\n1. 管理员分别尝试只设一级、两级用同一人，或让申请人审批自己。\n2. 系统拒绝这些配置，保留有效流程。\n3. 示例到09:00时，一笔仍未落实的申请达到截止，可按规则撤销。\n4. 已落实的预约不因审批期限到达而自动结束。\n\n<details>\n<summary>场景编号与精确规则补充（S039.SC03）</summary>\n\n- 场景名称：流程不能少于两级，也不能让申请人审批自己\n- 场景编号：S039.SC03\n\n**对应的业务要求**\n\n- M2-02.AC1：至少两级，先后顺序和每级办理人明确\n- M2-02.AC2：不能审批自己的申请，同一人不能包办同一申请的多个审批级\n- M2-04.AC1：未落实申请到截止自动撤销，申请人也可按规则主动撤销\n\n**精确条件**\n\n- 至少两级、不同非申请人处理的规则已启用\n\n**精确动作**\n\n- 尝试配置一级、重复同人或申请人作审批人；再在09:00读取未落实单\n\n**结果与约束**\n\n- 非法配置拒绝；未落实单到截止可撤销，不把审批截止当已落实预约的使用结束\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S039\n- 业务分组：整室申请与审批\n- 范围：核心业务\n- 对应要求：M2-02、M2-04\n- 有关业务功能：[S006 管理员设置预约时长和各类时限](S006.md)、[S038 有资格的用户提交整间教室申请](S038.md)。\n- 相关业务规则：[P04](../policies.md#p04)、[P10](../policies.md#p10)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "preconditions": [
+            "已启用至少两级、不同人员审批且申请人不能自审的规则。"
+          ],
+          "actions": [
+            "尝试只设一级、两级设同一个人，或把申请人设为审批人。",
+            "再到09:00查看一笔仍未落实的申请。"
+          ],
+          "expected": [
+            "错误配置不能保存。未落实的申请到截止可撤销；已经落实的预约不会因为审批期限到达就结束使用。"
+          ],
+          "covers": [
+            1
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-04.S01#1",
+              "criterion": 1,
+              "basis": "到expires_at自动撤销；申请人按规则可撤销",
+              "kind": "api",
+              "expected": "错误配置不能保存。未落实的申请到截止可撤销；已经落实的预约不会因为审批期限到达就结束使用。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#applicantWithdrawalAndAdminBoundary",
+                "com.campus.approval.ApprovalLifecycleTest#startedOnlyAdminWithReasonAndEndedDenied",
+                "com.campus.approval.ApprovalLifecycleTest#deadlineAndStartReachedCancelPendingButNotApproved",
+                "com.campus.approval.ApprovalLifecycleTest#cancellationRacesLateAllocationAndLeavesReleaseTombstone"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-04.S02",
+          "business_scene_refs": [
+            "S042.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n未落实的申请到审批截止时自动撤销并释放自己的可能占用；已经落实的预约不受审批截止影响。\n\n### 操作步骤与预期结果\n\n1. Q1尚未落实，截止为09:00。\n2. 08:59:59处理到期任务，申请继续保留。\n3. 09:00再次处理，系统撤销Q1，只释放它可能已产生的占用，重复处理也不多释放。\n4. 已落实申请不会因审批期限到达自动取消。\n\n<details>\n<summary>场景编号与精确规则补充（S042.SC01）</summary>\n\n- 场景名称：审批期限到了，只撤销尚未落实的申请\n- 场景编号：S042.SC01\n\n**对应的业务要求**\n\n- M2-04.AC1：未落实申请到截止自动撤销，申请人也可按规则主动撤销\n- M2-04.AC2：驳回或撤销只释放本申请资源，重复处理不多释放\n\n**精确条件**\n\n- Q1 expires_at=09:00且尚未落实\n\n**精确动作**\n\n- 分别在08:59:59、09:00运行到期任务\n\n**结果与约束**\n\n- 前者保留，后者撤销并幂等释放本申请可能的资源；已落实单不因审批截止自动取消\n\n</details>\n\n",
+          "preconditions": [
+            "Q1尚未落实，审批截止时间是09:00。"
+          ],
+          "actions": [
+            "分别在08:59:59和09:00运行到期检查。"
+          ],
+          "expected": [
+            "前一次保留，后一次撤销，并且只释放这笔申请可能已产生的占用，重复处理也不多释放。已经落实的申请不因审批期限到达而自动取消。"
+          ],
+          "covers": [
+            1,
+            2
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-04.S02#1",
+              "criterion": 1,
+              "basis": "到expires_at自动撤销；申请人按规则可撤销",
+              "kind": "api",
+              "expected": "前一次保留，后一次撤销，并且只释放这笔申请可能已产生的占用，重复处理也不多释放。已经落实的申请不因审批期限到达而自动取消。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#applicantWithdrawalAndAdminBoundary",
+                "com.campus.approval.ApprovalLifecycleTest#startedOnlyAdminWithReasonAndEndedDenied",
+                "com.campus.approval.ApprovalLifecycleTest#deadlineAndStartReachedCancelPendingButNotApproved",
+                "com.campus.approval.ApprovalLifecycleTest#cancellationRacesLateAllocationAndLeavesReleaseTombstone"
+              ]
+            },
+            {
+              "id": "M2-04.S02#2",
+              "criterion": 2,
+              "basis": "驳回/撤销只幂等释放本申请资源",
+              "kind": "api",
+              "expected": "前一次保留，后一次撤销，并且只释放这笔申请可能已产生的占用，重复处理也不多释放。已经落实的申请不因审批期限到达而自动取消。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#applicantWithdrawalAndAdminBoundary",
+                "com.campus.approval.ApprovalLifecycleTest#startedOnlyAdminWithReasonAndEndedDenied",
+                "com.campus.approval.ApprovalLifecycleTest#deadlineAndStartReachedCancelPendingButNotApproved",
+                "com.campus.approval.ApprovalLifecycleTest#cancellationRacesLateAllocationAndLeavesReleaseTombstone"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-04.S03",
+          "business_scene_refs": [
+            "S042.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n申请开始前，申请人可以撤销自己的申请；其他用户不能代撤销。开始后普通申请人不再能撤销，管理员另需权限和理由。\n\n### 操作步骤与预期结果\n\n1. Q1属于applicant1，10:00开始，当前09:30。\n2. user2尝试撤销，系统拒绝。\n3. applicant1撤销并重复一次，系统保持同一撤销结果，不影响其他来源。\n4. 另对已开始申请尝试普通用户撤销，系统拒绝；管理员操作需权限及理由。\n\n<details>\n<summary>场景编号与精确规则补充（S042.SC02）</summary>\n\n- 场景名称：开始前申请人可以撤销，其他人不能代撤销\n- 场景编号：S042.SC02\n\n**对应的业务要求**\n\n- M2-04.AC1：未落实申请到截止自动撤销，申请人也可按规则主动撤销\n- M2-04.AC2：驳回或撤销只释放本申请资源，重复处理不多释放\n\n**精确条件**\n\n- Q1在10:00开始，now=09:30，applicant1为申请人\n\n**精确动作**\n\n- user2撤销后由applicant1撤销并重复一次\n\n**结果与约束**\n\n- user2被拒；本人撤销成功且重复不影响其他来源；开始后普通申请人撤销被拒，管理员需理由\n\n</details>\n\n",
+          "preconditions": [
+            "Q1由applicant1申请，10:00开始，当前09:30。"
+          ],
+          "actions": [
+            "先由user2尝试撤销，再由applicant1撤销并重复一次。",
+            "另测试开始后普通申请人再撤销。"
+          ],
+          "expected": [
+            "user2被拒绝；本人开始前撤销成功，重复操作不影响别的业务。开始后普通申请人不能撤销，管理员需有权限并说明理由。"
+          ],
+          "covers": [
+            1,
+            2
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-04.S03#1",
+              "criterion": 1,
+              "basis": "到expires_at自动撤销；申请人按规则可撤销",
+              "kind": "api",
+              "expected": "user2被拒绝；本人开始前撤销成功，重复操作不影响别的业务。开始后普通申请人不能撤销，管理员需有权限并说明理由。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#applicantWithdrawalAndAdminBoundary",
+                "com.campus.approval.ApprovalLifecycleTest#startedOnlyAdminWithReasonAndEndedDenied",
+                "com.campus.approval.ApprovalLifecycleTest#deadlineAndStartReachedCancelPendingButNotApproved",
+                "com.campus.approval.ApprovalLifecycleTest#cancellationRacesLateAllocationAndLeavesReleaseTombstone"
+              ]
+            },
+            {
+              "id": "M2-04.S03#2",
+              "criterion": 2,
+              "basis": "驳回/撤销只幂等释放本申请资源",
+              "kind": "api",
+              "expected": "user2被拒绝；本人开始前撤销成功，重复操作不影响别的业务。开始后普通申请人不能撤销，管理员需有权限并说明理由。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#applicantWithdrawalAndAdminBoundary",
+                "com.campus.approval.ApprovalLifecycleTest#startedOnlyAdminWithReasonAndEndedDenied",
+                "com.campus.approval.ApprovalLifecycleTest#deadlineAndStartReachedCancelPendingButNotApproved",
+                "com.campus.approval.ApprovalLifecycleTest#cancellationRacesLateAllocationAndLeavesReleaseTombstone"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-04.S04",
+          "business_scene_refs": [
+            "S042.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n资源确认与审批到期同时发生时，申请只能保留一个有效结果；若撤销生效，后来确认的占用要补做释放。\n\n### 操作步骤与预期结果\n\n1. Q1正在确认资源，时间到达审批截止。\n2. 系统同时处理资源最终回复和到期撤销。\n3. 最终只有一个有效结果；撤销先完成时，迟到占用会被释放。\n4. 用户不能看到已撤销申请仍长期占着座位的结果。\n\n<details>\n<summary>场景编号与精确规则补充（S042.SC03）</summary>\n\n- 场景名称：确认教室和到期撤销撞在一起，也不会撤销后仍占座\n- 场景编号：S042.SC03\n\n**对应的业务要求**\n\n- M2-04.AC3：到期和审批同时发生，不能留下已撤销却仍占座的结果\n\n**精确条件**\n\n- Q1资源确认在途，now推进expires_at\n\n**精确动作**\n\n- 同时执行最终响应处理和超时撤销\n\n**结果与约束**\n\n- 只允许一个有效终态；若撤销胜出，迟到占用必须补偿释放，不能出现已撤销仍占座\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S042\n- 业务分组：整室申请与审批\n- 范围：核心业务\n- 对应要求：M2-04\n- 有关业务功能：[S040 审批人依次通过或说明理由后驳回](S040.md)、[S041 最后一级通过后，确认整间教室确实订下](S041.md)。\n- 相关业务规则：[P04](../policies.md#p04)、[P14](../policies.md#p14)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "preconditions": [
+            "Q1正在确认资源，测试时间到达审批截止。"
+          ],
+          "actions": [
+            "开发者同时处理资源最终回复和到期撤销。"
+          ],
+          "expected": [
+            "最终只能保留一个有效结果。如果撤销先完成，后来才确认的占用要补做释放，不能出现申请已撤销但座位一直被它占着。"
+          ],
+          "covers": [
+            3
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-04.S04#1",
+              "criterion": 3,
+              "basis": "超时与审批并发不产生已撤销却继续占用",
+              "kind": "api",
+              "expected": "最终只能保留一个有效结果。如果撤销先完成，后来才确认的占用要补做释放，不能出现申请已撤销但座位一直被它占着。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#applicantWithdrawalAndAdminBoundary",
+                "com.campus.approval.ApprovalLifecycleTest#startedOnlyAdminWithReasonAndEndedDenied",
+                "com.campus.approval.ApprovalLifecycleTest#deadlineAndStartReachedCancelPendingButNotApproved",
+                "com.campus.approval.ApprovalLifecycleTest#cancellationRacesLateAllocationAndLeavesReleaseTombstone"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M2-05",
       "source": {
         "kind": "derived",
         "pdf_pages": [
@@ -72,237 +718,344 @@
         "note": "由任务书约束推导，属于需验收的设计决策"
       },
       "acceptance": [
-        "至少两级审批，处理顺序和处理人明确",
-        "禁止申请人自审，同一人不能重复通过同一申请多级",
-        "并发处理通过版本或锁防止重复决策"
+        "本人可查本人申请，审批人只查授权任务",
+        "每次决策包含处理人、时间、结果和必要理由",
+        "状态变更投递通知和审计"
       ],
       "scenarios": [
         {
-          "id": "M2-02.S01",
+          "id": "M2-05.S01",
+          "business_scene_refs": [
+            "S043.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n申请列表和审批任务分别按身份权限展示，指定他人申请编号也不能读取不该看的详情或用途。\n\n### 操作步骤与预期结果\n\n1. applicant1有Q1、user2有Q2，admin1只获授权办理当前任务。\n2. 申请人打开自己的列表，只看到本人申请。\n3. 审批人打开任务列表，只看到授权范围。\n4. 任一账号指定无权查看的申请详情时被拒绝，不泄露他人用途。\n\n<details>\n<summary>场景编号与精确规则补充（S043.SC01）</summary>\n\n- 场景名称：申请人看自己的申请，审批人看获授权的任务\n- 场景编号：S043.SC01\n\n**对应的业务要求**\n\n- M2-05.AC1：申请人看自己的申请，审批人只看获授权任务\n\n**精确条件**\n\n- applicant1有Q1，user2有Q2，admin1仅有当前授权任务\n\n**精确动作**\n\n- 分别查询列表及越权指定详情ID\n\n**结果与约束**\n\n- 申请人只见本人；审批人只见授权任务/范围，越权详情拒绝，不泄漏他人用途\n\n</details>\n\n",
+          "preconditions": [
+            "applicant1有Q1，user2有Q2；admin1只获授权办理当前任务。"
+          ],
+          "actions": [
+            "分别打开申请列表或审批任务，再尝试用他人申请编号查看详情。"
+          ],
+          "expected": [
+            "申请人只看到自己的申请，审批人只看到权限范围内的内容。越权详情被拒绝，不泄露他人的申请用途。"
+          ],
           "covers": [
             1
           ],
-          "original_text": "### 场景概述\n\n审批人按顺序办理，越级操作被拒绝。最后一级通过后仍需确认教室占用，不能立即宣称资源已落实。\n\n### 操作步骤与预期结果\n\n1. Q1当前等admin1一级审批，二级为admin2。\n2. admin2先尝试办理，系统拒绝，状态不变。\n3. admin1通过后，再由admin2通过，每次合法决定只推进一级。\n4. 最后进入资源确认阶段，尚不直接显示已落实。",
-          "business_scene_refs": [
-            "S040.SC01"
-          ],
-          "preconditions": [
-            "本人隔离 PostgreSQL 中直接构造申请与任务前态，RemoteIdentityLookup 通过本地 HTTP 可信身份夹具返回当前权限，不代表 IAM 共同联调。"
-          ],
-          "actions": [
-            "通过真实 Cookie/CSRF HTTP 请求读取任务并提交决策；并发场景用起跑屏障同时发送两个同版本请求。"
-          ],
-          "expected": [
-            "至少两级审批，处理顺序和处理人明确"
-          ],
           "depends_on": [],
           "objects": [
             {
               "kind": "api",
-              "key": "/api/approvals/requests/{requestId}",
+              "key": "/api/approvals/requests",
               "status": "missing",
-              "evidence": "approval Java目录为空；GET当前不存在，S040要求明确进度。"
-            },
-            {
-              "kind": "api",
-              "key": "/api/approvals/requests/{requestId}/tasks/{taskId}/decision",
-              "status": "missing",
-              "evidence": "approval Java目录为空；S040顺序/防自审/并发决定。"
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
             },
             {
               "kind": "table",
-              "key": "m2.classroom_requests + m2.approval_tasks",
+              "key": "m2.outbox/configuration/maintenance_sources",
               "status": "missing",
-              "evidence": "本轮契约确认业务表尚未实现，docs/02表设计。"
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
             }
           ],
           "cells": [
             {
-              "id": "M2-02.S01#1",
+              "id": "M2-05.S01#1",
               "criterion": 1,
-              "basis": "至少两级审批，处理顺序和处理人明确",
+              "basis": "本人可查本人申请，审批人只查授权任务",
               "kind": "api",
-              "expected": "orderedTwoLevelFlow: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
-              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
-              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
-              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "expected": "申请人只看到自己的申请，审批人只看到权限范围内的内容。越权详情被拒绝，不泄露他人的申请用途。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
               "test_ids": [
-                "com.campus.approval.ApprovalHttpTest#orderedTwoLevelFlow"
-              ]
-            },
-            {
-              "id": "M2-02.S01#2",
-              "criterion": 1,
-              "basis": "至少两级审批，处理顺序和处理人明确",
-              "kind": "api",
-              "expected": "designatedActorAndReadScope: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
-              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
-              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
-              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
-              "test_ids": [
-                "com.campus.approval.ApprovalHttpTest#designatedActorAndReadScope"
-              ]
-            },
-            {
-              "id": "M2-02.S01#3",
-              "criterion": 1,
-              "basis": "至少两级审批，处理顺序和处理人明确",
-              "kind": "api",
-              "expected": "singleLevelPlanDenied: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
-              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
-              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
-              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
-              "test_ids": [
-                "com.campus.approval.ApprovalHttpTest#singleLevelPlanDenied"
+                "com.campus.approval.ApprovalLifecycleTest#scopedListsAndHistoryPreserveReasons",
+                "com.campus.approval.ApprovalLifecycleTest#bilingualNoticesVerifiedAddressAndSafeTraceAudit",
+                "com.campus.approval.ApprovalLifecycleTest#unverifiedEmailStillCreatesInAppNotification",
+                "com.campus.approval.ApprovalLifecycleTest#maintenanceAggregatesSourcesAndNeverReleasesM2",
+                "com.campus.approval.ApprovalLifecycleTest#maintenanceRejectsForgedAndIgnoresOldActiveAfterRecovery",
+                "com.campus.approval.ApprovalLifecycleTest#denialLeavesSafeAuditAndConfigurationHasNoSelfEscalation"
               ]
             }
           ]
         },
         {
-          "id": "M2-02.S02",
+          "id": "M2-05.S02",
+          "business_scene_refs": [
+            "S043.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n申请详情的时间线按顺序展示每次审批的人、时间、结果和理由，后面的决定不会覆盖前面的记录。\n\n### 操作步骤与预期结果\n\n1. Q1经历一级通过、二级驳回。\n2. 用户打开Q1详情并查看办理时间线。\n3. 每一步可见处理人、时间、结果和流程版本，驳回还包含必要理由。\n4. 后续状态不覆盖旧审批记录。\n\n<details>\n<summary>场景编号与精确规则补充（S043.SC02）</summary>\n\n- 场景名称：能看到每一级是谁在什么时候作了什么决定\n- 场景编号：S043.SC02\n\n**对应的业务要求**\n\n- M2-05.AC2：每次决定保存处理人、时间、结果和必要理由\n\n**精确条件**\n\n- Q1经历一级通过及二级驳回\n\n**精确动作**\n\n- 查看申请时间线\n\n**结果与约束**\n\n- 逐项有处理人、时间、结果、流程/版本和必要驳回理由；旧记录不被更新覆盖\n\n</details>\n\n",
+          "preconditions": [
+            "Q1曾第一级通过、第二级驳回。"
+          ],
+          "actions": [
+            "打开Q1详情，查看办理时间线。"
+          ],
+          "expected": [
+            "每一步显示处理人、时间、结果、流程版本及必要的驳回理由。后续结果不覆盖之前的记录。"
+          ],
           "covers": [
             2
           ],
-          "original_text": "### 场景概述\n\n申请人不能审批自己的申请，同一个管理员也不能包办同一申请的多个审批级别。\n\n### 操作步骤与预期结果\n\n1. 申请人尝试审批自己的申请，系统拒绝。\n2. 另在旧配置中，同一管理员兼任两级，并尝试跨级重复通过。\n3. 系统同样拒绝，不因管理员身份而免除自审和多级人员限制。",
-          "business_scene_refs": [
-            "S040.SC02"
-          ],
-          "preconditions": [
-            "本人隔离 PostgreSQL 中直接构造申请与任务前态，RemoteIdentityLookup 通过本地 HTTP 可信身份夹具返回当前权限，不代表 IAM 共同联调。"
-          ],
-          "actions": [
-            "通过真实 Cookie/CSRF HTTP 请求读取任务并提交决策；并发场景用起跑屏障同时发送两个同版本请求。"
-          ],
-          "expected": [
-            "禁止申请人自审，同一人不能重复通过同一申请多级"
-          ],
           "depends_on": [],
           "objects": [
             {
               "kind": "api",
-              "key": "/api/approvals/requests/{requestId}",
+              "key": "/api/approvals/requests",
               "status": "missing",
-              "evidence": "approval Java目录为空；GET当前不存在，S040要求明确进度。"
-            },
-            {
-              "kind": "api",
-              "key": "/api/approvals/requests/{requestId}/tasks/{taskId}/decision",
-              "status": "missing",
-              "evidence": "approval Java目录为空；S040顺序/防自审/并发决定。"
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
             },
             {
               "kind": "table",
-              "key": "m2.classroom_requests + m2.approval_tasks",
+              "key": "m2.outbox/configuration/maintenance_sources",
               "status": "missing",
-              "evidence": "本轮契约确认业务表尚未实现，docs/02表设计。"
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
             }
           ],
           "cells": [
             {
-              "id": "M2-02.S02#1",
+              "id": "M2-05.S02#1",
               "criterion": 2,
-              "basis": "禁止申请人自审，同一人不能重复通过同一申请多级",
+              "basis": "每次决策包含处理人、时间、结果和必要理由",
               "kind": "api",
-              "expected": "applicantCannotSelfApprove: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
-              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
-              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
-              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "expected": "每一步显示处理人、时间、结果、流程版本及必要的驳回理由。后续结果不覆盖之前的记录。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
               "test_ids": [
-                "com.campus.approval.ApprovalHttpTest#applicantCannotSelfApprove"
-              ]
-            },
-            {
-              "id": "M2-02.S02#2",
-              "criterion": 2,
-              "basis": "禁止申请人自审，同一人不能重复通过同一申请多级",
-              "kind": "api",
-              "expected": "sameActorCannotApproveAnotherLevel: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
-              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
-              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
-              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
-              "test_ids": [
-                "com.campus.approval.ApprovalHttpTest#sameActorCannotApproveAnotherLevel"
+                "com.campus.approval.ApprovalLifecycleTest#scopedListsAndHistoryPreserveReasons",
+                "com.campus.approval.ApprovalLifecycleTest#bilingualNoticesVerifiedAddressAndSafeTraceAudit",
+                "com.campus.approval.ApprovalLifecycleTest#unverifiedEmailStillCreatesInAppNotification",
+                "com.campus.approval.ApprovalLifecycleTest#maintenanceAggregatesSourcesAndNeverReleasesM2",
+                "com.campus.approval.ApprovalLifecycleTest#maintenanceRejectsForgedAndIgnoresOldActiveAfterRecovery",
+                "com.campus.approval.ApprovalLifecycleTest#denialLeavesSafeAuditAndConfigurationHasNoSelfEscalation"
               ]
             }
           ]
         },
         {
-          "id": "M2-02.S03",
-          "covers": [
-            3
-          ],
-          "original_text": "### 场景概述\n\n同一级审批的通过和驳回同时提交时，只能一个决定生效；另一个收到旧版本冲突，驳回还必须提供理由。\n\n### 操作步骤与预期结果\n\n1. Q1处于同一级、同一版本，admin1准备通过与带理由的驳回。\n2. 两份决定同时提交。\n3. 系统只保存一次该版本决定，另一份提示资料已变化，不能覆盖。\n4. 驳回没有理由时不能提交。",
+          "id": "M2-05.S03",
           "business_scene_refs": [
-            "S040.SC03"
+            "S043.SC03"
           ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n整室申请通过、驳回和撤销时产生对应通知；已落实教室遇维修，申请提示资源异常并通知用户，但不自动删除整室占用。\n\n### 操作步骤与预期结果\n\n1. 分别发生申请通过、驳回和撤销，另有一笔已落实申请遇到维修。\n2. 用户查看申请进度、通知和相关操作记录，正常变化都有对应事件。\n3. 维修影响的申请显示资源异常并通知，不再声称仍可正常使用。\n4. 系统保留原整室占用来源，不自动释放。\n\n<details>\n<summary>场景编号与精确规则补充（S043.SC03）</summary>\n\n- 场景名称：状态变化有通知，已订教室遇维修也要提醒\n- 场景编号：S043.SC03\n\n**对应的业务要求**\n\n- M2-05.AC3：状态变化产生对应通知和操作记录\n\n**精确条件**\n\n- Q1发生通过/驳回/撤销；另一已落实单遇维修\n\n**精确动作**\n\n- 读取通知和审计并查看进度\n\n**结果与约束**\n\n- 正常状态变更各有对应事件；维修单标资源异常并通知但不自动释放整室来源；不虚称仍能使用\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S043\n- 业务分组：整室申请与审批\n- 范围：核心业务\n- 对应要求：M2-05\n- 有关业务功能：[S040 审批人依次通过或说明理由后驳回](S040.md)、[S042 撤销申请、处理到期，并正确释放整室占用](S042.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
           "preconditions": [
-            "本人隔离 PostgreSQL 中直接构造申请与任务前态，RemoteIdentityLookup 通过本地 HTTP 可信身份夹具返回当前权限，不代表 IAM 共同联调。"
+            "分别准备通过、驳回和撤销的申请；另一笔已落实申请遇到维修。"
           ],
           "actions": [
-            "通过真实 Cookie/CSRF HTTP 请求读取任务并提交决策；并发场景用起跑屏障同时发送两个同版本请求。"
+            "查看通知、操作记录和申请进度。"
           ],
           "expected": [
-            "并发处理通过版本或锁防止重复决策"
+            "正常状态变化都有对应事件。遇维修的申请提示资源异常并通知，但不自动抹掉整室占用来源，也不声称教室仍可使用。"
+          ],
+          "covers": [
+            3
           ],
           "depends_on": [],
           "objects": [
             {
               "kind": "api",
-              "key": "/api/approvals/requests/{requestId}",
+              "key": "/api/approvals/requests",
               "status": "missing",
-              "evidence": "approval Java目录为空；GET当前不存在，S040要求明确进度。"
-            },
-            {
-              "kind": "api",
-              "key": "/api/approvals/requests/{requestId}/tasks/{taskId}/decision",
-              "status": "missing",
-              "evidence": "approval Java目录为空；S040顺序/防自审/并发决定。"
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
             },
             {
               "kind": "table",
-              "key": "m2.classroom_requests + m2.approval_tasks",
+              "key": "m2.outbox/configuration/maintenance_sources",
               "status": "missing",
-              "evidence": "本轮契约确认业务表尚未实现，docs/02表设计。"
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
             }
           ],
           "cells": [
             {
-              "id": "M2-02.S03#1",
+              "id": "M2-05.S03#1",
               "criterion": 3,
-              "basis": "并发处理通过版本或锁防止重复决策",
+              "basis": "状态变更投递通知和审计",
               "kind": "api",
-              "expected": "concurrentDecisionAppliesOnce: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
-              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
-              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
-              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "expected": "正常状态变化都有对应事件。遇维修的申请提示资源异常并通知，但不自动抹掉整室占用来源，也不声称教室仍可使用。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
               "test_ids": [
-                "com.campus.approval.ApprovalHttpTest#concurrentDecisionAppliesOnce"
+                "com.campus.approval.ApprovalLifecycleTest#scopedListsAndHistoryPreserveReasons",
+                "com.campus.approval.ApprovalLifecycleTest#bilingualNoticesVerifiedAddressAndSafeTraceAudit",
+                "com.campus.approval.ApprovalLifecycleTest#unverifiedEmailStillCreatesInAppNotification",
+                "com.campus.approval.ApprovalLifecycleTest#maintenanceAggregatesSourcesAndNeverReleasesM2",
+                "com.campus.approval.ApprovalLifecycleTest#maintenanceRejectsForgedAndIgnoresOldActiveAfterRecovery",
+                "com.campus.approval.ApprovalLifecycleTest#denialLeavesSafeAuditAndConfigurationHasNoSelfEscalation"
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M2-06",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          2,
+          3
+        ],
+        "note": "由任务书约束推导，属于需验收的设计决策"
+      },
+      "acceptance": [
+        "事务内保存可重试任务，崩溃后恢复",
+        "来源ID和版本防重放/乱序，失败可见",
+        "业务完成必须经过真实网络集成验证"
+      ],
+      "scenarios": [
+        {
+          "id": "M2-06.S01",
+          "business_scene_refs": [
+            "S044.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n最终审批已保存但同步前服务停止，恢复后系统继续原来的待办，用户能看到失败和重试进度。\n\n### 操作步骤与预期结果\n\n1. 最终决定已保存，同步资源前审批服务意外停止。\n2. 服务恢复后，用户打开申请进度。\n3. 系统从已保存待办继续，沿用原申请编号、动作和版本。\n4. 页面和任务详情显示真实失败、重试及结果。\n\n<details>\n<summary>场景编号与精确规则补充（S044.SC01）</summary>\n\n- 场景名称：审批服务重启后，继续同步尚未确认的占用\n- 场景编号：S044.SC01\n\n**对应的业务要求**\n\n- M2-06.AC1：保存业务结果时也保存待重试任务，进程退出后可恢复\n\n**精确条件**\n\n- 最终决策已提交，可重试任务尚未确认\n\n**精确动作**\n\n- 在发送前杀进程再重启\n\n**结果与约束**\n\n- 从持久状态恢复原命令，复用申请ID/动作/版本；页面和任务详情可见失败及重试\n\n</details>\n\n",
+          "preconditions": [
+            "最终审批决定已保存，但同步资源前服务意外停止。"
+          ],
+          "actions": [
+            "服务恢复后，打开申请进度查看原操作是否继续。"
+          ],
+          "expected": [
+            "系统从已保存的待办继续原操作，沿用申请编号、动作和版本。页面和任务详情能看到失败及重试情况。"
+          ],
+          "covers": [
+            1
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
             },
             {
-              "id": "M2-02.S03#2",
-              "criterion": 3,
-              "basis": "并发处理通过版本或锁防止重复决策",
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-06.S01#1",
+              "criterion": 1,
+              "basis": "事务内保存可重试任务，崩溃后恢复",
               "kind": "api",
-              "expected": "rejectionRequiresReason: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
-              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
-              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
-              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "expected": "系统从已保存的待办继续原操作，沿用申请编号、动作和版本。页面和任务详情能看到失败及重试情况。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
               "test_ids": [
-                "com.campus.approval.ApprovalHttpTest#rejectionRequiresReason"
+                "com.campus.approval.ApprovalLifecycleTest#durableCommandsRecoverAfterDispatcherRecreation",
+                "com.campus.approval.ApprovalLifecycleTest#unknownAcknowledgmentReconcilesWithoutDuplicateAllocation",
+                "com.campus.approval.ApprovalLifecycleTest#cancellationRacesLateAllocationAndLeavesReleaseTombstone",
+                "com.campus.approval.ApprovalLifecycleTest#realTwoProcessesRecoverOutboxAndReleaseThroughHttp"
               ]
+            }
+          ]
+        },
+        {
+          "id": "M2-06.S02",
+          "business_scene_refs": [
+            "S044.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n已撤销申请收到旧占用成功消息时，不会重新变为成功；重复释放也不影响其他申请或维修限制。\n\n### 操作步骤与预期结果\n\n1. Q1已撤销，新版本释放操作已发出。\n2. 旧版占用确认到达，系统保持撤销状态。\n3. 同一释放再次到达，系统返回原结果，不误改其他申请或工单限制。\n\n<details>\n<summary>场景编号与精确规则补充（S044.SC02）</summary>\n\n- 场景名称：已撤销的申请，不会被旧成功消息恢复\n- 场景编号：S044.SC02\n\n**对应的业务要求**\n\n- M2-06.AC2：用业务来源编号和版本识别重复或旧消息，失败能看到\n\n**精确条件**\n\n- Q1已撤销并发布新版本释放\n\n**精确动作**\n\n- 发送旧版本占用确认及重复释放\n\n**结果与约束**\n\n- 旧占用不复活；同源释放幂等，其他申请/工单限制保留\n\n</details>\n\n",
+          "preconditions": [
+            "Q1已撤销，新版本的释放操作已经发出。"
+          ],
+          "actions": [
+            "发送旧版占用确认，并重复发送释放。"
+          ],
+          "expected": [
+            "旧消息不会让申请恢复成功；重复释放不影响其他申请或维修单的限制。"
+          ],
+          "covers": [
+            2
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
             },
             {
-              "id": "M2-02.S03#3",
-              "criterion": 3,
-              "basis": "并发处理通过版本或锁防止重复决策",
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-06.S02#1",
+              "criterion": 2,
+              "basis": "来源ID和版本防重放/乱序，失败可见",
               "kind": "api",
-              "expected": "staleAndTerminalDecisionsDenied: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
-              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
-              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
-              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "expected": "旧消息不会让申请恢复成功；重复释放不影响其他申请或维修单的限制。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
               "test_ids": [
-                "com.campus.approval.ApprovalHttpTest#staleAndTerminalDecisionsDenied"
+                "com.campus.approval.ApprovalLifecycleTest#durableCommandsRecoverAfterDispatcherRecreation",
+                "com.campus.approval.ApprovalLifecycleTest#unknownAcknowledgmentReconcilesWithoutDuplicateAllocation",
+                "com.campus.approval.ApprovalLifecycleTest#cancellationRacesLateAllocationAndLeavesReleaseTombstone",
+                "com.campus.approval.ApprovalLifecycleTest#realTwoProcessesRecoverOutboxAndReleaseThroughHttp"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-06.S03",
+          "business_scene_refs": [
+            "S044.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n申请同步遇到断网时不假报成功；网络恢复后系统核对原操作，使申请状态和资源结果一致，并保留追踪信息。\n\n### 操作步骤与预期结果\n\n1. 申请正在同步，流程与资源服务间网络暂时中断。\n2. 用户打开进度，页面显示真实未确认状态，不显示虚假成功。\n3. 网络恢复后再次查看，系统按原操作核对，状态与资源一致。\n4. 保留来源和追踪记录，不直接改对方数据库修复。\n\n<details>\n<summary>场景编号与精确规则补充（S044.SC03）</summary>\n\n- 场景名称：断网时不报成功，恢复后申请和资源一致\n- 场景编号：S044.SC03\n\n**对应的业务要求**\n\n- M2-06.AC3：实际通过网络把服务连起来验证后，才算业务完成\n\n**精确条件**\n\n- 资源服务和流程服务真实隔离部署\n\n**精确动作**\n\n- 阻断网络、恢复网络并运行对账\n\n**结果与约束**\n\n- 阻断期间不假成功，不直接改库；恢复后状态收敛且留trace和来源记录\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S044\n- 业务分组：整室申请与审批\n- 范围：核心业务\n- 对应要求：M2-06\n- 有关业务功能：[S041 最后一级通过后，确认整间教室确实订下](S041.md)、[S042 撤销申请、处理到期，并正确释放整室占用](S042.md)。\n- 相关业务规则：[P01](../policies.md#p01)、[P04](../policies.md#p04)、[P14](../policies.md#p14)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "preconditions": [
+            "申请正在同步资源，两个服务之间的网络暂时中断。"
+          ],
+          "actions": [
+            "打开申请进度查看当前状态。",
+            "网络恢复后再次查看，等待系统核对原操作结果。"
+          ],
+          "expected": [
+            "断网时不假报成功，也不直接改对方数据库；恢复后业务状态能与资源结果一致，并留下追踪和来源记录。"
+          ],
+          "covers": [
+            3
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests",
+              "status": "missing",
+              "evidence": "Published ApprovalController only GET detail and decision; current scene submission/list/resource delivery missing."
+            },
+            {
+              "kind": "table",
+              "key": "m2.outbox/configuration/maintenance_sources",
+              "status": "missing",
+              "evidence": "Only published request/task tables exist; append own reviewed migration."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-06.S03#1",
+              "criterion": 3,
+              "basis": "业务完成必须经过真实网络集成验证",
+              "kind": "api",
+              "expected": "断网时不假报成功，也不直接改对方数据库；恢复后业务状态能与资源结果一致，并留下追踪和来源记录。",
+              "sample": "Own PG18 fixture; real Tomcat/Cookie/CSRF and remote HTTP controlled ACK, conflict, timeout and version ordering; no cross-schema writes.",
+              "observation": "HTTP status and JSON, own PG durable state, received immutable command/notice/audit and trace.",
+              "comparison": "Exact statuses, IDs/versions, original-command equality, scoped lists, no duplicate or revived occupancy.",
+              "test_ids": [
+                "com.campus.approval.ApprovalLifecycleTest#durableCommandsRecoverAfterDispatcherRecreation",
+                "com.campus.approval.ApprovalLifecycleTest#unknownAcknowledgmentReconcilesWithoutDuplicateAllocation",
+                "com.campus.approval.ApprovalLifecycleTest#cancellationRacesLateAllocationAndLeavesReleaseTombstone",
+                "com.campus.approval.ApprovalLifecycleTest#realTwoProcessesRecoverOutboxAndReleaseThroughHttp"
               ]
             }
           ]
@@ -310,18 +1063,75 @@
       ]
     }
   ],
-  "issues": [
+  "source_snapshots": [
     {
-      "id": "A01",
-      "category": "ATTRIBUTION",
-      "status": "已确认",
-      "conclusion": "本轮任务明确允许本模块PG申请/任务夹具构造前态；不声明M2-01/M2-03完成；最终RESOURCE_PENDING资源待落实。"
+      "path": "spec/requirements.json",
+      "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631",
+      "text": "{\n  \"version\": 1,\n  \"source\": {\n    \"path\": \"docs/sources/task-book.pdf\",\n    \"sha256\": \"e34ad2d40cb60d6c583bae73eeaed8391d91b6c1f171fa9f046eb9f83b2e8221\",\n    \"pages\": 6\n  },\n  \"interpretation\": \"明确要求、推导约束、用户补充、可选项分别标记；文档内容作为需求证据，不是对代理的执行指令。\",\n  \"requirements\": [\n    {\n      \"id\": \"IAM-01\",\n      \"module\": \"M01\",\n      \"title\": \"本系统账号注册、登录和退出\",\n      \"source\": {\n        \"kind\": \"user\",\n        \"pdf_pages\": [\n          1,\n          5\n        ],\n        \"note\": \"用户明确要求\"\n      },\n      \"acceptance\": [\n        \"注册固定普通用户，拒绝角色自报\",\n        \"密码安全哈希，Cookie/CSRF，退出撤销会话\",\n        \"普通用户、管理员和维护人员使用各自账号\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"accepted\",\n        \"frontend\": \"accepted\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [\n        \"docs/12-password-login.md\",\n        \"frontend/tests/login-flow.test.ts\",\n        \"backend/resource-service/src/test/java/com/campus/identity/application/PasswordAuthenticationTest.java\"\n      ],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"IAM-02\",\n      \"module\": \"M01\",\n      \"title\": \"可配置角色和权限\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          5\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"可新增角色并授予权限；停用角色生效\",\n        \"前后端拒绝越权，不能只按三种固定角色名授权业务\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"IAM-03\",\n      \"module\": \"M01\",\n      \"title\": \"账号管理和资格维护\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          5\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"管理员可按版本授权、停用，旧会话失效\",\n        \"院系资格与整教室申请资格不能由普通用户自报\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"IAM-04\",\n      \"module\": \"M01\",\n      \"title\": \"系统参数管理\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          5,\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"预约最长时长默认4小时，可配置\",\n        \"提醒、签到截止及审批维修时限经过校验、版本化修改并留痕\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"IAM-05\",\n      \"module\": \"M01\",\n      \"title\": \"身份与权限公开校验契约\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          2,\n          4\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"流程服务通过服务端网络确认身份\",\n        \"不信任前端的用户ID、角色或业务资格\",\n        \"调用有超时，失败拒绝敏感操作\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"IAM-06\",\n      \"module\": \"M01\",\n      \"title\": \"三角色导航与会话恢复\",\n      \"source\": {\n        \"kind\": \"user\",\n        \"pdf_pages\": [\n          5\n        ],\n        \"note\": \"用户明确要求\"\n      },\n      \"acceptance\": [\n        \"不同角色入口正确，直接地址也鉴权\",\n        \"支持中英文、个人信息、退出和受保护内容隐藏\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"accepted\",\n        \"frontend\": \"accepted\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [\n        \"docs/12-password-login.md\",\n        \"frontend/tests/login-flow.test.ts\",\n        \"backend/resource-service/src/test/java/com/campus/identity/application/PasswordAuthenticationTest.java\"\n      ],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"RES-01\",\n      \"module\": \"M02\",\n      \"title\": \"教室登记、注销与可用性\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          5\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"管理员维护校区、楼宇、房间、开放状态\",\n        \"有历史引用时停用，历史记录保持可追溯\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-02\",\n        \"IAM-03\"\n      ]\n    },\n    {\n      \"id\": \"RES-02\",\n      \"module\": \"M02\",\n      \"title\": \"座位主数据和特殊标记\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          5,\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"教室内座位编号唯一\",\n        \"座位可停用，插座标记可搜索\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-02\",\n        \"IAM-03\"\n      ]\n    },\n    {\n      \"id\": \"RES-03\",\n      \"module\": \"M02\",\n      \"title\": \"开放时间和院系最小限制\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          5\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"支持每日开放时段，拒绝越界预约\",\n        \"仅有经过管理员确认的匹配院系资格才能使用受限教室\",\n        \"不引入院系组织树\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-02\",\n        \"IAM-03\"\n      ]\n    },\n    {\n      \"id\": \"RES-04\",\n      \"module\": \"M02\",\n      \"title\": \"统一时段占用和并发互斥\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          2,\n          6\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"个人预约和整室占用竞争同一资源，事务内只允许一个成功\",\n        \"区间左闭右开，整室占用必须全部成功或全部失败\",\n        \"跨用户同座位和同用户重叠时段被约束拒绝\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-02\",\n        \"IAM-03\"\n      ]\n    },\n    {\n      \"id\": \"RES-05\",\n      \"module\": \"M02\",\n      \"title\": \"维修限制与按来源恢复\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          2\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"维修中教室全部座位下架\",\n        \"验收后只释放该工单限制，其他工单/停用/整室占用仍生效\",\n        \"重复和乱序写回不得错误恢复\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-02\",\n        \"IAM-03\"\n      ]\n    },\n    {\n      \"id\": \"RES-06\",\n      \"module\": \"M02\",\n      \"title\": \"占用来源追溯公开接口\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          2,\n          4\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"记录M1/M2/M3、业务ID、版本和时间\",\n        \"重试相同ID参数幂等；相同ID不同参数拒绝\",\n        \"调用方通过HTTP写回，不直接访问本模块库\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-02\",\n        \"IAM-03\"\n      ]\n    },\n    {\n      \"id\": \"RES-07\",\n      \"module\": \"M02\",\n      \"title\": \"教室每日签到编码\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"编码与教室和日期绑定，按上海时区换日\",\n        \"管理员可查看当日展示码，过期或其他教室码无效\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-02\",\n        \"IAM-03\"\n      ]\n    },\n    {\n      \"id\": \"RES-08\",\n      \"module\": \"M02\",\n      \"title\": \"复旦空教室只读接入\",\n      \"source\": {\n        \"kind\": \"user\",\n        \"pdf_pages\": [],\n        \"note\": \"用户明确要求\"\n      },\n      \"acceptance\": [\n        \"必须具备合法可用的数据源、授权和范围\",\n        \"显示数据来源、更新时间与过期状态，不能把课表空闲当成本系统可预约\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"FUDAN_DATA_AUTHORIZATION\"\n      ],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-02\",\n        \"IAM-03\"\n      ]\n    },\n    {\n      \"id\": \"M1-01\",\n      \"module\": \"M03\",\n      \"title\": \"按条件搜索可用座位\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          1,\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"按区域、日期、时段和插座筛选\",\n        \"只返回开放且符合资格、没有占用和维修限制的座位\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"RES-01\",\n        \"RES-02\",\n        \"RES-03\",\n        \"RES-04\",\n        \"RES-07\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M1-02\",\n      \"module\": \"M03\",\n      \"title\": \"整点小时预约及最长时长\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"起止整点，正时长，默认最多4小时\",\n        \"动态参数生效，禁止过去时段和超出开放时间\",\n        \"数据库并发测试验证同座位仅一人成功\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"RES-01\",\n        \"RES-02\",\n        \"RES-03\",\n        \"RES-04\",\n        \"RES-07\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M1-03\",\n      \"module\": \"M03\",\n      \"title\": \"预约取消与释放\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          6\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"仅本人或有权限管理员可取消\",\n        \"只释放本预约占用，重复取消不影响其他来源\",\n        \"不可取消状态给出明确错误\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"RES-01\",\n        \"RES-02\",\n        \"RES-03\",\n        \"RES-04\",\n        \"RES-07\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M1-04\",\n      \"module\": \"M03\",\n      \"title\": \"Web编码签到\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"本人在有效窗口用当前教室当日编码签到\",\n        \"错误教室、过期码、越权和重复签到受到检查\",\n        \"签到与超时取消并发只有一个状态终结\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"RES-01\",\n        \"RES-02\",\n        \"RES-03\",\n        \"RES-04\",\n        \"RES-07\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M1-05\",\n      \"module\": \"M03\",\n      \"title\": \"预约前15分钟提醒\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"按预约开始时间减15分钟触发\",\n        \"取消记录不再提醒，任务重试不重复通知\",\n        \"真实邮件发送需邮件服务，测试使用可观察的测试邮件收件箱\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"SMTP_PROVIDER\"\n      ],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"RES-01\",\n        \"RES-02\",\n        \"RES-03\",\n        \"RES-04\",\n        \"RES-07\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M1-06\",\n      \"module\": \"M03\",\n      \"title\": \"开始后10分钟未签到再次提醒\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"到开始后10分钟仍未签到时仅提醒一次\",\n        \"已签到或取消不发，重复调度保持幂等\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"RES-01\",\n        \"RES-02\",\n        \"RES-03\",\n        \"RES-04\",\n        \"RES-07\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M1-07\",\n      \"module\": \"M03\",\n      \"title\": \"开始后15分钟违约自动取消\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"未签到则取消、释放、通知并记录一次违约\",\n        \"重启后补偿到期任务，不能重复计违约\",\n        \"使用可控时钟测试10/15分钟边界\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"RES-01\",\n        \"RES-02\",\n        \"RES-03\",\n        \"RES-04\",\n        \"RES-07\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M1-08\",\n      \"module\": \"M03\",\n      \"title\": \"历史查询与再次预约\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          1,\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"只能查询本人历史，管理员另行授权\",\n        \"再次预约走当前全部规则，不能直接复制旧占用\",\n        \"分页和时区展示正确\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"RES-01\",\n        \"RES-02\",\n        \"RES-03\",\n        \"RES-04\",\n        \"RES-07\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M2-01\",\n      \"module\": \"M04\",\n      \"title\": \"整教室申请资格和提交\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          1,\n          2\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"通过权限和资格门槛后提交，普通用户不得自授资格\",\n        \"申请人、教室、时段、用途经校验\",\n        \"提交不等于审批通过，不向用户承诺已占用\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-04\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M2-02\",\n      \"module\": \"M04\",\n      \"title\": \"多级审批通过与驳回\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          1\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"至少两级审批，处理顺序和处理人明确\",\n        \"禁止申请人自审，同一人不能重复通过同一申请多级\",\n        \"并发处理通过版本或锁防止重复决策\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-04\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M2-03\",\n      \"module\": \"M04\",\n      \"title\": \"审批通过后网络占用整室\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          2\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"最终审批通过通过HTTP请求统一占用\",\n        \"座位冲突则申请不能展示为已落实成功\",\n        \"覆盖整个时段全部座位且保留M2来源\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-04\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M2-04\",\n      \"module\": \"M04\",\n      \"title\": \"驳回、超时撤销和释放\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          1,\n          2\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"到expires_at自动撤销；申请人按规则可撤销\",\n        \"驳回/撤销只幂等释放本申请资源\",\n        \"超时与审批并发不产生已撤销却继续占用\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-04\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M2-05\",\n      \"module\": \"M04\",\n      \"title\": \"申请进度与审批历史\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          1\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"本人可查本人申请，审批人只查授权任务\",\n        \"每次决策包含处理人、时间、结果和必要理由\",\n        \"状态变更投递通知和审计\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-04\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M2-06\",\n      \"module\": \"M04\",\n      \"title\": \"写回失败可重试与对账\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          2,\n          3\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"事务内保存可重试任务，崩溃后恢复\",\n        \"来源ID和版本防重放/乱序，失败可见\",\n        \"业务完成必须经过真实网络集成验证\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-04\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M3-01\",\n      \"module\": \"M05\",\n      \"title\": \"故障上报和工单查询\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          1\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"关联实际教室，可选座位；必填故障说明\",\n        \"本人可查本人，管理员查调度范围\",\n        \"报修本身不等于维修中下架\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-05\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M3-02\",\n      \"module\": \"M05\",\n      \"title\": \"派单和维修人员任务\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          1\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"管理员派给有效维护人员，记录派单/转派\",\n        \"维护人员只能操作分配给自己的工单\",\n        \"并发和旧版本更新被拒绝\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-05\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M3-03\",\n      \"module\": \"M05\",\n      \"title\": \"维修中网络下架教室\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          2\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"进入维修中经HTTP限制全室座位\",\n        \"持久任务重试，不能直接修改M1/资源库\",\n        \"现存预约处置、通知和历史记录有明确规则\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-05\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M3-04\",\n      \"module\": \"M05\",\n      \"title\": \"超时升级\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          1\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"按due_at升级并通知管理人员\",\n        \"同一升级级别只记录一次，崩溃恢复不重复升级\",\n        \"责任人和处理历史可查\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-05\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M3-05\",\n      \"module\": \"M05\",\n      \"title\": \"完工申请与独立验收\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          1,\n          2\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"维护人员申请完工，验收人独立于维修人\",\n        \"验收不通过继续维修，不提前恢复座位\",\n        \"验收通过网络释放本工单限制\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-05\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M3-06\",\n      \"module\": \"M05\",\n      \"title\": \"验收评价和过程历史\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          1\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"合法评分及文字评价，只有允许的验收方可提交\",\n        \"保留维修、返工、多轮验收轨迹\",\n        \"维修人员不能自行验收自身任务\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-05\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"M3-07\",\n      \"module\": \"M05\",\n      \"title\": \"工单取消与幂等恢复\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          4\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"可取消状态与授权人明确，修复中取消走审批规则\",\n        \"重复请求不多次释放，其他工单限制仍保留\",\n        \"向报修人及执行人通知结果\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"IAM-05\",\n        \"RES-05\",\n        \"RES-06\",\n        \"SUP-01\",\n        \"SUP-02\"\n      ]\n    },\n    {\n      \"id\": \"SUP-01\",\n      \"module\": \"M06\",\n      \"title\": \"站内通知和真实邮件适配\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          1,\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"站内消息按收件人隔离、已读幂等\",\n        \"邮件失败可重试并显示投递结果，不伪称已送达\",\n        \"真实提醒必须使用可配置SMTP\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"SMTP_PROVIDER\"\n      ],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"SUP-02\",\n      \"module\": \"M06\",\n      \"title\": \"关键操作持久审计\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          1,\n          2\n        ],\n        \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n      },\n      \"acceptance\": [\n        \"记录操作者、对象、来源、结果和时间\",\n        \"不记录密码、Cookie、签名密钥或整份敏感请求\",\n        \"只有有权限的人可以查询，支持追踪ID\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"SUP-03\",\n      \"module\": \"M06\",\n      \"title\": \"运营统计\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          6\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"教室座位预约、签到、违约与利用率有明确计算口径\",\n        \"管理员权限受控，空数据不显示虚构统计\",\n        \"来自真实业务查询/公开接口，不读其他模块私有库\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-01\",\n      \"module\": \"M06\",\n      \"title\": \"机器可读规则、需求与验收追踪\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          1,\n          2,\n          3\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"每条需求有ID、来源、验收、实现和测试证据\",\n        \"未完成/受阻项留在清单，六模块所有权版本管理\",\n        \"公共层归属、候选方案及取舍形成书面记录\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-02\",\n      \"module\": \"M06\",\n      \"title\": \"严格TDD与有效测试\",\n      \"source\": {\n        \"kind\": \"user\",\n        \"pdf_pages\": [\n          3\n        ],\n        \"note\": \"用户明确要求\"\n      },\n      \"acceptance\": [\n        \"记录预期业务断言的RED、相同测试GREEN、回归和重构\",\n        \"故意破坏实现后测试必须失败\",\n        \"编译失败、缺工具、网络失败不能充当RED\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-03\",\n      \"module\": \"M06\",\n      \"title\": \"人工验收与合并请求\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          2,\n          3\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"AI输出经人工验收后进入正式提交\",\n        \"测试失败禁止合并，公共层/跨模块/schema变更组内评审\",\n        \"冲突留给人处理，AI不得自动解决冲突\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-04\",\n      \"module\": \"M06\",\n      \"title\": \"提交与合并请求触发流水线\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          2,\n          3\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"每次提交/MR触发构建、有效测试；失败后续不执行\",\n        \"包含规则、迁移、需求、决策和配置的版本历史\",\n        \"流水线使用仓库外CI凭据\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"CI_RUNNER\"\n      ],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-05\",\n      \"module\": \"M06\",\n      \"title\": \"一键环境和干净环境部署\",\n      \"source\": {\n        \"kind\": \"user\",\n        \"pdf_pages\": [\n          3,\n          5\n        ],\n        \"note\": \"用户明确要求\"\n      },\n      \"acceptance\": [\n        \"Windows/macOS按stage检查并补齐兼容工具\",\n        \"IDE未安装给出明确提示，已有工具复用\",\n        \"依赖失败停止并可重试，不覆盖现存数据库\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-06\",\n      \"module\": \"M06\",\n      \"title\": \"测试环境整组自动部署\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          3,\n          5\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"一次覆盖本组全部交付模块，自动健康检查\",\n        \"部署锁/窗口防止与集成测试互相误报\",\n        \"全新环境通过脚本重放并实演\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"TEST_SERVER\"\n      ],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-07\",\n      \"module\": \"M06\",\n      \"title\": \"生产审批、版本与回滚\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          2,\n          3,\n          5\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"人工批准后发布，有tag和提交回溯\",\n        \"发布失败可回滚代码并兼容数据演进\",\n        \"实际演示生产发布与回退，不用截图替代\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"PRODUCTION_SERVER\",\n        \"HUMAN_RELEASE_APPROVAL\"\n      ],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-08\",\n      \"module\": \"M06\",\n      \"title\": \"模块化迁移和幂等种子\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          3\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"空库至最新版本可重放，重复启动不重复造数据\",\n        \"迁移版本按模块独立历史，无跨模块争抢V3\",\n        \"正式种子与业务/演示数据分离，不覆盖人工修改\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-09\",\n      \"module\": \"M06\",\n      \"title\": \"真实跨模块集成验收\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          2,\n          4,\n          5\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"实演M2占用、M3维修下架恢复、M1来源追溯\",\n        \"依赖只允许公开网络接口，mock只用于独立开发测试\",\n        \"网络超时、重复、乱序和失败重试可验证\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-10\",\n      \"module\": \"M06\",\n      \"title\": \"环境文件与密钥隔离\",\n      \"source\": {\n        \"kind\": \"user\",\n        \"pdf_pages\": [\n          1,\n          3\n        ],\n        \"note\": \"用户明确要求\"\n      },\n      \"acceptance\": [\n        \"每成员/模块/层独立工作区、端口、数据库角色、数据卷和缓存\",\n        \"只可写所属路径，冻结公共层只读，不能访问其他模块环境或密钥\",\n        \"宿主IDE无沙箱时只提供越界检测，不谎称OS强制隔离\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-11\",\n      \"module\": \"M06\",\n      \"title\": \"中英国际化与基线栈锁定\",\n      \"source\": {\n        \"kind\": \"user\",\n        \"pdf_pages\": [],\n        \"note\": \"用户明确要求\"\n      },\n      \"acceptance\": [\n        \"Vue/TypeScript、Java21/SpringBoot、PostgreSQL维持基线\",\n        \"新增业务文案放模块自己的中英字典，键一致\",\n        \"不引入替代后端语言/数据库或修改公共锁文件\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-12\",\n      \"module\": \"M06\",\n      \"title\": \"缓冲网站及三天定时同步\",\n      \"source\": {\n        \"kind\": \"user\",\n        \"pdf_pages\": [],\n        \"note\": \"用户明确要求\"\n      },\n      \"acceptance\": [\n        \"身份必须绑定令牌，不能只输入Gitee用户名就获得权限\",\n        \"完成后自动上传模块限定diff和TDD证据，重复上传幂等\",\n        \"每72小时只推已审核且独立验证通过的分支并创建MR；不直推main、不自动处理冲突\",\n        \"停机后补执行，任务互斥，失败可重试且显示状态\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"GITEE_WRITE_CREDENTIAL\",\n        \"GITEE_MR_CREDENTIAL\"\n      ],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"coordinator\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ETH-01\",\n      \"module\": \"M06\",\n      \"title\": \"工程伦理与个人报告证据\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          3\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"持续记录真实的隐私、误判、公平、AI质量等问题与处理\",\n        \"每位成员自己完成个人分析，不能虚构参与和人类评审记录\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"HUMAN_PERSONAL_REPORT\"\n      ],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"human\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"AGT-01\",\n      \"module\": \"M06\",\n      \"title\": \"可选自然语言业务代理\",\n      \"source\": {\n        \"kind\": \"optional\",\n        \"pdf_pages\": [\n          4,\n          5\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"通过M1/M2/M3公开接口真实调用主要操作\",\n        \"不确定时间/地点时追问，敏感操作按实际身份授权\",\n        \"建议DSH插件，安装配置进入流水线；缺真实模型凭据不能伪称完成\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"LLM_PROVIDER\",\n        \"DSH_PLUGIN_RUNTIME\"\n      ],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-13\",\n      \"module\": \"M06\",\n      \"title\": \"评审节点与最终现场演示\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          4,\n          5\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"项目启动提交分工和公共层归属；Review1提交需求基线、依赖、架构、首次迭代、规则和风险\",\n        \"Review2提交主功能集成、自动迁移和提交至部署的演示及质量保证\",\n        \"期末现场演示干净环境部署、提交触发测试、schema演进、生产发布回退、真实跨模块网络链路，不用截图替代\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"HUMAN_REVIEW_PRESENTATION\"\n      ],\n      \"verification\": {\n        \"method\": \"真实交付与人工评审证据，不能由代码测试替代\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"human\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"ENG-14\",\n      \"module\": \"M06\",\n      \"title\": \"组内共同环境与公共层决策\",\n      \"source\": {\n        \"kind\": \"explicit\",\n        \"pdf_pages\": [\n          1\n        ],\n        \"note\": \"任务书明确要求\"\n      },\n      \"acceptance\": [\n        \"项目组独占开发、测试、生产；各模块集成到同一整组环境\",\n        \"至少三个模块组及成员认领、公共层责任形成书面说明，考虑工作量、契约和故障责任\",\n        \"当前四人安排与任务书约六人组队建议的适配由团队/教师确认，AI不虚构成员或一致意见\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [\n        \"HUMAN_TEAM_ASSIGNMENT\"\n      ],\n      \"verification\": {\n        \"method\": \"真实交付与人工评审证据，不能由代码测试替代\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"human\",\n      \"integration_dependencies\": []\n    },\n    {\n      \"id\": \"IAM-07\",\n      \"module\": \"M01\",\n      \"title\": \"通知邮箱填写与验证\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          1,\n          6\n        ],\n        \"note\": \"将既有S081邮箱验证场景按账户与投递所有权分开登记；不改变已验收SUP-01的历史范围\"\n      },\n      \"acceptance\": [\n        \"本人填写合法邮箱后进入待验证；拒绝非法地址或夹带角色、院系资格；缺邮箱仍可登录和使用站内通知\",\n        \"本人当前目标邮箱在有效期内可由验证链接确认，重复确认幂等；原始令牌不以明文存入数据库或公开日志\",\n        \"过期、他人和旧邮箱链接均被拒绝；缺邮箱不静默取消预约，邮件任务明确显示缺地址或待补全状态\"\n      ],\n      \"layers\": [\n        \"backend\",\n        \"frontend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\",\n        \"frontend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": [\n        \"SUP-04\"\n      ]\n    },\n    {\n      \"id\": \"SUP-04\",\n      \"module\": \"M06\",\n      \"title\": \"邮箱验证邮件投递通道\",\n      \"source\": {\n        \"kind\": \"derived\",\n        \"pdf_pages\": [\n          1,\n          6\n        ],\n        \"note\": \"将既有S081邮箱验证场景按账户与投递所有权分开登记；不改变已验收SUP-01的历史范围\"\n      },\n      \"acceptance\": [\n        \"仅可信服务端通过公开HTTP申请投递，实际调用可配置SMTP并保留幂等回执，不直接操作账户库\",\n        \"区分确定成功、确定失败和投递不确定；同请求重放不盲目多发，同编号不同参数拒绝，不确定结果不伪称送达\",\n        \"验证令牌与整封验证正文仅在本次发送内存中使用，不明文持久化或进入公开日志；真实邮件及失败边界有可观察证据\"\n      ],\n      \"layers\": [\n        \"backend\"\n      ],\n      \"baseline_status\": {\n        \"backend\": \"pending\"\n      },\n      \"external_dependencies\": [],\n      \"verification\": {\n        \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n        \"green\": \"实现后同一测试通过，相关回归通过\",\n        \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n      },\n      \"evidence\": [],\n      \"execution_owner\": \"member\",\n      \"integration_dependencies\": []\n    }\n  ]\n}\n",
+      "requirement_ids": [
+        "M2-01",
+        "M2-03",
+        "M2-04",
+        "M2-05",
+        "M2-06"
+      ]
     },
     {
-      "id": "U01",
-      "category": "UNRESOLVED",
-      "status": "记录边界",
-      "conclusion": "S039全局流程配置和申请提交属于IAM-04/M2-01未实现部分；本轮保存并执行每申请不可重派的人员、期限、流程版本快照，决策时拒绝非法快照。"
+      "path": "docs/workflow/round3-integration-decisions.md",
+      "sha256": "c385ea0ad83881ce8feb3594728bf81e1188f29eb9732e86d875c311fc4c4137",
+      "text": "# 预约、审批和维修的集成补充\n\n用户已确认整室撤销、开始时未落实的撤销、冲突等待重试，以及维修转派和独立验收规则；原始确认保存在本轮私有记录，不冒充六名真人已逐项验收。\n\n## 个人预约\n\n未曾成功确认的PENDING无法供用户签到，到截止作系统超时取消，不记用户违约。已确认且未签到才记NO_SHOW。占用确认迟到时仍补偿释放，不能复活取消记录。全员预约明细仅reservation:admin-read，普通reservation:read只允许本人；聚合statistics:read不隐含个人明细权限。\n\n## 整室申请\n\n本人可在开始前撤销所有未终结申请，包含已落实单；确认中取消显示处理中并补做释放。开始后只有approval:admin-cancel且填写理由的管理员可取消，已结束不再取消。保留原expiresAt快照；到startsAt仍未落实单以START_REACHED另行自动撤销，即使审批TTL尚未结束。已APPROVED不因审批期限到自动撤销。资源冲突在开始/审批截止前继续原操作编号、同参数重试并显示等待落实；同键异参数不盲重试。\n\n流程配置归M04：approval:flow:read/write和approval:admin-cancel仅SYSTEM_ADMIN默认。至少两位不同且非申请人的有效审批人，查询a的approval:decide候选并在提交时复核，任务和期限快照不随配置修改。没有足够候选或流程配置时明确提示，不生成假审批人。\n\n## 维修\n\n首次派单保存dueAt，转派不延长。独立验收排除所有实际维修过此单的人。维修中取消由允许的人发起，管理员审查后独立安全验收；同一位没参与维修且具有两项权限的管理员可完成两步。当前状态、幂等回执、资源desired/applied版本、升级、历史与任务都只写m3。\n\n通知收件人通过a的有效权限候选查询取得：repair:maintain用于派工、repair:accept用于完工验收、repair:assign用于超时升级。只把enabled且verified的邮箱带入普通通知，缺地址不影响站内通知。原始故障全文、邮箱、token、cookie不进入审计摘要。\n\n## 维修广播接口\n\n资源来源仍由b统一管理。e在b真实确认限制或恢复后，保存向c和d发送的任务，事务外HTTP，失败保留重试。\n\n- POST /internal/reservations/maintenance-events\n- POST /internal/approvals/maintenance-events\n\n两者使用X-Service-Key，载荷相同：operationId(UUID)、sourceId(M3工单UUID)、sourceVersion(正整数)、roomId(UUID)、active(boolean)、effectiveAt(b真实回执时间)。接收域先经b /internal/resources/sources/M3/{sourceId}核实当前房间、版本、状态与生效时间；必要依赖不可达返回503，不猜成功。\n\n接收域保存每工单高水位与请求指纹。相同ID同内容幂等、异内容409；旧active不得覆盖恢复墓碑。若b已更高版本，按实际较新来源收敛，不能用旧维修消息取消恢复后新预约。\n\nc仅终结本室未结束个人预约为SYSTEM_MAINTENANCE，保存释放/通知/审计，不记违约；active=false只记恢复墓碑，不复活旧预约。\n\nd不释放M2占用，而给未结束已落实申请标resourceAbnormal；同房间任意工单active就保持异常，恢复只解除本工单来源。没有已落实申请也先保留来源，避免后续确认漏标。\n\n响应200：operationId、duplicate、ignored、appliedSourceVersion。400非法输入、401密钥错误、409同键异内容/同版本异内容/变更房间、503无法取得资源真实确认。\n\n## 统计与配置\n\nc的统计返回同一from/to/asOf/roomId、checkedInCount、noShowCount、excludedBeforeStartCancelledCount、excludedSystemTerminatedCount、notDueCount、algorithm/source。f仅合并同范围真实源，已确认P08口径不变。\n\n正式拓扑服务名为resource:8080、workflow:8081；资源origin复用既有campus.workflow.identity-url，资源到通知复用campus.reservation.notification-url（local已有127.0.0.1）。工作流域间自调用用当前服务8081。不要持有DB事务等待同服务HTTP，不新增部署环境变量来掩盖默认地址错误。\n",
+      "requirement_ids": [
+        "M2-01",
+        "M2-03",
+        "M2-04",
+        "M2-05",
+        "M2-06"
+      ]
+    },
+    {
+      "path": "docs/workflow/round3-contracts-and-work-orders.md",
+      "sha256": "c1848312903d266392a10dd8a3fdc38d7759c679d2689be816254c36e14759cf",
+      "text": "# 六人完整功能开发工作单\n\n本轮接续已上线的 c369a01，使用 a—f 六个本机缓冲站身份。先完成剩余后端，再完成各域前端；保持独立工作树、容器、需求分析、TDD、变异、回归和收件。已验证项核对证据后跳过。新交付的人工验收独立进行，不沿用上轮仅六项后端的验收结论。\n\n## 分工\n\n| 身份 | 领域 | 剩余后端 | 剩余前端 |\n| --- | --- | --- | --- |\n| a | 账号和设置 | IAM-03/04/05/07 | IAM-02/03/04/07 |\n| b | 教室、座位、占用 | RES-01/02/03/04/05/06；RES-08真实数据源受阻 | RES-01/02/03/04/05/07；RES-08显示未接入 |\n| c | 个人预约和签到 | M1-01/02/03/04/05/07/08 | M1-01/02/03/04/05/07/08 |\n| d | 整室申请和审批 | M2-01/03/04/05/06 | M2-01至05 |\n| e | 报修和维修 | M3-01/02/03/04/05/07 | M3-01至07 |\n| f | 通知、审计、统计 | SUP-02/03/04；AGT-01外部模型受阻 | SUP-01/02/03；AGT-01如实显示配置缺口 |\n\nIAM-01/06前后端已验收；IAM-02、RES-07、M1-06、M2-02、M3-06、SUP-01后端已在上一轮验证。邮箱验证原有S081由M01负责账户状态，登记IAM-07；邮件瞬时投递由M06负责，登记SUP-04/S082。旧SUP-01的验收历史不改写成覆盖邮箱验证。\n\n## 已确认的规则\n\n用户于2026-11-15明确确认P02–P09、P12，审批默认60分钟、维修默认120分钟，可由管理员调整。其他默认值为最长预约4小时、提前15分钟提醒、开始后10分钟提醒、15分钟未签到取消。设置整组原子更新且校验；业务创建或派单时保留截止时间快照，改设置不追溯改旧单。\n\n统计按P08。停用/维修从实际生效时刻截断可服务窗口，恢复起重新开放，不追溯整段失效。释放生效时间是资源模块成功持久应用的服务器时刻。容量与实际保留占用按[from,to)、asOf和历史可服务窗口取交集；先取消后开始的占用为0。未知历史明确显示不可计算，不能拿当前active状态伪造历史。\n\n## 公开接口\n\n所有内部接口使用X-Service-Key，普通页面不持有该密钥。公共IdentityPrincipal保持原结构，各域不读他域私有表。\n\n### 账号、资格和参数\n\n- GET /internal/identity/users/{id}/eligibility：userId、enabled、role、permissions、departmentCode、canApplyRoom、authVersion；停用用户或角色返回enabled=false且没有有效权限。\n- GET /internal/identity/users/{id}/notification-email：userId、enabled、email、verified，仅可信服务可查。资格字段只由管理员维护。\n- GET /internal/system/settings：version、maxReservationHours、beforeStartReminderMinutes、afterStartReminderMinutes、checkinDeadlineMinutes、approvalTtlMinutes、repairSlaMinutes。\n- 管理员GET/PUT /api/admin/settings（PUT带expectedVersion），GET /api/admin/settings/history；所有数值正整数且开始后提醒早于签到截止，整组更新版本+1并留痕。\n- 系统设置与历史归iam，使用本模块新增迁移，不写resource表。\n\n### 资源\n\n- GET/POST /api/resources/rooms，GET/PUT /api/resources/rooms/{id}；GET/POST /api/resources/rooms/{id}/seats，PUT /api/resources/seats/{id}；写入带expectedVersion。\n- POST /internal/resources/allocations：operationId、sourceModule(M1/M2)、sourceId、sourceVersion、roomId、seatId(M1必需)、userId(M1必需)、startsAt、endsAt；M2全室原子占用。\n- POST /internal/resources/releases：operationId、sourceModule、sourceId、sourceVersion。\n- PUT /internal/resources/restrictions/{sourceId}：operationId、sourceVersion、roomId、active，归M3维修限制。\n- GET /internal/resources/availability、/capacity、/sources/{sourceModule}/{sourceId}；搜索参数startsAt、endsAt、userId、campus、building、hasSocket。\n- 首次写入201、幂等重放200，400非法格式、403资格不符、404主数据不存在、409冲突/旧版本/同键异参数、503必要依赖不可用。\n- 本域追加resource_operations来源版本/操作指纹和历史，保留整室教室级来源范围。新建/启用座位不能绕过整室占用；先释放的墓碑不能被旧消息复活。\n- 公共V3安装PostgreSQL可信btree_gist扩展，本域V2使用它建立座位与用户时间范围排斥约束；不修改已发布V1。\n\n### 通知、审计和统计\n\n- 现有POST /internal/notifications/events沿用已发布契约。\n- POST /internal/audit/events：eventKey、sourceService、actorId(系统任务可空)、action、sourceModule、sourceId、success、occurredAt、traceId、受限beforeData/afterData。首次201、相同键同内容200、异内容409；成功变更与待发审计同事务，越权失败也留安全记录。\n- GET /api/audit：audit:read鉴权、分页、traceId/sourceModule/sourceId筛选；不新增组织树或院系范围。\n- GET /internal/resources/statistics?from&to&asOf&roomId：capacitySeatSeconds、occupiedSeatSeconds、occupiedM1SeatSeconds、occupiedM2SeatSeconds、confirmedBookingCount、confirmedM1BookingCount、confirmedM2BookingCount、algorithm、historyAvailableFrom、historyComplete。占用数按来源ID去重且与有效窗口正交集；historyComplete=false不伪装为0。\n- GET /internal/reservations/statistics使用同一时间/教室范围：checkedInCount、noShowCount、排除数及来源说明；只纳入已到签到截止的队列，排除开始前取消和系统维修终结。\n- GET /api/statistics由f通过HTTP合并，statistics:read鉴权；来源失败、历史不足、0容量分别表达，不能补造0或NaN。\n\n### 邮箱验证\n\n- POST /internal/notifications/verification-email：operationId(UUID)、userId(UUID)、email、token、expiresAt，X-Service-Key；不接收URL、subject、body或locale。\n- f用受信origin生成/account#verify-email=...，固定双语模板。a本人页面读取fragment后立即清URL，再仅通过POST body验证。\n- 回执operationId、status、duplicate、retryable、nextRetryAt、errorCode。status为ACCEPTED/FAILED/NOT_CONFIGURED/UNKNOWN；ACCEPTED只表示SMTP接收，不称最终送达。\n- 200表示确定状态或重复，202表示UNKNOWN，400仅非法DTO，401密钥无效，409同键异参数。配置缺失返回NOT_CONFIGURED；过期未发为FAILED不可重试。\n- f发送前持久提交UNKNOWN；相同ID的ACCEPTED/UNKNOWN仅回读不重发。只有确定失败或未配置、尚未过期且到nextRetryAt，才允许同ID同参数重试。a超时保留原ID。\n- a仅持久nonce/hash等并从受保护密钥重建令牌；f仅存规范化请求指纹和安全回执，不存邮箱、token、URL或整封正文。禁止令牌进入日志或普通通知表。\n\n## 权限\n\n新增动作由a统一登记；其他领域只使用权限，不写IAM。沿用USER、MAINTAINER、SYSTEM_ADMIN，支持自定义角色。\n\n| 默认范围 | 权限 |\n| --- | --- |\n| 三角色，另检查本人/被派/申请资格 | resource:rooms:read；reservation:read/create/cancel/checkin；approval:read/apply；repair:report/history:read；notification:read |\n| MAINTAINER和SYSTEM_ADMIN，另检查实际被派人员 | repair:maintain |\n| SYSTEM_ADMIN | reservation:admin-cancel；reservation:admin-read；approval:decide；approval:flow:read；approval:flow:write；approval:admin-cancel；repair:assign/accept/evaluate/admin-cancel；audit:read；statistics:read；identity:settings:read/write |\n\n原权限不删除；角色名不能代替对象归属与权限检查。IAM的已有管理权限和b签到码权限继续沿用。\n\n## 浏览器与交付\n\n真实浏览器测试复用frontend/tests/shared/browser.ts，业务测试加载真实产品组件或路由；API fixture只隔离数据来源。Vitest原生JSON通过现有record --kind e2e保存，不新增依赖/锁文件。纯SSR或假页面不能报UI通过。各域全部本层TDD/变异/回归通过再收件，前后端真实联调在协调QA环境单独验。\n\n本轮submit --no-github先自动收件，协调人保留同一差异并统一安排导出推送，避免半成品快照轮流覆盖体验站。所有GitHub推送仍按既有CI和站点规则执行；Gitee新交付仍须真人验收和独立CI，不沿用上一轮的验收。Git冲突由人处理，不自动合并main。\n\n## 当前基线证据\n\n公共工具117项（116通过、1项Windows专用在Linux跳过）；后端81/81；浏览器基础4/4、独立破坏观察值检出1个业务断言失败、类型检查通过；btree_gist在非超级用户数据库所有者下真实安装，重叠范围插入产生23P01。详情保存在本轮private目录。正式业务实现仍须各自完整需求收据，不能复用这些基线检查冒充功能完成。\n",
+      "requirement_ids": [
+        "M2-01",
+        "M2-03",
+        "M2-04",
+        "M2-05",
+        "M2-06"
+      ]
     }
-  ]
+  ],
+  "issues": [
+    {
+      "id": "H01",
+      "status": "已确认",
+      "conclusion": "User 2026-11-16 cancellation/start cutoff/conflict retry confirmed in docs/workflow/round3-integration-decisions.md. No unresolved policy remains."
+    },
+    {
+      "id": "A01",
+      "status": "记录边界",
+      "conclusion": "Old M2-02 verified receipts retained. Actual two-JAR integration required before full M2-06 completion; do not call remote fixture real business integration."
+    },
+    {
+      "id": "A02",
+      "status": "已确认",
+      "conclusion": "Coordinator supplies frozen resource.jar SHA and independent own DB. Real test uses public IAM setup, real two JVMs, HTTP-only proxy failure, durable workflow restart and real resource allocation/release; test fixture permission fix narrows OTHER to normal user without changing expected assertions. All Red replayed on original unimplemented product."
+    },
+    {
+      "id": "H02",
+      "status": "已确认",
+      "conclusion": "Coordinator 2026-11-16 confirms eligibility and current department checked before allocation and APPROVED writeback. Revocation after actual ACK creates higher-version compensation release, release pending until ACK; renewed qualification retries above known tombstone, preserving original start/expiry. Existing APPROVED is not automatically cancelled."
+    }
+  ],
+  "boundary": {
+    "pages": [],
+    "components": [],
+    "data": [
+      "Current published M2-02 uses m2.classroom_requests/approval_tasks; only read/decision exist.",
+      "Own PG18 isolated; actual HTTP Cookie/CSRF/introspection plus controlled remote API fixtures."
+    ],
+    "unverified": [
+      "Real two-JAR network integration and frontend are separate coordinator QA; fixtures are not school data."
+    ]
+  }
 }
