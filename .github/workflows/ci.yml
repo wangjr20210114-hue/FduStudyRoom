@@ -134,7 +134,14 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/huawei ~/.ssh/known_hosts
           trap 'rm -f ~/.ssh/huawei' EXIT
-          ssh -T -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -i ~/.ssh/huawei -p 22 fdu-deploy@119.3.126.218 deploy < release/product.tar.gz > /tmp/deploy-result.json
+          for attempt in 1 2 3; do
+            if timeout 300s ssh -T -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i ~/.ssh/huawei -p 22 fdu-deploy@119.3.126.218 deploy < release/product.tar.gz > /tmp/deploy-result.json; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            echo "SSH release transfer failed; retrying ($attempt/3)." >&2
+            sleep 5
+          done
       - name: Verify public HTTPS and source version
         env:
           EXPECTED_COMMIT: ${{ github.sha }}
