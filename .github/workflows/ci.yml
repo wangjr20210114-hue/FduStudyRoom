@@ -5,10 +5,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: huawei-experience-site
-  cancel-in-progress: false
-  queue: max
 jobs:
   verify-package:
     runs-on: ubuntu-latest
@@ -23,6 +19,13 @@ jobs:
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U module_user -d campus_migration_probe"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      mailpit:
+        image: axllent/mailpit@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+        ports: ['127.0.0.1:1025:1025', '127.0.0.1:8025:8025']
+        options: >-
+          --memory 128m --pids-limit 64
+          --health-cmd "/mailpit readyz"
           --health-interval 5s --health-timeout 3s --health-retries 20
     steps:
       - uses: actions/checkout@v4
@@ -43,6 +46,10 @@ jobs:
         run: |
           git show -s --format=%B "$GITHUB_SHA" > /tmp/commit-description.txt
           python3 scripts/check-commit.py /tmp/commit-description.txt
+      - name: Prepare real backend test database
+        env:
+          PGPASSWORD: ci-only-password
+        run: psql -h 127.0.0.1 -U module_user -d campus_migration_probe -v ON_ERROR_STOP=1 -c 'CREATE DATABASE module_test OWNER module_user'
       - name: Workflow tooling tests
         run: python3 -m unittest discover -s tests/team -v
       - name: Buffer service tests
@@ -67,9 +74,15 @@ jobs:
       - name: Backend tests and build
         working-directory: backend
         env:
+          CAMPUS_DB_URL: jdbc:postgresql://127.0.0.1:5432/module_test
+          CAMPUS_DB_USER: module_user
+          CAMPUS_DB_PASSWORD: ci-only-password
           CAMPUS_TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/campus_migration_probe
           CAMPUS_TEST_DB_USER: module_user
           CAMPUS_TEST_DB_PASSWORD: ci-only-password
+          CAMPUS_TEST_SMTP_HOST: 127.0.0.1
+          CAMPUS_TEST_SMTP_PORT: '1025'
+          CAMPUS_TEST_MAILPIT_URL: http://127.0.0.1:8025
         run: sh mvnw -B verify
       - name: Package verified outputs
         env:
@@ -86,10 +99,19 @@ jobs:
     needs: verify-package
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Verification can run concurrently; only publishing and public checks own the site lock.
+    # The receiver's monotonic sequence check also rejects older runs that finish CI later.
+    concurrency:
+      group: huawei-experience-site
+      cancel-in-progress: false
+      queue: max
     environment:
       name: huawei-experience
       url: https://studyroom.seatraces.com
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: product-${{ github.sha }}
@@ -106,12 +128,10 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/huawei ~/.ssh/known_hosts
           trap 'rm -f ~/.ssh/huawei' EXIT
-          ssh -T -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -i ~/.ssh/huawei -p 22 fdu-deploy@119.3.126.218 deploy < release/product.tar.gz
+          ssh -T -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -i ~/.ssh/huawei -p 22 fdu-deploy@119.3.126.218 deploy < release/product.tar.gz > /tmp/deploy-result.json
       - name: Verify public HTTPS and source version
         env:
           EXPECTED_COMMIT: ${{ github.sha }}
+          EXPECTED_SEQUENCE: ${{ github.run_number }}
         run: |
-          curl --fail --retry 36 --retry-delay 5 --retry-all-errors --retry-max-time 180 --connect-timeout 5 --max-time 10 https://studyroom.seatraces.com/health/resource
-          curl --fail --retry 3 --retry-delay 5 --connect-timeout 10 --max-time 30 https://studyroom.seatraces.com/health/workflow
-          curl --fail --connect-timeout 10 --max-time 30 https://studyroom.seatraces.com/version.json > /tmp/deployed-version.json
-          python3 -c 'import json,os; v=json.load(open("/tmp/deployed-version.json")); assert v["commit"]==os.environ["EXPECTED_COMMIT"]'
+          python3 scripts/verify-deployment.py --receiver-result /tmp/deploy-result.json --commit "$EXPECTED_COMMIT" --sequence "$EXPECTED_SEQUENCE"
