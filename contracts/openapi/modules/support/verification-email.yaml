@@ -1,0 +1,96 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Transient verification email delivery",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/internal/notifications/verification-email": {
+      "post": {
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "description": "Trusted IAM authenticates the user and validates the current target email. Verification target is not yet verified, unlike ordinary notification email. No URL, subject, body or locale accepted. Fixed bilingual template and configured HTTPS origin generate /account#verify-email=<encoded token>. IAM clears browser fragment immediately and consumes the token in authenticated POST body. Payload exists only in this call memory. A separate receipt persists canonical typed-DTO SHA256 and safe delivery metadata only: no email, token, URL or body. Commit UNKNOWN before SMTP. ACCEPTED means SMTP confirmed acceptance, never final mailbox delivery. Same operation+different digest conflicts. ACCEPTED and UNKNOWN replays never send, even after expiry; only known failed/not-configured and still-unexpired requests may retry the same payload at nextRetryAt. A caller HTTP timeout retains the original operationId. The trusted verification-origin default explicitly selected for this project is https://studyroom.seatraces.com. Tests may configure a different trusted origin; ordinary callers cannot supply it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operationId",
+                  "userId",
+                  "email",
+                  "token",
+                  "expiresAt"
+                ],
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254
+                  },
+                  "token": {
+                    "type": "string",
+                    "minLength": 32,
+                    "maxLength": 2048,
+                    "pattern": "^[A-Za-z0-9._~-]+$"
+                  },
+                  "expiresAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Determinate receipt or identical known replay; {operationId,status,duplicate,retryable,nextRetryAt,errorCode}; status ACCEPTED/FAILED/NOT_CONFIGURED"
+          },
+          "202": {
+            "description": "UNKNOWN; retryable false and nextRetryAt null; no blind resend"
+          },
+          "400": {
+            "description": "Invalid DTO only"
+          },
+          "401": {
+            "description": "Service key invalid"
+          },
+          "409": {
+            "description": "Same operation, different typed request"
+          },
+          "503": {
+            "description": "Durable receipt unavailable; caller retains same operation and treats transport ambiguity safely"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ServiceKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Service-Key"
+      },
+      "Cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "FDU_SESSION"
+      }
+    }
+  }
+}

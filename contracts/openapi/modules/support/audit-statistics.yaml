@@ -1,0 +1,284 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Support audit and statistics",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/internal/audit/events": {
+      "post": {
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditEvent"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Persisted append-only receipt {id,eventKey,duplicate:false}"
+          },
+          "200": {
+            "description": "Identical event, same id, duplicate:true"
+          },
+          "400": {
+            "description": "Invalid event or known summary scalar"
+          },
+          "401": {
+            "description": "Invalid service key"
+          },
+          "409": {
+            "description": "Same key, different canonical content"
+          },
+          "503": {
+            "description": "Database unavailable; caller retains immutable outbox task"
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "security": [
+          {
+            "Cookie": []
+          }
+        ],
+        "description": "Require current audit:read. This authorizes the project-wide audit scope; no department or organization scope is inferred. Only query filters narrow results. Descending occurredAt then id. Response {items,total,page,size}; each item has public event fields, safe summaries, id, but never payload_hash. Records reject UPDATE/DELETE; no public mutation endpoint.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "traceId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sourceModule",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "M1",
+                "M2",
+                "M3",
+                "D",
+                "EXTERNAL"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "sourceId",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized filtered page"
+          },
+          "400": {
+            "description": "Invalid query"
+          },
+          "401": {
+            "description": "Missing session"
+          },
+          "403": {
+            "description": "Current audit:read missing"
+          },
+          "503": {
+            "description": "Audit unavailable"
+          }
+        }
+      }
+    },
+    "/api/statistics": {
+      "get": {
+        "security": [
+          {
+            "Cookie": []
+          }
+        ],
+        "description": "Require current statistics:read. Aggregate only via resource and reservation HTTP contracts from the frozen work order. Identical from/to/asOf/roomId echoed by both sources is mandatory. Numerator is effective retained confirmed occupancy intersecting historical service windows; denominator excludes disabled/closed/maintenance time but never subtracts reservations. P08 rates are fractions 0..1, never sensor occupancy. checkedInCount/(checkedInCount+noShowCount) and noShowCount/(same cohort). Response includes numeric seconds/count fields, cohortCount, three rates, source algorithms, query scope and history metadata. status OK, NO_CAPACITY (real capacity zero), HISTORY_UNAVAILABLE (null resource totals and rates; explicit historyAvailableFrom). Source errors/invalid data return 503, never fabricated zeros. Default source endpoint origins derive from the existing campus.workflow.identity-url (same public fallback as RemoteIdentityLookup); the normal production resource alias and local loopback routing are reused. Optional campus.statistics.resource-url/reservation-url override the full endpoint for isolated deployments.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "asOf",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "roomId",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Known aggregates or explicit non-calculable state"
+          },
+          "400": {
+            "description": "Invalid range"
+          },
+          "401": {
+            "description": "No session"
+          },
+          "403": {
+            "description": "Current statistics:read missing"
+          },
+          "503": {
+            "description": "STATISTICS_SOURCE_UNAVAILABLE: failed, mismatched or invalid source"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ServiceKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Service-Key"
+      },
+      "Cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "FDU_SESSION"
+      }
+    },
+    "schemas": {
+      "AuditEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "eventKey",
+          "sourceService",
+          "action",
+          "sourceModule",
+          "success",
+          "occurredAt",
+          "traceId"
+        ],
+        "properties": {
+          "eventKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,255}$"
+          },
+          "sourceService": {
+            "type": "string",
+            "enum": [
+              "resource-service",
+              "workflow-service"
+            ]
+          },
+          "actorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "sourceModule": {
+            "type": "string",
+            "enum": [
+              "M1",
+              "M2",
+              "M3",
+              "D",
+              "EXTERNAL"
+            ]
+          },
+          "sourceId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "traceId": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "beforeData": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "afterData": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "description": "Only safe business scalars are persisted: status/reasonCode/departmentCode; version/authVersion/score/level; enabled/canApplyRoom; roomId/seatId/roleId; startsAt/endsAt. Unknown summary fields (including password, Cookie, signingKey, raw request) are projected out. Invalid values for known keys are rejected. No raw request logging. Full canonical request digest enforces same-key content identity. Actor and source IDs are trusted assertions from the authenticated originating service, never browser input. Safe IAM extensions: permissions is at most 200 permission codes (each at most 128 chars and colon-separated lowercase code segments); roleCode is uppercase code max64; maxReservationHours/beforeStartReminderMinutes/afterStartReminderMinutes/checkinDeadlineMinutes/approvalTtlMinutes/repairSlaMinutes are positive int32; hasEmail/verified/hasDepartment are booleans. No addresses or tokens."
+      }
+    }
+  }
+}
