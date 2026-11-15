@@ -63,6 +63,16 @@ public class RepairFlow {
  private void event(UUID id,UUID actor,String type,String from,String to,UUID assigned,String note,int version){db.update("INSERT INTO m3.repair_events(order_id,actor_id,event_type,from_status,to_status,assigned_to,note,order_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",id,actor,type,from,to,assigned,note,version,time(),time());}
  private UUID stable(String v){return UUID.nameUUIDFromBytes(v.getBytes(StandardCharsets.UTF_8));}
  private void task(UUID id,String kind,String suffix,Object payload){db.update("INSERT INTO m3.repair_tasks(id,order_id,kind,payload,next_at) VALUES(?,?,?,?::jsonb,?) ON CONFLICT(id) DO NOTHING",stable(id+":"+kind+":"+suffix),id,kind,encode(payload),time());}
+ /** Joins the successful evaluation transaction; HTTP runs after commit in dispatch. */
+ public void enqueueEvaluationAudit(UUID orderId,UUID eventId,UUID actorId,int version,int score,Instant occurredAt,String trace){
+  var payload=new LinkedHashMap<String,Object>();
+  payload.put("eventKey","M3:"+orderId+":EVALUATE:"+eventId);
+  payload.put("sourceService","workflow-service");payload.put("actorId",actorId);
+  payload.put("action","EVALUATE");payload.put("sourceModule","M3");payload.put("sourceId",orderId);
+  payload.put("success",true);payload.put("occurredAt",occurredAt.toString());payload.put("traceId",trace);
+  payload.put("afterData",Map.of("status","COMPLETED","version",version,"score",score));
+  db.update("INSERT INTO m3.repair_tasks(id,order_id,kind,payload,next_at) VALUES(?,NULL,'AUDIT',?::jsonb,?) ON CONFLICT(id) DO NOTHING",eventId,encode(payload),time());
+ }
  private void audit(UUID id,UUID actor,String action,boolean success,int version,String status,String trace){var m=new LinkedHashMap<String,Object>();m.put("eventKey","M3:"+id+":"+action+":"+version+":"+trace);m.put("sourceService","workflow-service");m.put("actorId",actor);m.put("action",action);m.put("sourceModule","M3");m.put("sourceId",id);m.put("success",success);m.put("occurredAt",now().toString());m.put("traceId",trace);m.put("afterData",Map.of("version",version,"status",status));task(id,"AUDIT",action+version+trace,m);}
  private void notice(UUID id,int version,String action,Collection<UUID> users){for(UUID user:new HashSet<>(users)){if(user==null)continue;task(id,"NOTICE",action+version+user,Map.of("recipientId",user,"action",action,"version",version));}}
  private List<UUID> people(Map<String,Object> r){var ids=new ArrayList<UUID>();ids.add((UUID)r.get("reporter_id"));if(r.get("technician_id")!=null)ids.add((UUID)r.get("technician_id"));return ids;}

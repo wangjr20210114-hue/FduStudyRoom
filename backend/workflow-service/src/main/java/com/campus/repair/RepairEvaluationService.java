@@ -18,7 +18,7 @@ public class RepairEvaluationService {
  public record Order(UUID id,UUID reporterId,UUID technicianId,String status,UUID acceptedBy,Instant acceptedAt,String acceptanceComment,Integer rating,String evaluation,Instant evaluatedAt,int version){}
  public record Event(UUID id,UUID actorId,String eventType,String fromStatus,String toStatus,UUID assignedTo,String note,Instant createdAt,int orderVersion,Integer rating){}
  @Transactional
- public Order evaluate(UUID id,IdentityPrincipal actor,Map<String,Object> body){
+ public Order evaluate(UUID id,IdentityPrincipal actor,Map<String,Object> body,String trace){
   permission(actor,"repair:evaluate");Order order=load(id,true);rejectTechnician(order,actor);if(flow!=null&&flow.managed(id))flow.checkIndependent(id,actor);
   if(!"COMPLETED".equals(order.status()))throw new ApiException(409,"REPAIR_NOT_COMPLETED");
   if(!actor.id().equals(order.acceptedBy()))throw new ApiException(403,"REPAIR_NOT_ACCEPTOR");
@@ -29,7 +29,9 @@ public class RepairEvaluationService {
   OffsetDateTime now=OffsetDateTime.now(ZoneOffset.UTC);
   int changed=jdbc.update("UPDATE m3.repair_orders SET rating=?,evaluation=?,evaluated_at=?,updated_at=?,version=version+1 WHERE id=? AND version=? AND evaluated_at IS NULL",rating,evaluation,now,now,id,version);
   if(changed!=1)throw new ApiException(409,"REPAIR_VERSION_CONFLICT");
-  jdbc.update("INSERT INTO m3.repair_events(id,order_id,actor_id,event_type,from_status,to_status,note,order_version,rating,created_at,updated_at) VALUES(?,?,?,'EVALUATE','COMPLETED','COMPLETED',?,?,?,?,?)",UUID.randomUUID(),id,actor.id(),evaluation,version+1,rating,now,now);
+  UUID eventId=UUID.randomUUID();
+  jdbc.update("INSERT INTO m3.repair_events(id,order_id,actor_id,event_type,from_status,to_status,note,order_version,rating,created_at,updated_at) VALUES(?,?,?,'EVALUATE','COMPLETED','COMPLETED',?,?,?,?,?)",eventId,id,actor.id(),evaluation,version+1,rating,now,now);
+  flow.enqueueEvaluationAudit(id,eventId,actor.id(),version+1,rating,now.toInstant(),trace);
   return load(id,false);
  }
  /** Enforce independent acceptance without claiming unavailable resource release has completed. */
