@@ -25,7 +25,7 @@ description: 按已登记身份自动推进 FduStudyRoom 所属模块，从环�
 | 输入 | 必需性与取得方式 |
 | --- | --- |
 | 成员身份或已登记Gitee别名 | 必需；用户提供，与个人令牌对应记录核对 |
-| 需求范围 | 默认“未完成”；“完成/全部”用于查询，指定模块时不得超出本人分配 |
+| 需求范围 | 默认本人全部未完成需求；小批次可用 `--requirements IAM-04` 指定完整需求 ID，多个 ID 用逗号分隔；恢复时重复相同范围。不得超出本人模块和层，也不能只选部分验收条目冒充完整需求 |
 | 项目路径 | 默认当前工作区，必须定位到项目根目录 |
 | 模块、前后端层、冻结基线和可写路径 | 从缓冲站及manifest取得，不要求用户重复填写 |
 | 个人凭据 | 本机忽略文件提供，不写入对话、日志或Git |
@@ -53,7 +53,7 @@ Stage 0 启动与恢复
 
 ### Stage 0：启动、认证与恢复
 
-**执行**：核对加载的五个技能与项目源版本；需要时用install-skills的--check比较。调用campus-build检查环境，已有兼容工具与有效构建可复用；缓冲站不可达先诊断，不冒充协调人新建身份。运行 `python scripts/team.py plan <身份> --layer backend --status 全部`，核对已完成项所指文件及真实审核/CI记录，再运行 `python scripts/team.py workflow <身份> --layer backend`，取得workflow_id和next。指定模块加--module，仅查看用--preview。仅查询时输出状态后结束，不执行Stage 1—9。
+**执行**：核对加载的五个技能与项目源版本；需要时用install-skills的--check比较。调用campus-build检查环境，已有兼容工具与有效构建可复用；缓冲站不可达先诊断，不冒充协调人新建身份。运行 `python scripts/team.py plan <身份> --layer backend --status 全部`，核对已完成项所指文件及真实审核/CI记录，再运行 `python scripts/team.py workflow <身份> --layer backend`，取得workflow_id和next。指定模块加--module；只处理少量完整需求时加 `--requirements IAM-04`，范围随本轮 workflow ID 冻结，恢复重复相同参数。未选项记为本轮未选，不冒充外部受阻或已完成。同一工作树不能同时打开不同范围的活跃流程。仅查看用--preview。仅查询时输出状态后结束，不执行Stage 1—9。
 
 **输出**：已认证身份、冻结基线、已完成证据核对、本人待办及恢复点。
 
@@ -65,6 +65,8 @@ Stage 0 启动与恢复
 
 ```text
 python scripts/team.py workflow b --layer backend
+# 小批次选择完整需求，恢复仍使用相同参数
+python scripts/team.py workflow b --layer backend --module M02 --requirements RES-07
 python scripts/team.py worktree b M02 --layer backend
 python scripts/team.py workflow b --layer frontend
 python scripts/team.py worktree b M02 --layer frontend

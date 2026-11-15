@@ -53,9 +53,15 @@ class GitHubExportTests(unittest.TestCase):
    ack={'id':'11111111-1111-4111-8111-111111111111'};original=subprocess.run
    def local_push(command,*args,**kwargs):
     if 'push' in command:
-     command=list(command);command[command.index('push')+1]=str(bare)
+     command=list(command);index=command.index('push')
+     # Verify checkout trust with the actual push command prefix. The local
+     # bare remote is not the different-owner checkout under test.
+     probe=original(command[:index]+['rev-parse','HEAD'],*args,**kwargs)
+     self.assertEqual(0,probe.returncode,probe.stderr.decode(errors='replace'))
+     command[index+1]=str(bare)
+     kwargs={**kwargs,'env':{**kwargs['env'],'GIT_TEST_ASSUME_DIFFERENT_OWNER':'0'}}
     return original(command,*args,**kwargs)
-   with patch('delivery.subprocess.run',side_effect=local_push):
+   with patch.dict('os.environ',{'GIT_TEST_ASSUME_DIFFERENT_OWNER':'1'}),patch('delivery.subprocess.run',side_effect=local_push):
     result=github_export(root,work,context,ack,'feat','Add room page',['Show room list'],['RES-01'])
     again=github_export(root,work,context,ack,'feat','Add room page',['Show room list'],['RES-01'])
    self.assertEqual('pushed',result['state']);self.assertEqual(result['commit'],again['commit'])

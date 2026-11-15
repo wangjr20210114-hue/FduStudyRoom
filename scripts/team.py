@@ -197,7 +197,9 @@ def workflow_command(args):
     data=api(cfg,'/api/requirements',layer=member['layer'])
     if args.preview:
         print(json.dumps({'member':member['id'],'layer':member['layer'],'requirements':[{'id':q['id'],'module':q['module'],'title':q['title'],'state':q['state'],'skip_coding':q.get('skip_coding',False)} for q in data if not args.module or q['module']==args.module]},ensure_ascii=False,indent=2));return
-    state=open_workflow(ROOT,member,data,args.module)
+    chosen=args.requirements.split(',') if args.requirements is not None else None
+    if chosen is not None:chosen=[q.strip() for q in chosen]
+    state=open_workflow(ROOT,member,data,args.module,chosen)
     state=refresh_submissions(ROOT,state,api(cfg,'/api/submissions',layer=member['layer']))
     print(json.dumps({'workflow_id':state['id'],'state_file':str(state_path(ROOT,state['id'])),'next':next_action(state,args.module),'verification_scope':'member modules; integration, human review and publication remain separate'},ensure_ascii=False,indent=2))
 
@@ -229,7 +231,7 @@ def main():
     sub.add_parser('init-buffer')
     p=sub.add_parser('github-retry');p.add_argument('--submission',required=True)
     p=sub.add_parser('install-skills');p.add_argument('--client',choices=['codex','claude'],default='codex');p.add_argument('--skills-dir');p.add_argument('--check',action='store_true')
-    p=sub.add_parser('workflow');p.add_argument('identity');p.add_argument('--layer',choices=['frontend','backend']);p.add_argument('--module');p.add_argument('--preview',action='store_true')
+    p=sub.add_parser('workflow');p.add_argument('identity');p.add_argument('--layer',choices=['frontend','backend']);p.add_argument('--module');p.add_argument('--preview',action='store_true');p.add_argument('--requirements',help='Comma-separated complete requirement IDs; freeze this run scope')
     p=sub.add_parser('workflow-checkpoint');p.add_argument('--run',required=True);p.add_argument('--module',required=True);p.add_argument('--stage',choices=['workspace','baseline','requirements','test-plan','tdd','regression'],required=True);p.add_argument('--artifact');p.add_argument('--reset',action='store_true')
     p=sub.add_parser('workflow-block');p.add_argument('--run',required=True);p.add_argument('--module',required=True);p.add_argument('--requirement',required=True);p.add_argument('--kind',choices=['external','clarification','scope'],required=True);p.add_argument('--reason',required=True);p.add_argument('--resume-when',required=True)
     p=sub.add_parser('workflow-unblock');p.add_argument('--run',required=True);p.add_argument('--module',required=True);p.add_argument('--requirement',required=True);p.add_argument('--resolution',required=True)

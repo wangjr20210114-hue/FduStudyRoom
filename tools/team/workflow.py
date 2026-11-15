@@ -152,7 +152,7 @@ def validate_analysis(value, catalogue, member, module, targets, blocked=(), tes
     return test_map
 
 def state_path(root, identifier):
-    if not re.fullmatch(r"[a-z][a-z0-9-]{2,47}-[0-9a-f]{12}", identifier):
+    if not re.fullmatch(r"[a-z][a-z0-9-]{2,47}-[0-9a-f]{12}(?:-s[0-9a-f]{12})?", identifier):
         raise PolicyError("INVALID_WORKFLOW_ID")
     return Path(root) / ".campus/workflows" / identifier / "state.local"
 
@@ -168,30 +168,57 @@ def event(state, action, **detail):
     state["updated_at"] = now()
     state["history"].append({"at": state["updated_at"], "action": action, **detail})
 
-def open_workflow(root, member, requirements, selected=None):
+def open_workflow(root, member, requirements, selected=None, selected_requirements=None):
     root=Path(root); base=git(root,"rev-parse","HEAD").decode().strip()
     if base != member.get("baseline"):raise PolicyError("BASELINE_CHANGED")
     if not git(root,"show",base+":spec/modules.json",check=False):raise PolicyError("PUBLISH_OPTIMIZED_BASELINE_FIRST")
     if member.get("admin") or member.get("layer") not in ("frontend","backend"):raise PolicyError("USE_DEVELOPMENT_MEMBER_IDENTITY")
     if selected and selected not in member["modules"]:raise PolicyError("MODULE_NOT_ASSIGNED")
-    identifier=member["id"]+"-"+member["layer"]+"-"+base[:12]; path=state_path(root,identifier); path.parent.mkdir(parents=True,exist_ok=True)
-    manifest=skill_manifest(root)
-    with state_lock(path):
+    scope=None
+    if selected_requirements is not None:
+        if not isinstance(selected_requirements,(list,tuple)) or not selected_requirements or any(not isinstance(q,str) or not q.strip() for q in selected_requirements) or len(set(selected_requirements))!=len(selected_requirements):
+            raise PolicyError("INVALID_WORKFLOW_REQUIREMENTS")
+        chosen=sorted(selected_requirements)
+        available={q["id"]:q for q in requirements if q["module"] in member["modules"] and (not selected or q["module"]==selected) and member["layer"] in q["layers"] and q.get("execution_owner","member")=="member"}
+        if any(q not in available for q in chosen):raise PolicyError("WORKFLOW_REQUIREMENT_NOT_ASSIGNED")
+        scope={"mode":"requirements","requirements":chosen}
+    identifier=member["id"]+"-"+member["layer"]+"-"+base[:12]
+    if scope:identifier+="-s"+digest(json.dumps(scope,sort_keys=True).encode())[:12]
+    path=state_path(root,identifier); path.parent.mkdir(parents=True,exist_ok=True)
+    # All scopes for this identity/layer/base share module worktrees. Serialize
+    # creation and reject a second writing scope before either can use them.
+    scope_lock=root/".campus/workflows"/("scope-lock-"+digest((member["id"]+member["layer"]+base).encode())[:16])/"state.local"
+    scope_lock.parent.mkdir(parents=True,exist_ok=True)
+    manifest=skill_manifest(root);eligible={q["id"]:q.get("state") for q in requirements}
+    with state_lock(scope_lock),state_lock(path):
         if path.exists():
             state=read(path)
             if state["base"]!=base or state["member"]["id"]!=member["id"] or state["member"]["layer"]!=member["layer"] or state["member"]["modules"]!=member["modules"]:raise PolicyError("WORKFLOW_IDENTITY_OR_BASELINE_CHANGED")
+            if state.get("scope")!=scope:raise PolicyError("WORKFLOW_REQUIREMENT_SCOPE_CHANGED")
             if state["skills"]["sha256"]!=manifest["sha256"]:raise PolicyError("WORKFLOW_SKILL_VERSION_CHANGED: preserve the old run; review an upgrade before resuming")
         else:
+            if scope and any(available[q].get("state") not in RUNNABLE for q in scope["requirements"]):raise PolicyError("WORKFLOW_REQUIREMENT_NOT_RUNNABLE")
             public={k:member[k] for k in ("id","layer","modules")}
             state={"version":2,"id":identifier,"base":base,"member":public,"skills":manifest,"modules":{},"history":[]}
+            if scope:state["scope"]=scope
             for module in member["modules"]:
-                targets=[q["id"] for q in requirements if q["module"]==module and q.get("state") in RUNNABLE and q.get("execution_owner","member")=="member"]
+                targets=[q["id"] for q in requirements if q["module"]==module and q.get("state") in RUNNABLE and q.get("execution_owner","member")=="member" and (not scope or q["id"] in scope["requirements"])]
                 definition=module_for(load(root),module)
                 state["modules"][module]={"targets":targets,"blocked":{},"checkpoints":{},"worktree":str(root/".campus/worktrees"/member["id"]/member["layer"]/definition["key"]/base[:12]),"submission":None}
-            event(state,"START")
-        eligible={q["id"]:q.get("state") for q in requirements}
+            writing={m for m,item in state["modules"].items() if item["targets"]}
+            for other_path in (root/".campus/workflows").glob("*/state.local"):
+                if other_path==path:continue
+                other=read(other_path)
+                if other.get("base")!=base or other.get("member",{}).get("id")!=member["id"] or other["member"].get("layer")!=member["layer"]:continue
+                if any(m in writing and not item.get("submission") and any(eligible.get(q) not in ("accepted","verified") for q in item["targets"]) for m,item in other["modules"].items()):
+                    raise PolicyError("WORKFLOW_SCOPE_ALREADY_ACTIVE: resume "+other["id"])
+            event(state,"START",**({"scope":scope} if scope else {}))
         for current_module,item in state["modules"].items():
-            item["deferred"]=[{"id":q["id"],"state":q.get("state")} for q in requirements if q["module"] in member["modules"] and q["module"]==current_module and q.get("state") not in RUNNABLE|{"accepted","verified"} and q["id"] not in item["targets"]]
+            item["deferred"]=[]
+            for q in requirements:
+                if q["module"]!=current_module or q["id"] in item["targets"] or q.get("state") in ("accepted","verified"):continue
+                if scope:item["deferred"].append({"id":q["id"],"state":q.get("state"),"reason":"not_selected"})
+                elif q.get("state") not in RUNNABLE:item["deferred"].append({"id":q["id"],"state":q.get("state")})
             item["server_completed"]=[q for q in item["targets"] if eligible.get(q) in ("accepted","verified")]
         save(path,state)
     return state
@@ -214,7 +241,7 @@ def next_action(state, selected=None):
                 return {"module":module,"stage":stage,"requirements":ids,"worktree":item["worktree"]}
         return {"module":module,"stage":"upload","requirements":ids,"worktree":item["worktree"]}
     deferred=[q for item in state["modules"].values() for q in item.get("deferred",[])]
-    return {"stage":"waiting" if waits or deferred else "blocked" if any(i["blocked"] for i in state["modules"].values()) else "development_complete","waiting":waits,"deferred":deferred,"blocked":{m:i["blocked"] for m,i in state["modules"].items() if i["blocked"]}}
+    return {"stage":"waiting" if waits or any(q.get("reason")!="not_selected" for q in deferred) else "blocked" if any(i["blocked"] for i in state["modules"].values()) else "development_complete","waiting":waits,"deferred":deferred,"blocked":{m:i["blocked"] for m,i in state["modules"].items() if i["blocked"]}}
 
 def validate_run(item, stage, source=None, reports=True):
     if not item.get("run_id") or not item.get("source",{}).get("sha256") or item.get("exit_code")!=0 or not item.get("log") or digest(item["log"].encode())!=item.get("sha256"):

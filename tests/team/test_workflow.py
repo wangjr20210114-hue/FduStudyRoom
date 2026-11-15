@@ -59,6 +59,50 @@ class WorkflowTests(unittest.TestCase):
   self.assertEqual("workspace",next_action(again)["stage"])
   done=open_workflow(self.root,self.member,[{**self.q,"state":"accepted"}])
   self.assertEqual("development_complete",next_action(done)["stage"])
+ def test_explicit_requirement_scope_keeps_other_pending_deferred(self):
+  other={**self.q,"id":"RES-02","title":"Other fixture"}
+  member={**self.member,"id":"scope-member"}
+  state=open_workflow(self.root,member,[self.q,other],"M02",["RES-01"])
+  self.assertEqual(["RES-01"],state["modules"]["M02"]["targets"])
+  self.assertEqual(["RES-01"],next_action(state)["requirements"])
+  self.assertEqual({},state["modules"]["M02"]["blocked"])
+  self.assertEqual([{"id":"RES-02","state":"pending","reason":"not_selected"}],state["modules"]["M02"]["deferred"])
+  self.assertEqual({"mode":"requirements","requirements":["RES-01"]},state["scope"])
+  resumed=open_workflow(self.root,member,[{**self.q,"state":"accepted"},other],"M02",["RES-01"])
+  self.assertEqual(state["id"],resumed["id"])
+  self.assertEqual("development_complete",next_action(resumed)["stage"])
+  self.assertEqual(["RES-02"],[q["id"] for q in next_action(resumed)["deferred"]])
+ def test_requirement_scope_rejects_unassigned_unavailable_and_empty_choices(self):
+  for index,choice in enumerate((["IAM-04"],["RES-01","RES-01"],[],[""])):
+   with self.subTest(choice=choice),self.assertRaises(PolicyError):
+    open_workflow(self.root,{**self.member,"id":"invalid-scope-"+str(index)},[self.q],"M02",choice)
+  backend={**self.q,"layers":["backend"]}
+  with self.assertRaises(PolicyError):open_workflow(self.root,{**self.member,"id":"wrong-layer"},[backend],"M02",["RES-01"])
+  for state in ("accepted","verified","blocked","submitted"):
+   with self.subTest(state=state),self.assertRaises(PolicyError):
+    open_workflow(self.root,{**self.member,"id":"unavailable-"+state},[{**self.q,"state":state}],"M02",["RES-01"])
+ def test_selected_requirement_still_requires_every_canonical_criterion(self):
+  catalogue={"RES-01":{**self.q,"acceptance":["save a room","preserve history"]}}
+  value=self.analysis();value["requirements"][0]["acceptance"]=catalogue["RES-01"]["acceptance"]
+  with self.assertRaisesRegex(PolicyError,"ACCEPTANCE_NOT_COVERED"):
+   validate_analysis(value,catalogue,self.member,"M02",["RES-01"],testing=True)
+ def test_new_scope_cannot_overlap_an_active_workflow_on_same_worktree(self):
+  before=state_path(self.root,self.state["id"]).read_bytes()
+  with self.assertRaisesRegex(PolicyError,"WORKFLOW_SCOPE_ALREADY_ACTIVE"):
+   open_workflow(self.root,self.member,[self.q],"M02",["RES-01"])
+  self.assertEqual(before,state_path(self.root,self.state["id"]).read_bytes())
+ def test_scope_order_is_stable_and_different_finished_scope_does_not_rewrite_history(self):
+  other={**self.q,"id":"RES-02"};member={**self.member,"id":"scoped-history"}
+  state=open_workflow(self.root,member,[self.q,other],"M02",["RES-01"])
+  completed=open_workflow(self.root,member,[{**self.q,"state":"accepted"},other],"M02",["RES-01"])
+  prior=state_path(self.root,state["id"]).read_bytes()
+  second=open_workflow(self.root,member,[{**self.q,"state":"accepted"},other],"M02",["RES-02"])
+  self.assertNotEqual(completed["id"],second["id"])
+  self.assertEqual(prior,state_path(self.root,state["id"]).read_bytes())
+  together={**self.member,"id":"scoped-order"}
+  first=open_workflow(self.root,together,[self.q,other],"M02",["RES-02","RES-01"])
+  again=open_workflow(self.root,together,[self.q,other],"M02",["RES-01","RES-02"])
+  self.assertEqual(first["id"],again["id"])
  def test_wrong_baseline_and_module_are_rejected(self):
   with self.assertRaises(PolicyError):open_workflow(self.root,{**self.member,"baseline":"f"*40},[self.q])
   with self.assertRaises(PolicyError):open_workflow(self.root,self.member,[self.q],"M05")

@@ -21,8 +21,14 @@ def github_export(root,worktree,context,ack,kind,title,details,requirements,patc
         if result['patch_sha256']!=fingerprint:raise PolicyError('GITHUB_EXPORT_INPUT_CHANGED')
     else:
         if checkout.exists():raise PolicyError('INCOMPLETE_EXPORT: inspect the existing checkout; do not overwrite it')
-        checkout.mkdir();git(checkout,'init');git(checkout,'fetch',str(root),context['base']);git(checkout,'checkout','--detach','FETCH_HEAD')
-        apply=subprocess.run(['git','-C',str(checkout),'apply','--index','--'],input=patch,capture_output=True)
+        if git(root,'rev-parse','HEAD').decode().strip()!=context['base']:raise PolicyError('GITHUB_BASELINE_NOT_CHECKED_OUT')
+        bundle=home/'baseline.bundle'
+        if bundle.exists():raise PolicyError('INCOMPLETE_EXPORT: inspect the existing bundle; do not overwrite it')
+        # A bundle keeps native Git from invoking a local upload-pack against a
+        # WSL-owned source repository. Trust remains per-command and per-path.
+        git(root,'bundle','create',str(bundle),'HEAD')
+        checkout.mkdir();git(checkout,'init');git(checkout,'fetch',str(bundle),'HEAD');git(checkout,'checkout','--detach','FETCH_HEAD')
+        apply=subprocess.run(['git','-c','safe.directory='+str(checkout.resolve()),'-C',str(checkout),'apply','--index','--'],input=patch,capture_output=True)
         if apply.returncode:raise PolicyError('GITHUB_EXPORT_CONFLICT_REQUIRES_HUMAN')
         guard(checkout,policy,context['member'],context['module'],context['base'])
         text=message(kind,context['module'],title,details,requirements)
@@ -30,7 +36,7 @@ def github_export(root,worktree,context,ack,kind,title,details,requirements,patc
         result={'branch':branch,'commit':git(checkout,'rev-parse','HEAD').decode().strip(),'patch_sha256':fingerprint,'buffer_id':identifier,'state':'prepared'}
         receipt.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     env={**os.environ,'GIT_TERMINAL_PROMPT':'0','GCM_INTERACTIVE':'Never'}
-    pushed=subprocess.run(['git','-C',str(checkout),'push',remote,result['commit']+':refs/heads/'+branch],env=env,capture_output=True,timeout=120)
+    pushed=subprocess.run(['git','-c','safe.directory='+str(checkout.resolve()),'-C',str(checkout),'push',remote,result['commit']+':refs/heads/'+branch],env=env,capture_output=True,timeout=120)
     if pushed.returncode:raise PolicyError('GITHUB_PUSH_FAILED: buffer draft is preserved; fix this member credentials and retry github-retry --submission <buffer-id>')
     result['state']='pushed';receipt.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     return result

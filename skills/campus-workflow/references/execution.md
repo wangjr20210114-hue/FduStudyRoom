@@ -23,9 +23,21 @@ python scripts/team.py workflow-checkpoint --run <流程ID> --module M02 --stage
 
 分析文件位于工作树 `spec/progress/<模块key>/<层>/analysis.json`；收据位于 `.campus/tdd.local`。网站真实返回单号后才进入submitted，不能靠写success=true跳过。
 
+## 本轮范围
+
+默认处理已登记身份在当前层的全部未完成需求。小批次可以选择一项或多项完整目录需求：
+
+```text
+python scripts/team.py workflow b --layer backend --module M02 --requirements RES-07
+```
+
+工具校验模块、层、成员归属和可开发状态；范围写入状态并生成带 `-s<范围摘要>` 的独立流程 ID。恢复时重复相同 `--requirements`，不能改写旧流程的 targets。需求分析、测试与上传仍须覆盖选中需求的全部原文验收项；局部场景试运行继续使用 pilot，不能当作完整需求上传。
+
+未选需求在输出中保留 `deferred`、`reason=not_selected`，不标成外部受阻或已完成；它们不阻止本轮选中需求完成。同身份、层与基线仍共用模块工作树；工具拒绝同时存在会写同一工作树的两个活跃范围。上一轮完成后开启新范围前，核对遗留差异与对应证据，不能把旧改动当作新需求成果。
+
 ## 中断恢复
 
-状态在 `.campus/workflows/<成员>-<层>-<基线摘要>/state.local`，每次阶段校验追加独立检查点。使用原子替换和短期写锁；遇到WORKFLOW_BUSY先核查写入者，不删活跃锁。
+状态在 `.campus/workflows/<流程ID>/state.local`（默认 ID 为 `<成员>-<层>-<基线摘要>`，显式范围再附 `-s<范围摘要>`），每次阶段校验追加独立检查点。使用原子替换和短期写锁；遇到WORKFLOW_BUSY先核查写入者，不删活跃锁。
 
 恢复核对身份、HEAD、基线、技能摘要、工作树、analysis、输入快照与网站状态。输入变化后重跑受影响测试；analysis改变时从相应阶段重建：
 

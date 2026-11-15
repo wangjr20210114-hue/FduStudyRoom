@@ -1,0 +1,216 @@
+openapi: 3.1.0
+info:
+  title: FduStudyRoom notification service contract
+  version: 0.1.0
+  description: |
+    Round 2 frozen HTTP contract. Internal callers use the existing X-Service-Key
+    from campus.auth.service-key. Browser cookies never authorize internal writes.
+    Identities in user-facing endpoints come from the existing authenticated principal.
+servers:
+  - url: /
+paths:
+  /internal/notifications/events:
+    post:
+      operationId: acceptNotificationEvent
+      security:
+        - ServiceKey: []
+      description: |
+        Atomically persist one logical event and its IN_APP notification and EMAIL task.
+        Same eventId and identical payload returns the original notificationId.
+        Same eventId with different payload returns 409 and changes nothing.
+        Persist before acknowledging; 201/200 do not assert SMTP delivery.
+        Missing SMTP or emailAddress preserves IN_APP and reports NOT_CONFIGURED.
+        title/body and titleEn/bodyEn are trusted service content, never browser input.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationEvent'
+      responses:
+        '201':
+          description: Event and tasks durably accepted for the first time
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventReceipt'
+        '200':
+          description: Identical event already durably accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventReceipt'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /internal/notifications/events/{eventId}/cancel:
+    post:
+      operationId: cancelPendingNotificationEvent
+      security:
+        - ServiceKey: []
+      description: |
+        Cancel only still-pending delivery for the accepted event. Repeating cancellation
+        is idempotent. Keep already delivered notification and delivery history unchanged.
+        A delivery whose SMTP acceptance is uncertain stays UNKNOWN; do not resend it.
+        An event not yet accepted returns 404; callers must retain and retry their task.
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Existing event state after idempotent cancellation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventReceipt'
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/notifications:
+    get:
+      operationId: listOwnNotifications
+      security:
+        - SessionCookie: []
+      description: |
+        Require notification:read and return only the authenticated principal's IN_APP
+        notifications. A recipientId or role supplied by the browser never widens scope.
+        Select title/body using Accept-Language (en or zh-CN; default zh-CN).
+      parameters:
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 0, default: 0}
+        - name: size
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Own notifications in descending creation order, then descending id
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page, size, total]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/Notification'}
+                  page: {type: integer, minimum: 0}
+                  size: {type: integer, minimum: 1, maximum: 100}
+                  total: {type: integer, minimum: 0}
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /api/notifications/{notificationId}/read:
+    post:
+      operationId: markOwnNotificationRead
+      security:
+        - SessionCookie: []
+          CsrfHeader: []
+      description: |
+        Require notification:read, ownership and normal Cookie/CSRF checks. Keep the first
+        readAt on retries. Another user's id and a missing id both return 404.
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Own notification marked read, including an identical retry
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    ServiceKey:
+      type: apiKey
+      in: header
+      name: X-Service-Key
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: FDU_SESSION
+      description: Production uses __Host-FDU_SESSION, issued by the existing identity service
+    CsrfHeader:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+  parameters:
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  schemas:
+    NotificationEvent:
+      type: object
+      additionalProperties: false
+      required: [eventId, recipientId, sourceModule, sourceId, title, body, titleEn, bodyEn, scheduledAt]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Stable id created and persisted by the originating business transaction
+        recipientId: {type: string, format: uuid}
+        sourceModule: {type: string, enum: [M1, M2, M3, D]}
+        sourceId: {type: string, format: uuid}
+        title: {type: string, minLength: 1, maxLength: 255}
+        body: {type: string, minLength: 1, maxLength: 4000}
+        titleEn: {type: string, minLength: 1, maxLength: 255}
+        bodyEn: {type: string, minLength: 1, maxLength: 4000}
+        scheduledAt: {type: string, format: date-time}
+        emailAddress:
+          type: string
+          format: email
+          maxLength: 254
+          description: Optional address supplied only by a trusted service from verified account data; absent for M1-06 in this round
+    EventReceipt:
+      type: object
+      required: [eventId, notificationId, duplicate, inAppStatus, emailStatus]
+      properties:
+        eventId: {type: string, format: uuid}
+        notificationId: {type: string, format: uuid}
+        duplicate: {type: boolean}
+        inAppStatus: {type: string, enum: [PENDING, SENT, CANCELLED]}
+        emailStatus: {type: string, enum: [NOT_CONFIGURED, PENDING, SENT, FAILED, UNKNOWN, CANCELLED]}
+    Notification:
+      type: object
+      required: [id, eventId, recipientId, sourceModule, sourceId, title, body, locale, scheduledAt, status, emailStatus, readAt]
+      properties:
+        id: {type: string, format: uuid}
+        eventId: {type: string, format: uuid}
+        recipientId: {type: string, format: uuid}
+        sourceModule: {type: string, enum: [M1, M2, M3, D]}
+        sourceId: {type: string, format: uuid}
+        title: {type: string}
+        body: {type: string}
+        locale: {type: string, enum: [zh-CN, en]}
+        scheduledAt: {type: string, format: date-time}
+        status: {type: string, enum: [PENDING, SENT, CANCELLED]}
+        emailStatus: {type: string, enum: [NOT_CONFIGURED, PENDING, SENT, FAILED, UNKNOWN, CANCELLED]}
+        readAt: {type: [string, 'null'], format: date-time}
+        lastErrorCode: {type: [string, 'null']}
+        nextRetryAt: {type: [string, 'null'], format: date-time}
+    Error:
+      type: object
+      required: [code, message, traceId]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        traceId: {type: string, format: uuid}
+  responses:
+    Error:
+      description: Existing safe ApiAdvice/ApiErrors envelope; no credentials or raw exception
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
