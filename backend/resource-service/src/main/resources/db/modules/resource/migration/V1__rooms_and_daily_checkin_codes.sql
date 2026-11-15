@@ -1,0 +1,21 @@
+CREATE TABLE resource.rooms (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ code varchar(64) NOT NULL UNIQUE,
+ name varchar(128) NOT NULL,
+ campus varchar(64) NOT NULL,
+ building varchar(128) NOT NULL,
+ capacity integer NOT NULL CHECK (capacity > 0),
+ department_code varchar(64),
+ open_time time NOT NULL,
+ close_time time NOT NULL,
+ checkin_code char(6),
+ checkin_code_date date,
+ external_code varchar(128),
+ booking_enabled boolean NOT NULL DEFAULT false,
+ enabled boolean NOT NULL DEFAULT true,
+ CONSTRAINT rooms_external_source_unique UNIQUE(campus,building,external_code),
+ CONSTRAINT rooms_checkin_code_pair CHECK ((checkin_code IS NULL AND checkin_code_date IS NULL) OR (checkin_code IS NOT NULL AND checkin_code_date IS NOT NULL)),
+ CONSTRAINT rooms_checkin_code_format CHECK (checkin_code IS NULL OR checkin_code ~ '^[0-9]{6}$')
+);
