@@ -13,12 +13,25 @@ public class BufferRepository {
  private List<Map<String,Object>> rows(String sql,Object... args){return db.query(sql,(rs,n)->{
    Map<String,Object> row=new LinkedHashMap<>();for(String key:List.of("id","member_id","module_id","layer","state","reviewer","review_note"))row.put(key,rs.getString(key));
    row.put("created_at",rs.getTimestamp("created_at").toInstant().toString());
-   row.put("metadata",json.readValue(rs.getString("metadata"),Map.class));row.put("result",json.readValue(rs.getString("result"),Map.class));return row;
+   row.put("metadata",originalMetadata(json.readValue(rs.getString("metadata"),Map.class)));row.put("result",json.readValue(rs.getString("result"),Map.class));return row;
  },args);}
  public UUID insert(BufferSettings.Member member,Map<String,Object> metadata,byte[] patch){
   String fingerprint=BufferSettings.sha((json.writeValueAsString(metadata)+Base64.getEncoder().encodeToString(patch)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-  UUID id=UUID.randomUUID();db.update("INSERT INTO buffer.submissions(id,member_id,module_id,layer,fingerprint,metadata,patch) VALUES(?,?,?,?,?,?::jsonb,?) ON CONFLICT(member_id,fingerprint) DO NOTHING",id,member.id(),metadata.get("module"),member.layer(),fingerprint,json.writeValueAsString(metadata),patch);
+  UUID id=UUID.randomUUID();db.update("INSERT INTO buffer.submissions(id,member_id,module_id,layer,fingerprint,metadata,patch) VALUES(?,?,?,?,?,?::jsonb,?) ON CONFLICT(member_id,fingerprint) DO NOTHING",id,member.id(),metadata.get("module"),member.layer(),fingerprint,json.writeValueAsString(storageMetadata(metadata)),patch);
   return db.queryForObject("SELECT id FROM buffer.submissions WHERE member_id=? AND fingerprint=?",UUID.class,member.id(),fingerprint);
+ }
+ private Map<String,Object> storageMetadata(Map<String,Object> metadata){
+  // Encode only the evidence at the storage boundary: jsonb rejects escaped NUL.
+  // The fingerprint above and all callers continue to use the original receipts.
+  Map<String,Object> stored=new LinkedHashMap<>(metadata);
+  if(metadata.containsKey("evidence"))stored.put("evidence",Map.of("storageEncoding","base64-json-v1","data",Base64.getEncoder().encodeToString(json.writeValueAsString(metadata.get("evidence")).getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+  return stored;
+ }
+ private Map<String,Object> originalMetadata(Map<String,Object> metadata){
+  if(metadata.get("evidence") instanceof Map<?,?> evidence && evidence.size()==2 && "base64-json-v1".equals(evidence.get("storageEncoding")) && evidence.get("data") instanceof String data){
+   metadata.put("evidence",json.readValue(new String(Base64.getDecoder().decode(data),java.nio.charset.StandardCharsets.UTF_8),Object.class));
+  }
+  return metadata;
  }
  public byte[] patch(UUID id){return db.queryForObject("SELECT patch FROM buffer.submissions WHERE id=?",byte[].class,id);}
  public boolean review(UUID id,String reviewer,String note,boolean approved){return db.update("UPDATE buffer.submissions SET state=?,reviewer=?,review_note=?,review_at=now(),updated_at=now() WHERE id=? AND "+(approved?"state='DRAFT'":"state IN ('DRAFT','REVIEWED','VERIFY_FAILED','CONFLICT')"),approved?"REVIEWED":"REJECTED",reviewer,note,id)==1;}
