@@ -82,6 +82,8 @@ python scripts/team.py worktree b M02 --layer frontend
 
 **执行**：为当前模块创建或复用专属worktree，启动对应sandbox。核对只读公共目录、本人可写目录及容器身份；成员容器不挂载Docker socket、他人凭据或生产配置。
 
+Stage 1 自动从冻结基线为 M01 后端准备 workflow 黑盒测试 JAR，为 M04/M05 后端准备 resource JAR；只读挂载并记录基线、镜像和字节摘要。已有 runner 配置或 fixture 不一致时保留环境并报告 ENV 受阻，不在记录测试时自动重建。
+
 **输出**：工作树路径、任务上下文、容器及实际边界。
 
 **通过条件**：工作树属于本人模块和层，HEAD等于冻结基线，所需容器就绪，workspace检查点通过。强制隔离未具备时不转为宿主执行成员代码。

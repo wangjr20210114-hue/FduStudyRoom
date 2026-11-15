@@ -1,8 +1,8 @@
 """Recoverable local build and per-member Docker environments (Windows/macOS)."""
-import hashlib,json,os,platform,re,secrets,shutil,socket,subprocess,sys,tarfile,time,urllib.request,zipfile
+import hashlib,io,json,os,platform,re,secrets,shutil,socket,subprocess,sys,tarfile,tempfile,time,urllib.request,uuid,zipfile
 from pathlib import Path
 from contextlib import contextmanager
-from policy import PolicyError,module_for
+from policy import PolicyError,module_for,git_run
 PG='postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc'
 
 def run(args,**kwargs):
@@ -111,11 +111,145 @@ def sandbox_project(root,member,module,base,instance=""):
     suffix=('-'+instance) if instance else ''
     return 'fdu-'+hashlib.sha256(str(Path(root).resolve()).encode()).hexdigest()[:8]+'-'+member['id']+'-'+member['layer']+'-'+module.lower()+'-'+base[:8]+suffix
 
+def fixture_provider(ctx):
+    if ctx['member']['layer']!='backend':return None
+    return {'M01':'workflow','M04':'resource','M05':'resource'}.get(ctx['module'])
+
+def _fixture_hash(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+def _fixture_digest(data):return hashlib.sha256(json.dumps(data,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+def _fixture_home(worktree):
+    home=Path(worktree)/'.campus/frozen-fixtures'
+    if home.is_symlink():raise PolicyError('ENV_FIXTURE_CACHE_LINK')
+    return home
+
+def _fixture_image(root):
+    image=run(docker(root)+['image','inspect','--format','{{.Id}}','fdu-campus-ci:baseline'])
+    if not re.fullmatch(r'sha256:[0-9a-f]{64}',image):raise PolicyError('ENV_FIXTURE_TRUSTED_IMAGE_MISSING')
+    return image
+
+def _fixture_runner(root,ctx):
+    project=sandbox_project(ctx.get('policy_root',root),ctx['member'],ctx['module'],ctx['base'],ctx.get('instance',''))
+    ids=run(docker(root)+['ps','-aq','--filter','label=com.docker.compose.project='+project,'--filter','label=com.docker.compose.service=runner']).split()
+    if len(ids)>1:raise PolicyError('ENV_FIXTURE_AMBIGUOUS_RUNNER')
+    return ids[0] if ids else None
+
+def _fixture_validate(directory,ctx,image,source_sha):
+    provider=fixture_provider(ctx);directory=Path(directory);jar=directory/(provider+'.jar');manifest=directory/'manifest.json'
+    try:
+        if directory.is_symlink() or jar.is_symlink() or manifest.is_symlink():raise ValueError('links')
+        if {entry.name for entry in directory.iterdir()}!={jar.name,manifest.name}:raise ValueError('unexpected cache contents')
+        proof=json.loads(manifest.read_text(encoding='utf-8'));artifact=proof['artifacts'][provider]
+        if proof['coreCommit']!=ctx['base'] or proof['trustedImage']!=image or proof['productionSourceSha256']!=source_sha or proof['provider']!=provider:raise ValueError('provenance')
+        if artifact['file']!=jar.name or artifact['sha256']!=_fixture_hash(jar):raise ValueError('bytes')
+        with zipfile.ZipFile(jar) as archive:
+            text=archive.read('META-INF/MANIFEST.MF').decode().replace('\r\n ','')
+            if not re.search(r'^Start-Class: com\.campus\.'+provider.title()+r'Application\r?$',text,re.M):raise ValueError('Start-Class')
+            if not any(name.startswith('BOOT-INF/classes/') for name in archive.namelist()):raise ValueError('not executable provider')
+        return {'provider':provider,'directory':str(directory),'coreCommit':ctx['base'],'trustedImage':image,'productionSourceSha256':source_sha,'jarSha256':artifact['sha256'],'manifestSha256':_fixture_hash(manifest),'fingerprint':_fixture_digest(proof)}
+    except (OSError,ValueError,KeyError,zipfile.BadZipFile) as error:raise PolicyError('ENV_FIXTURE_INVALID_CACHE: preserve it for diagnosis; no writable target fallback') from error
+
+def prepare_fixture(root,worktree,ctx,image):
+    """Export only frozen Git bytes; build in an ephemeral offline container, never the member runner."""
+    provider=fixture_provider(ctx)
+    if not provider:return None
+    if not re.fullmatch('[0-9a-f]{40}',ctx['base']):raise PolicyError('ENV_FIXTURE_INVALID_BASE')
+    archive=git_run(Path(ctx.get('policy_root',root)),'archive','--format=tar',ctx['base'],'backend').stdout
+    source_sha=hashlib.sha256(archive).hexdigest();home=_fixture_home(worktree);home.mkdir(parents=True,exist_ok=True)
+    directory=home/(provider+'-'+ctx['base']+'-'+image.split(':')[1])
+    if directory.exists():return _fixture_validate(directory,ctx,image,source_sha)
+    # Independent staging directories and atomic publication need no shared cache/receipt lock.
+    with tempfile.TemporaryDirectory(prefix='.prepare-',dir=home) as temporary:
+        staging=Path(temporary);source=staging/'source';source.mkdir();output=staging/'out';output.mkdir()
+        with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+            for entry in tar.getmembers():
+                parts=Path(entry.name).parts
+                if not parts or parts[0]!='backend' or any(x in parts for x in ('.campus','.git','target')) or entry.issym() or entry.islnk():raise PolicyError('ENV_FIXTURE_UNSAFE_FROZEN_SOURCE')
+            tar.extractall(source,filter='data')
+        for module in ('platform-common','resource-service','workflow-service','buffer-service'):(source/'backend'/module/'target').mkdir(parents=True,exist_ok=True)
+        name='campus-fixture-'+uuid.uuid4().hex
+        command=['sh','-ec','cp -a /opt/warm/m2 /cache/m2; mvn -o -B -f /src/pom.xml -Dmaven.repo.local=/cache/m2/repository -pl '+provider+'-service -am -DskipTests package; cp /src/'+provider+'-service/target/'+provider+'-service-0.1.0-SNAPSHOT.jar /out/'+provider+'.jar']
+        arguments=docker(root)+['run','--rm','--name',name,'--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges:true','--pids-limit','256','--memory','2g','--cpus','2','--user',bind_identity(root,image,output),'--mount','type=bind,src='+docker_path(source/'backend')+',dst=/src,readonly','--mount','type=bind,src='+docker_path(output)+',dst=/out','--tmpfs','/cache:rw,nosuid,nodev,size=1g','--tmpfs','/tmp:rw,nosuid,nodev,size=256m']
+        for module in ('platform-common','resource-service','workflow-service','buffer-service'):arguments+=['--tmpfs','/src/'+module+'/target:rw,nosuid,nodev,size=256m']
+        try:run(arguments+[image,*command])
+        finally:subprocess.run(docker(root)+['rm','-f',name],capture_output=True,timeout=30)
+        jar=output/(provider+'.jar');proof={'version':1,'coreCommit':ctx['base'],'provider':provider,'trustedImage':image,'productionSourceSha256':source_sha,'artifacts':{provider:{'file':jar.name,'sha256':_fixture_hash(jar)}}};save(output/'manifest.json',proof)
+        _fixture_validate(output,ctx,image,source_sha)
+        try:output.rename(directory)
+        except FileExistsError:pass
+    return _fixture_validate(directory,ctx,image,source_sha)
+
+def _fixture_database(root,compose,project,provider,create=True):
+    database='frozen_'+provider+'_fixture';prefix=docker(root)+['compose','-p',project,'-f',docker_path(compose),'exec','-T','postgres','psql','-U','module_user','-d','postgres','-v','ON_ERROR_STOP=1','-tA','-c']
+    query="SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='"+database+"'"
+    owner=run(prefix+[query])
+    if not owner and create:run(prefix+['CREATE DATABASE '+database+' OWNER module_user']);owner=run(prefix+[query])
+    if owner!='module_user':raise PolicyError('ENV_FIXTURE_DATABASE_OWNER_MISMATCH')
+
+def fixture_ready(root,worktree,ctx,allow_stopped=False):
+    """Read-only preflight; never prepare, rebuild, edit Compose, reserve receipts or restart a runner."""
+    if not fixture_provider(ctx):return None
+    worktree=Path(worktree);metadata=worktree/'.campus/fixture.local';compose=worktree/'.campus/sandbox.local.json'
+    home=_fixture_home(worktree)
+    if not metadata.is_file() or not compose.is_file():raise PolicyError('ENV_FIXTURE_NOT_READY: run the existing sandbox --start stage first')
+    saved=json.loads(metadata.read_text(encoding='utf-8'));directory=Path(saved['directory'])
+    if not directory.resolve().is_relative_to(home.resolve()):raise PolicyError('ENV_FIXTURE_CACHE_OUTSIDE_TASK')
+    proof=_fixture_validate(directory,ctx,_fixture_image(root),saved['productionSourceSha256'])
+    if proof['fingerprint']!=saved['fingerprint'] or _fixture_hash(compose)!=saved['composeSha256']:raise PolicyError('ENV_FIXTURE_CONFIG_CHANGED: preserve existing runner and evidence')
+    runner=_fixture_runner(root,ctx)
+    if not runner:raise PolicyError('ENV_FIXTURE_RUNNER_NOT_READY')
+    inspect=json.loads(run(docker(root)+['inspect',runner]))[0]
+    project=sandbox_project(ctx.get('policy_root',root),ctx['member'],ctx['module'],ctx['base'],ctx.get('instance',''))
+    expected=run(docker(root)+['compose','-p',project,'-f',docker_path(compose),'config','--hash','runner']).split()[-1]
+    labels=inspect['Config']['Labels'];mounts=inspect['Mounts'];fixture=[m for m in mounts if m['Destination']=='/opt/campus-fixtures']
+    if inspect['Image']!=proof['trustedImage'] or labels.get('com.docker.compose.config-hash')!=expected or len(fixture)!=1 or fixture[0]['RW'] or fixture[0]['Source']!=docker_path(directory) or any('docker.sock' in m.get('Source','') for m in mounts):raise PolicyError('ENV_FIXTURE_RUNNER_CONFIG_MISMATCH: do not recreate an existing runner')
+    prefix=docker(root)+['compose','-p',project,'-f',docker_path(compose)]
+    postgres=run(prefix+['ps','-aq','postgres']).split()
+    if len(postgres)!=1:raise PolicyError('ENV_FIXTURE_POSTGRES_NOT_READY')
+    pg=json.loads(run(docker(root)+['inspect',postgres[0]]))[0]
+    pg_hash=run(prefix+['config','--hash','postgres']).split()[-1]
+    pg_image=run(docker(root)+['image','inspect','--format','{{.Id}}',json.loads(compose.read_text())['services']['postgres']['image']])
+    pg_volumes=[m for m in pg['Mounts'] if m['Destination']=='/var/lib/postgresql']
+    if pg['Image']!=pg_image or pg['Config']['Labels'].get('com.docker.compose.config-hash')!=pg_hash or len(pg_volumes)!=1 or pg_volumes[0].get('Name')!=project+'_postgres':raise PolicyError('ENV_FIXTURE_POSTGRES_CONFIG_MISMATCH')
+    stopped=not inspect['State']['Running'] or not pg['State']['Running']
+    if stopped and not allow_stopped:raise PolicyError('ENV_FIXTURE_RUNNER_NOT_READY: record never starts stopped services')
+    if not stopped and pg['State'].get('Health',{}).get('Status')!='healthy':raise PolicyError('ENV_FIXTURE_POSTGRES_NOT_HEALTHY')
+    if inspect['State']['Running']:
+        digest=run(docker(root)+['exec',runner,'sha256sum','/opt/campus-fixtures/'+proof['provider']+'.jar']).split()[0]
+        if digest!=proof['jarSha256']:raise PolicyError('ENV_FIXTURE_MOUNT_HASH_MISMATCH')
+    return {**proof,'_stopped':stopped,'_containers':{'runner':inspect['Id'],'postgres':pg['Id']}}
+
+def _fixture_wait(root,containers):
+    deadline=time.monotonic()+60
+    while time.monotonic()<deadline:
+        states={row['Id']:row['State'] for row in json.loads(run(docker(root)+['inspect',*containers.values()]))}
+        if all(states[cid]['Running'] for cid in containers.values()) and states[containers['postgres']].get('Health',{}).get('Status')=='healthy':return
+        time.sleep(1)
+    raise PolicyError('ENV_FIXTURE_START_NOT_READY: existing containers preserved')
+
 def sandbox(root,worktree,policy,member,ctx,start=False):
+    ctx={**ctx,'member':member}
     m=module_for(policy,ctx['module']);dc=docker(root);project=sandbox_project(ctx.get('policy_root',root),member,m['id'],ctx['base'],ctx.get('instance',''))
     version=run(dc+['info','--format','{{.ServerVersion}}'])
     if int(version.split('.')[0])<28:raise PolicyError('DOCKER_28_REQUIRED_FOR_STRICT_NETWORK_ISOLATION')
     home=worktree/'.campus';home.mkdir(exist_ok=True)
+    provider=fixture_provider(ctx);fixture=None;image='fdu-campus-ci:baseline'
+    if provider and _fixture_runner(root,ctx):
+        checked=fixture_ready(root,worktree,ctx,allow_stopped=start)
+        if start and checked['_stopped']:
+            compose=home/'sandbox.local.json'
+            # start cannot create/recreate containers; this Compose version has no start --wait.
+            run(dc+['compose','-p',project,'-f',docker_path(compose),'start','postgres','runner'])
+            _fixture_wait(root,checked['_containers'])
+            ready=fixture_ready(root,worktree,ctx)
+            if ready['_containers']!=checked['_containers']:raise PolicyError('ENV_FIXTURE_CONTAINER_CHANGED_DURING_START')
+            _fixture_database(root,compose,project,provider,create=False)
+        print('Existing runner and frozen fixture verified; no rebuild or recreation.')
+        return
+    if provider and start:
+        if (home/'fixture.local').exists() or (home/'runs').exists():raise PolicyError('ENV_FIXTURE_EXISTING_EVIDENCE: preserve runner/configuration; coordinator review required')
+        image=_fixture_image(root);fixture=prepare_fixture(root,worktree,ctx,image)
+
     private=home/'database.local'
     password=''
     if member['layer']=='backend':
@@ -135,15 +269,25 @@ def sandbox(root,worktree,policy,member,ctx,start=False):
     if member['layer']=='frontend':
         del data['services']['postgres'];data['services']['runner'].pop('depends_on',None);data['services']['runner'].pop('networks',None);data['services']['runner']['network_mode']='none';data['services']['runner']['environment']={'CAMPUS_SANDBOX':'1'};data.pop('networks',None);data['volumes'].pop('postgres',None)
     data['volumes'].pop('node_modules' if member['layer']=='backend' else 'm2')
-    if start:data['services']['runner']['user']=bind_identity(root,'fdu-campus-ci:baseline',worktree)
+    if start:data['services']['runner']['user']=bind_identity(root,image,worktree)
     data['services']['runner']['environment'].update({'HOME':'/tmp/campus-home','MAVEN_USER_HOME':'/cache/m2','MAVEN_CONFIG':'/cache/m2','MAVEN_ARGS':'-Dmaven.repo.local=/cache/m2/repository','npm_config_cache':'/tmp/npm-cache'})
+    if fixture:
+        data['services']['runner']['image']=image
+        data['services']['runner']['volumes'].append({'type':'bind','source':docker_path(fixture['directory']),'target':'/opt/campus-fixtures','read_only':True})
+        key='CAMPUS_FROZEN_'+provider.upper();target='/opt/campus-fixtures/'
+        data['services']['runner']['environment'].update({key+'_JAR':target+provider+'.jar',key+'_SHA256':fixture['jarSha256'],key+'_MANIFEST':target+'manifest.json',key+'_COMMIT':ctx['base'],key+'_DB_URL':'jdbc:postgresql://postgres:5432/frozen_'+provider+'_fixture',key+'_DB_USER':'module_user',key+'_DB_PASSWORD':password})
+        if _fixture_runner(root,ctx):raise PolicyError('ENV_FIXTURE_RUNNER_APPEARED: preserve it; retry after coordinator review')
     compose=home/'sandbox.local.json';save(compose,data)
+    if fixture:save(home/'fixture.local',{**fixture,'composeSha256':_fixture_hash(compose)})
     if start:
         run(dc+['compose','-p',project,'-f',docker_path(compose),'up','-d','--wait'])
         # Repair only the assigned layer's cache; do not scan the other image tree.
         helper=Path(__file__).with_name('cache.py').read_text(encoding='utf-8')
         cache_paths=['/opt/warm/m2','/cache/m2'] if member['layer']=='backend' else ['/opt/warm/frontend/node_modules','/workspace/frontend/node_modules']
         run(dc+['compose','-p',project,'-f',docker_path(compose),'exec','-T','--user','0','runner','python3','-',*cache_paths],input=helper)
+        if fixture:
+            _fixture_database(root,compose,project,provider)
+            fixture_ready(root,worktree,ctx)
     print('Private sandbox prepared; only assigned paths writable, no Docker socket, no other member credentials, private DB/network/caches. '+str(compose))
 
 def background(args,cwd,env,log):

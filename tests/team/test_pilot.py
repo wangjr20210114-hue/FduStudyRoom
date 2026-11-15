@@ -68,7 +68,7 @@ class ScenarioPilotTests(unittest.TestCase):
                 return CompletedProcess(argv, 0, xml, b"")
             return CompletedProcess(argv, 1 if negative and "timeout" in argv else 0, b"pilot test run", b"")
         source = {"sha256": "b" * 64, "product_sha256": "c" * 64}
-        with patch("recording.docker", return_value=["fixture-docker"]), patch("recording.source_snapshot", return_value=source), redirect_stdout(io.StringIO()):
+        with patch("recording.fixture_ready", return_value=None), patch("recording.docker", return_value=["fixture-docker"]), patch("recording.source_snapshot", return_value=source), redirect_stdout(io.StringIO()):
             record(self.root, args, execute)
         return json.loads(self.output.read_text(encoding="utf-8")), calls
 

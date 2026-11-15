@@ -10,7 +10,7 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 from policy import PolicyError, guard, load, git, git_run
-from environment import docker, docker_path, sandbox_project
+from environment import docker, docker_path, sandbox_project, fixture_ready
 from workflow import source_snapshot, save, read, now
 from test_reports import parse_report, merge_reports, validate_result
 from pilot import resolve_pilot, validate_receipt_scope
@@ -94,6 +94,8 @@ def record(root,args,execute=subprocess.run):
     reports=[report_path(p,ctx) for p in (args.report or [])]
     if stage!="check" and not reports:raise PolicyError("ACTUAL_TEST_REPORT_REQUIRED")
     if len(reports)!=len(set(reports)):raise PolicyError("DUPLICATE_REPORT_PATH")
+    if output.exists():validate_receipt_scope(read(output),pilot_scope)
+    fixture=fixture_ready(root,worktree,ctx)
     sequence=reserve_receipt_order(output,pilot_scope)
     run_id=str(uuid.uuid4());directory=output.parent/"runs"/run_id
     directory.mkdir(parents=True)
@@ -119,6 +121,7 @@ def record(root,args,execute=subprocess.run):
     (directory/"stdout.txt").write_bytes(stdout.encode("utf-8"));(directory/"stderr.txt").write_bytes(stderr.encode("utf-8"))
     log=(stdout+stderr)[-200000:];parsed=[];report_entries=[]
     item={"run_id":run_id,"receipt_sequence":sequence,"command":command,"exit_code":code,"log":log,"sha256":hashlib.sha256(log.encode()).hexdigest(),"expected_assertion":args.assertion,"source":source,"started_at":started,"finished_at":now(),"kind":args.kind or ("build" if stage=="check" else "component" if member["layer"]=="frontend" else "unit"),"verification_scope":"isolated"}
+    if fixture:item['fixture_fingerprint']={key:fixture[key] for key in ('provider','coreCommit','trustedImage','jarSha256','manifestSha256','fingerprint')}
     try:
         for index,path in enumerate(reports):
             report=execute(prefix+["cat","--",path],capture_output=True,timeout=15)
