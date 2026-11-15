@@ -6,7 +6,7 @@ x-api: &api
   read_only: true
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
-  tmpfs: [/tmp:rw,nosuid,nodev,size=128m]
+  tmpfs: ["/tmp:rw,nosuid,nodev,size=128m"]
   mem_limit: 768m
   pids_limit: 192
   command: [java, -XX:MaxRAMPercentage=65.0, -jar, /app/app.jar]

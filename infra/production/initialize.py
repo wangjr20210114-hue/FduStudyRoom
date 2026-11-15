@@ -6,6 +6,8 @@ from pathlib import Path
 def initialize(source,public_key,images):
     if os.geteuid()!=0:raise SystemExit('Run provisioning as root')
     root=Path('/opt/fdu-study-room');source=Path(source)
+    for image in images.values():
+        subprocess.run(['docker','image','inspect',image],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     try:account=pwd.getpwnam('fdu-deploy')
     except KeyError:
         subprocess.run(['useradd','--create-home','--shell','/bin/bash','--groups','docker','fdu-deploy'],check=True)
