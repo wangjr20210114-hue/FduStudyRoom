@@ -1,0 +1,1500 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "M02 resources / 教室座位与统一占用",
+    "version": "2.0.0",
+    "description": "Public reads require resource:rooms:read, writes require resource:rooms:write and existing Cookie CSRF. Internal APIs only accept X-Service-Key and never depend on a forwarded user Cookie. Times are [start,end), opening schedules use Asia/Shanghai (equal times mean all-day; overnight supported). Operation/source version duplicates are idempotent, altered payload conflicts, and stale messages cannot resurrect tombstones. Room-wide scopes cover seats subsequently created/enabled. Audit uses a persistent journal/outbox, sourceModule D, same eventKey M02:<operationId>, safe fixed projection. HTTP-born resources are known absent before birth; migrated pre-snapshot history remains incomplete. Statistics include M1+M2 deduplicated confirmed IDs with positive retained service intersection; existing bookings never reduce denominator."
+  },
+  "paths": {
+    "/api/resources/rooms": {
+      "get": {
+        "summary": "Safe room catalogue without check-in code",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Room"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Requires resource:rooms:write + Cookie CSRF",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Room"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "First successful write; replay 200"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/resources/rooms/{id}": {
+      "get": {
+        "summary": "Safe room details including disabled room for repair selection",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Room"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "put": {
+        "summary": "Requires resource:rooms:write; expectedVersion required",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Room"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "First successful write; replay 200"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/resources/rooms/{id}/seats": {
+      "get": {
+        "summary": "Seat catalogue; optional hasSocket=true/false",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Seat"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Requires resource:rooms:write",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Seat"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "First successful write; replay 200"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeatInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/resources/rooms": {
+      "get": {
+        "summary": "Safe room catalogue without check-in code",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Room"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        }
+      }
+    },
+    "/internal/resources/rooms/{id}": {
+      "get": {
+        "summary": "Safe room details including disabled room for repair selection",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Room"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/resources/rooms/{id}/seats": {
+      "get": {
+        "summary": "Seat catalogue; optional hasSocket=true/false",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Seat"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/resources/seats/{id}": {
+      "get": {
+        "summary": "Safe seat detail",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Seat"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/resources/seats/{id}": {
+      "put": {
+        "summary": "Requires resource:rooms:write; expectedVersion required",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Seat"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "First successful write; replay 200"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeatInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/resources/allocations": {
+      "post": {
+        "summary": "M1 needs seatId/userId; M2 atomically allocates all enabled seats and retains room-wide scope",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "First successful write; replay 200"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Allocation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/resources/releases": {
+      "post": {
+        "summary": "Persist source version tombstone even when allocation has not arrived",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "First successful write; replay 200"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Release"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/resources/restrictions/{id}": {
+      "put": {
+        "summary": "M3 room-wide maintenance state; only the specified source is changed",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "First successful write; replay 200"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Restriction"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/resources/sources/{sourceModule}/{id}": {
+      "get": {
+        "summary": "M1/M2/M3 latest applied source; no business prose or credentials",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "sourceModule",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/resources/availability": {
+      "get": {
+        "summary": "Only available seats; identity read occurs before resource DB transaction",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Seat"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "startsAt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endsAt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "campus",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "building",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasSocket",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/resources/statistics": {
+      "get": {
+        "summary": "Historical service/retained booking intersection; incomplete history returns null counts",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Statistics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "asOf",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/resources/capacity": {
+      "get": {
+        "summary": "Without asOf: entire requested PLANNED_CAPACITY based on currently known state (no forecast of unknown changes), occupied/count metrics null. Explicit asOf: historical P08 clipping.",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Statistics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or verified department denied"
+          },
+          "404": {
+            "description": "Resource/source not found"
+          },
+          "409": {
+            "description": "Version, idempotency, availability or capacity conflict"
+          },
+          "503": {
+            "description": "Necessary identity service unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "startsAt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endsAt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "asOf",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ServiceKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Service-Key"
+      },
+      "SessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "FDU_SESSION",
+        "description": "Production __Host-FDU_SESSION; write calls also use current CSRF header/token."
+      }
+    },
+    "schemas": {
+      "Room": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "campus": {
+            "type": "string"
+          },
+          "building": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "openTime": {
+            "type": "string"
+          },
+          "closeTime": {
+            "type": "string"
+          },
+          "departmentCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bookingEnabled": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "campus",
+          "building",
+          "capacity",
+          "openTime",
+          "closeTime",
+          "departmentCode",
+          "bookingEnabled",
+          "enabled",
+          "version"
+        ]
+      },
+      "RoomInput": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "campus": {
+            "type": "string"
+          },
+          "building": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "openTime": {
+            "type": "string"
+          },
+          "closeTime": {
+            "type": "string"
+          },
+          "departmentCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bookingEnabled": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "campus",
+          "building",
+          "capacity",
+          "openTime",
+          "closeTime",
+          "bookingEnabled",
+          "enabled"
+        ]
+      },
+      "Seat": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "socketType": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "FIXED",
+              "RAIL"
+            ]
+          },
+          "hasSocket": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "seatId",
+          "roomId",
+          "code",
+          "socketType",
+          "hasSocket",
+          "enabled",
+          "version"
+        ]
+      },
+      "SeatInput": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "socketType": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "FIXED",
+              "RAIL"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "socketType",
+          "enabled"
+        ]
+      },
+      "Allocation": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceModule": {
+            "type": "string",
+            "enum": [
+              "M1",
+              "M2"
+            ]
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "roomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seatId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "operationId",
+          "sourceModule",
+          "sourceId",
+          "sourceVersion",
+          "roomId",
+          "startsAt",
+          "endsAt"
+        ]
+      },
+      "Release": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceModule": {
+            "type": "string",
+            "enum": [
+              "M1",
+              "M2"
+            ]
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "operationId",
+          "sourceModule",
+          "sourceId",
+          "sourceVersion"
+        ]
+      },
+      "Restriction": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "roomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "operationId",
+          "sourceVersion",
+          "roomId",
+          "active"
+        ]
+      },
+      "WriteResult": {
+        "type": "object",
+        "description": "sourceModule/sourceId/sourceVersion, operationId, active, effectiveAt; allocation also roomId/seatId/userId/startsAt/endsAt/allocationCount. Same operationId returns original immutable result."
+      },
+      "Statistics": {
+        "type": "object",
+        "properties": {
+          "capacitySeatSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "occupiedSeatSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "occupiedM1SeatSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "occupiedM2SeatSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "confirmedBookingCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "confirmedM1BookingCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "confirmedM2BookingCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "roomId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "algorithm": {
+            "type": "string"
+          },
+          "historyAvailableFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "historyComplete": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string",
+            "description": "PLANNED_CAPACITY only for default capacity query; never actual utilization."
+          },
+          "snapshotAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Current knowledge snapshot for planned capacity."
+          }
+        },
+        "required": [
+          "capacitySeatSeconds",
+          "occupiedSeatSeconds",
+          "occupiedM1SeatSeconds",
+          "occupiedM2SeatSeconds",
+          "confirmedBookingCount",
+          "confirmedM1BookingCount",
+          "confirmedM2BookingCount",
+          "from",
+          "to",
+          "asOf",
+          "roomId",
+          "algorithm",
+          "historyAvailableFrom",
+          "historyComplete"
+        ]
+      }
+    }
+  }
+}
