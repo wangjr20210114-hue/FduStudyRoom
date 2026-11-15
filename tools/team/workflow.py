@@ -38,7 +38,7 @@ def skill_manifest(root):
             if path.is_file() and path.suffix in (".md", ".yaml"):
                 entries[path.relative_to(root).as_posix()] = digest(path.read_bytes())
     engine={}
-    for name in ("scripts/team.py","tools/team/workflow.py","tools/team/recording.py","tools/team/test_reports.py","tools/team/policy.py","tools/team/environment.py"):
+    for name in ("scripts/team.py","tools/team/workflow.py","tools/team/recording.py","tools/team/test_reports.py","tools/team/policy.py","tools/team/environment.py","tools/team/members.py","tools/team/commits.py","tools/team/delivery.py"):
         path=Path(root)/name
         if path.is_file():engine[name]=digest(path.read_bytes())
     return {"files":entries,"engine":engine,"sha256":digest(json.dumps({"files":entries,"engine":engine},sort_keys=True).encode())}
@@ -174,7 +174,7 @@ def open_workflow(root, member, requirements, selected=None):
     if not git(root,"show",base+":spec/modules.json",check=False):raise PolicyError("PUBLISH_OPTIMIZED_BASELINE_FIRST")
     if member.get("admin") or member.get("layer") not in ("frontend","backend"):raise PolicyError("USE_DEVELOPMENT_MEMBER_IDENTITY")
     if selected and selected not in member["modules"]:raise PolicyError("MODULE_NOT_ASSIGNED")
-    identifier=member["id"]+"-"+base[:12]; path=state_path(root,identifier); path.parent.mkdir(parents=True,exist_ok=True)
+    identifier=member["id"]+"-"+member["layer"]+"-"+base[:12]; path=state_path(root,identifier); path.parent.mkdir(parents=True,exist_ok=True)
     manifest=skill_manifest(root)
     with state_lock(path):
         if path.exists():
@@ -187,7 +187,7 @@ def open_workflow(root, member, requirements, selected=None):
             for module in member["modules"]:
                 targets=[q["id"] for q in requirements if q["module"]==module and q.get("state") in RUNNABLE and q.get("execution_owner","member")=="member"]
                 definition=module_for(load(root),module)
-                state["modules"][module]={"targets":targets,"blocked":{},"checkpoints":{},"worktree":str(root/".campus/worktrees"/member["id"]/definition["key"]/base[:12]),"submission":None}
+                state["modules"][module]={"targets":targets,"blocked":{},"checkpoints":{},"worktree":str(root/".campus/worktrees"/member["id"]/member["layer"]/definition["key"]/base[:12]),"submission":None}
             event(state,"START")
         eligible={q["id"]:q.get("state") for q in requirements}
         for current_module,item in state["modules"].items():

@@ -106,7 +106,7 @@ def sandbox_project(root,member,module,base,instance=""):
     if not re.fullmatch('[0-9a-f]{40}',base):raise PolicyError('INVALID_BASE_COMMIT')
     if instance and not re.fullmatch('mutation-[0-9a-f]{12}',instance):raise PolicyError('INVALID_SANDBOX_INSTANCE')
     suffix=('-'+instance) if instance else ''
-    return 'fdu-'+hashlib.sha256(str(Path(root).resolve()).encode()).hexdigest()[:8]+'-'+member['id']+'-'+module.lower()+'-'+base[:8]+suffix
+    return 'fdu-'+hashlib.sha256(str(Path(root).resolve()).encode()).hexdigest()[:8]+'-'+member['id']+'-'+member['layer']+'-'+module.lower()+'-'+base[:8]+suffix
 
 def sandbox(root,worktree,policy,member,ctx,start=False):
     m=module_for(policy,ctx['module']);dc=docker(root);project=sandbox_project(ctx.get('policy_root',root),member,m['id'],ctx['base'],ctx.get('instance',''))

@@ -8,12 +8,12 @@
 
 | 编号 | 范围 | 前端示例成员 | 后端示例成员 | 独占代码位置 |
 | --- | --- | --- | --- | --- |
-| M01 | 账号、角色、权限、系统配置 | frontend-b | backend-a | auth、system；identity |
-| M02 | 教室、座位、开放时间、统一占用/限制 | frontend-a | backend-a | resource |
-| M03 | 座位预约、签到、违约、历史 | frontend-a | backend-a | reservation |
-| M04 | 整教室申请、多级审批、超时撤销 | frontend-b | backend-b | approval |
-| M05 | 报修、派单、维修、升级、验收、评价 | frontend-b | backend-b | repair |
-| M06 | 通知、审计、统计、工程验收、可选Agent | frontend-b | backend-b | notification、audit、statistics、agent |
+| M01 | 账号、角色、权限、系统配置 | a | a | auth、system；identity |
+| M02 | 教室、座位、开放时间、统一占用/限制 | b | b | resource |
+| M03 | 座位预约、签到、违约、历史 | c | c | reservation |
+| M04 | 整教室申请、多级审批、超时撤销 | d | d | approval |
+| M05 | 报修、派单、维修、升级、验收、评价 | e | e | repair |
+| M06 | 通知、审计、统计、工程验收、可选Agent | f | f | notification、audit、statistics、agent |
 
 完整可写前缀、层、端口和迁移历史见 `../spec/modules.json`。四位成员是示例身份，需要协调人配置为真实成员；Gitee用户名只是别名，必须用个人访问码认证。缓冲站网页登录只填写个人访问码，系统从访问码自动识别成员及其权限，无需填写身份或Gitee账号。开发身份与应用里的普通用户、系统管理员、维护人员三角色相互独立。一个人可负责多个模块，每个模块仍使用独立工作区。
 
@@ -49,10 +49,10 @@ $campus-build
 统一开发入口示例（按检查点自动推进，不再逐阶段停下询问）：
 
 ```text
-$campus-workflow 我的身份是 frontend-a，处理未完成需求
+$campus-workflow 我的身份是 b，处理未完成需求
 ```
 
-协调人可用 `python scripts/team.py provision-member <新身份> --gitee <账号> --layer frontend --modules M02,M03 --replace frontend-a` 将示例成员替换为真实成员，服务重启后生效；单独发送生成的该成员凭据文件。同一模块和层只允许一个负责人，网站启动和登记成员均校验，避免两个成员取得相同文件写权限。协调人先给该成员配置 `.campus/member.local`（只含本人身份、buffer_url、token）。随后只需提供身份/已登记Gitee别名和“完成/未完成/全部”。完成判断以基线证据及缓冲记录为准；模块验证通过不等于真实集成、MR合并和生产验收通过。
+协调人可用 `python scripts/team.py provision-member <新身份> --gitee <账号> --layer fullstack --modules M02 --replace b` 将示例成员替换为真实成员，服务重启后生效；单独发送生成的该成员凭据文件。同一模块和层只允许一个负责人，网站启动和登记成员均校验，避免两个成员取得相同文件写权限。协调人先给该成员配置 `.campus/member.local`（只含本人身份、buffer_url、token）。随后只需提供身份/已登记Gitee别名和“完成/未完成/全部”。完成判断以基线证据及缓冲记录为准；模块验证通过不等于真实集成、MR合并和生产验收通过。
 
 ## 文件与环境隔离
 
@@ -139,3 +139,11 @@ GitHub 接收独立导出的开发分支；Gitee 正式交付仍通过缓冲站�
 124.223.110.193 的部署配置限制 API 为512MiB、PostgreSQL为256MiB，复用 docker_default 中现有 Caddy 入口。
 初始为收件模式：verificationEnabled=false、enabled=false。受信 CI、批准基线、Git 仓库与 Gitee 写入/MR凭据配置完成前，界面显示未启用。
 操作步骤与待补条件见 [服务器部署](19-buffer-server-deployment.md)。
+
+## 六人会话与交付更新
+
+示例成员 a—f 各负责 M01—M06 的前后端，访问码不变，脚本用 --layer backend/frontend 选择当前层。worktree、workflow ID、沙箱与收据分别保存，同一人前后端不会共享工作目录。现有部署中的四成员配置不会由示例文件自动覆盖，需协调人完成交接后更新。
+
+submit 默认先上传缓冲站，再将同一差异导出并推送 GitHub 开发分支。GitHub 和 Gitee 状态分别记录；Gitee 的真人审核、可信 CI、72 小时推送和 MR 仍需真实凭据和运行服务支持。
+
+提交描述使用 feat/fix/refactor(scope): 标题，空行后使用 - 分点。可运行 python scripts/check-commit.py <描述文件> 验证。华为站点部署的具体阶段见 docs/20-github-huawei-delivery.md。

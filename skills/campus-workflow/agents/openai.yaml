@@ -1,4 +1,4 @@
 interface:
   display_name: "全流程模块开发"
-  short_description: "按身份自动调度环境、需求分解、测试和TDD，保存检查点并交付缓冲站"
-  default_prompt: "使用 $campus-workflow，我的身份是 frontend-a，自动处理未完成需求。"
+  short_description: "按身份自动调度环境、需求分解、测试和TDD，保存检查点并交付缓冲站和 GitHub"
+  default_prompt: "使用 $campus-workflow，我的身份是 b，自动处理未完成需求。"

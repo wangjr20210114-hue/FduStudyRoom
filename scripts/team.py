@@ -14,6 +14,8 @@ import urllib.request
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools/team'))
 from policy import PolicyError,load,module_for,member_for,guard,evidence_valid,git
+from members import layers,scoped
+from commits import message
 
 def json_file(p): return json.loads(Path(p).read_text(encoding='utf-8'))
 def save(p,data):
@@ -28,10 +30,11 @@ def local_config():
     if not p.exists():raise PolicyError('MEMBER_NOT_PROVISIONED: configure .campus/member.local once; a name is not authentication')
     return json_file(p)
 
-def api(config,path,payload=None):
+def api(config,path,payload=None,layer=None):
     url=config.get('buffer_url','http://127.0.0.1:7780').rstrip('/')
     if not url.startswith(('http://127.0.0.1:','http://localhost:','https://')):raise PolicyError('HTTPS_REQUIRED_FOR_REMOTE_BUFFER')
     request=urllib.request.Request(url+path,data=None if payload is None else json.dumps(payload).encode(),headers={'Authorization':'Bearer '+config['token'],'Content-Type':'application/json'})
+    if layer:request.add_header('X-Campus-Layer',layer)
     with urllib.request.urlopen(request,timeout=60) as response:return json.load(response)
 
 def init_buffer(args):
@@ -48,23 +51,33 @@ def init_buffer(args):
     save(ROOT/'.campus/buffer/runtime.local',{'postgres_password':secrets.token_urlsafe(32),'postgres_user':'campus_buffer','postgres_database':'campus_buffer','postgres_port':55434,'server_port':7780})
     print('Created private buffer configuration and example member credentials in .campus/buffer/. No credentials printed. Replace examples before sharing.')
 
-def plan(args):
+def session(args):
     cfg=local_config();member=api(cfg,'/api/me')
+    selected=getattr(args,'layer',None)
+    if member['layer']=='fullstack':
+        if not selected:raise PolicyError('SELECT_LAYER: use --layer backend, then --layer frontend for the same identity')
+        member=api(cfg,'/api/me',layer=selected)
+    elif selected and selected!=member['layer']:raise PolicyError('LAYER_NOT_ASSIGNED')
+    cfg={**cfg,'session_layer':member['layer']}
+    return cfg,member
+
+def plan(args):
+    cfg,member=session(args)
     if args.identity not in (member['id'],member.get('gitee')):raise PolicyError('IDENTITY_DOES_NOT_MATCH_TOKEN')
-    data=api(cfg,'/api/requirements')
+    data=api(cfg,'/api/requirements',layer=member['layer'])
     status={'完成':'accepted','已完成':'accepted','未完成':'pending','全部':'all'}.get(args.status,args.status)
     items=[q for q in data if (not args.module or q['module']==args.module) and (status=='all' or (q['state']=='accepted')==(status=='accepted'))]
     print(json.dumps({'member':member['id'],'layer':member['layer'],'requirements':items},ensure_ascii=False,indent=2))
 
 def worktree(args):
-    cfg=local_config();member=api(cfg,'/api/me');policy=load(ROOT);m=module_for(policy,args.module)
+    cfg,member=session(args);policy=load(ROOT);m=module_for(policy,args.module)
     if args.identity not in (member['id'],member.get('gitee')) or m['id'] not in member['modules']:raise PolicyError('MODULE_NOT_ASSIGNED')
     base=git(ROOT,'rev-parse','HEAD').decode().strip()
     if base!=member.get('baseline'):raise PolicyError('BASELINE_CHANGED: update checkout to the approved frozen baseline before development')
     # A team checkout must include the new frozen policy, not the old pre-isolation baseline.
     if not git(ROOT,'show',base+':spec/modules.json',check=False):raise PolicyError('PUBLISH_OPTIMIZED_BASELINE_FIRST')
     name='campus/'+member['id']+'/'+m['id'].lower()+'/'+member['layer']+'/'+base[:12]
-    path=ROOT/'.campus/worktrees'/member['id']/m['key']/base[:12]
+    path=ROOT/'.campus/worktrees'/member['id']/member['layer']/m['key']/base[:12]
     if path.exists():
         old=json_file(path/'.campus/task.local')
         if old['base']!=base or old['member']['id']!=member['id']:raise PolicyError('WORKTREE_CONTEXT_MISMATCH')
@@ -76,7 +89,7 @@ def worktree(args):
 
 def task(args):
     p=Path(args.worktree).resolve();ctx=json_file(p/'.campus/task.local')
-    if args.command=='submit' and ctx.get('mode')=='mutation':raise PolicyError('MUTATION_COPY_CANNOT_SUBMIT')
+    if args.command in ('submit','github-export') and ctx.get('mode')=='mutation':raise PolicyError('MUTATION_COPY_CANNOT_SUBMIT')
     member=ctx['member'];policy=load(ROOT)
     paths=guard(p,policy,member,ctx['module'],ctx['base'])
     if args.command=='guard':print(json.dumps({'allowed':True,'paths':paths},ensure_ascii=False));return
@@ -93,14 +106,32 @@ def task(args):
         from workflow import before_upload
         before_upload(ROOT,args.workflow,ctx['module'],p,args.evidence,requirements)
         evidence={**evidence,'requirements':{q:evidence['requirements'][q] for q in requirements}}
+    message(args.type,ctx['module'],args.summary,args.detail,requirements)
     git(p,'add','--',*paths)
     patch=git(p,'diff','--cached','--no-renames','--binary','--full-index',ctx['base'])
-    result=api(local_config(),'/api/submissions',{'module':ctx['module'],'base':ctx['base'],'requirements':requirements,'summary':args.summary,'patch':base64.b64encode(patch).decode(),'evidence':evidence})
+    result=api(local_config(),'/api/submissions',{'module':ctx['module'],'base':ctx['base'],'requirements':requirements,'summary':args.summary,'commit_type':args.type,'details':args.detail,'patch':base64.b64encode(patch).decode(),'evidence':evidence},layer=member['layer'])
     if args.workflow:
         from workflow import submitted
         submitted(ROOT,args.workflow,ctx['module'],result)
     print(json.dumps({key:result[key] for key in ('id','module_id','state')},ensure_ascii=False))
-    print('Uploaded draft diff; no formal commit or direct Gitee push. Human review and independent verification are pending.')
+    print('Uploaded buffer draft; Gitee awaits human review and independent CI.')
+    if not args.no_github:
+        from delivery import github_export
+        server_patch=api(local_config(),'/api/submissions/'+result['id']+'/patch',layer=member['layer'])['patch'].encode('utf-8')
+        if server_patch!=patch:raise PolicyError('BUFFER_PATCH_DOES_NOT_MATCH_UPLOAD')
+        print(json.dumps({'github':github_export(ROOT,p,ctx,result,args.type,args.summary,args.detail,requirements,server_patch)},ensure_ascii=False))
+
+def github_retry(args):
+    import uuid
+    from delivery import github_export
+    identifier=str(uuid.UUID(args.submission));cfg=local_config();member=api(cfg,'/api/me')
+    row=api(cfg,'/api/submissions/'+identifier)
+    if row['member_id']!=member['id'] or row['module_id'] not in member['modules']:raise PolicyError('SUBMISSION_NOT_OWNED')
+    profile=scoped(member,row['layer']);meta=row['metadata']
+    patch=api(cfg,'/api/submissions/'+identifier+'/patch')['patch'].encode('utf-8')
+    context={'base':meta['base'],'module':row['module_id'],'member':profile}
+    result=github_export(ROOT,ROOT,context,row,meta.get('commit_type','feat'),meta['summary'],meta.get('details',[meta['summary']]),meta['requirements'],patch)
+    print(json.dumps({'github':result},ensure_ascii=False))
 
 def record(args):
     from recording import record as execute_record
@@ -108,7 +139,7 @@ def record(args):
 
 def provision(args):
     import re
-    if not re.fullmatch('[a-z][a-z0-9-]{2,47}',args.identity):raise PolicyError('INVALID_MEMBER_ID')
+    if not re.fullmatch('[a-z][a-z0-9-]{0,47}',args.identity):raise PolicyError('INVALID_MEMBER_ID')
     modules=[x.strip() for x in args.modules.split(',') if x.strip()]
     policy=load(ROOT)
     for module in modules:module_for(policy,module)
@@ -117,7 +148,7 @@ def provision(args):
     previous=next((m for m in config['members'] if m['id']==args.replace),None) if args.replace else None
     if args.replace and (previous is None or previous.get('admin')):raise PolicyError('REPLACEMENT_MEMBER_NOT_FOUND')
     others=[m for m in config['members'] if m!=previous]
-    if any(m.get('layer')==args.layer and set(m['modules']) & set(modules) for m in others):raise PolicyError('MODULE_LAYER_ALREADY_ASSIGNED: replace the old owner explicitly')
+    if any(set(layers(m)) & set(layers({'layer':args.layer})) and set(m['modules']) & set(modules) for m in others):raise PolicyError('MODULE_LAYER_ALREADY_ASSIGNED: replace the old owner explicitly')
     config['members']=others
     token=secrets.token_urlsafe(32)
     config['members'].append({'id':args.identity,'gitee':args.gitee,'layer':args.layer,'modules':modules,'tokenHash':hashlib.sha256(token.encode()).hexdigest(),'admin':False})
@@ -146,13 +177,13 @@ def install_skills(args):
 
 def workflow_command(args):
     from workflow import open_workflow,refresh_submissions,next_action,state_path
-    cfg=local_config();member=api(cfg,'/api/me')
+    cfg,member=session(args)
     if args.identity not in (member['id'],member.get('gitee')):raise PolicyError('IDENTITY_DOES_NOT_MATCH_TOKEN')
-    data=api(cfg,'/api/requirements')
+    data=api(cfg,'/api/requirements',layer=member['layer'])
     if args.preview:
         print(json.dumps({'member':member['id'],'layer':member['layer'],'requirements':[{'id':q['id'],'module':q['module'],'title':q['title'],'state':q['state'],'skip_coding':q.get('skip_coding',False)} for q in data if not args.module or q['module']==args.module]},ensure_ascii=False,indent=2));return
     state=open_workflow(ROOT,member,data,args.module)
-    state=refresh_submissions(ROOT,state,api(cfg,'/api/submissions'))
+    state=refresh_submissions(ROOT,state,api(cfg,'/api/submissions',layer=member['layer']))
     print(json.dumps({'workflow_id':state['id'],'state_file':str(state_path(ROOT,state['id'])),'next':next_action(state,args.module),'verification_scope':'member modules; integration, human review and publication remain separate'},ensure_ascii=False,indent=2))
 
 def workflow_checkpoint(args):
@@ -181,24 +212,26 @@ def workflow_unblock(args):
 def main():
     parser=argparse.ArgumentParser();sub=parser.add_subparsers(dest='command',required=True)
     sub.add_parser('init-buffer')
+    p=sub.add_parser('github-retry');p.add_argument('--submission',required=True)
     p=sub.add_parser('install-skills');p.add_argument('--client',choices=['codex','claude'],default='codex');p.add_argument('--skills-dir');p.add_argument('--check',action='store_true')
-    p=sub.add_parser('workflow');p.add_argument('identity');p.add_argument('--module');p.add_argument('--preview',action='store_true')
+    p=sub.add_parser('workflow');p.add_argument('identity');p.add_argument('--layer',choices=['frontend','backend']);p.add_argument('--module');p.add_argument('--preview',action='store_true')
     p=sub.add_parser('workflow-checkpoint');p.add_argument('--run',required=True);p.add_argument('--module',required=True);p.add_argument('--stage',choices=['workspace','baseline','requirements','test-plan','tdd','regression'],required=True);p.add_argument('--artifact');p.add_argument('--reset',action='store_true')
     p=sub.add_parser('workflow-block');p.add_argument('--run',required=True);p.add_argument('--module',required=True);p.add_argument('--requirement',required=True);p.add_argument('--kind',choices=['external','clarification','scope'],required=True);p.add_argument('--reason',required=True);p.add_argument('--resume-when',required=True)
     p=sub.add_parser('workflow-unblock');p.add_argument('--run',required=True);p.add_argument('--module',required=True);p.add_argument('--requirement',required=True);p.add_argument('--resolution',required=True)
     p=sub.add_parser('mutation');p.add_argument('--worktree',required=True)
-    p=sub.add_parser('plan');p.add_argument('identity');p.add_argument('--status',default='未完成');p.add_argument('--module')
-    p=sub.add_parser('worktree');p.add_argument('identity');p.add_argument('module')
+    p=sub.add_parser('plan');p.add_argument('identity');p.add_argument('--layer',choices=['frontend','backend']);p.add_argument('--status',default='未完成');p.add_argument('--module')
+    p=sub.add_parser('worktree');p.add_argument('identity');p.add_argument('module');p.add_argument('--layer',choices=['frontend','backend'])
     for name in ['guard','sandbox','submit']:
         p=sub.add_parser(name);p.add_argument('--worktree',required=True)
         if name=='sandbox':p.add_argument('--start',action='store_true')
         if name=='submit':
-            p.add_argument('--evidence',required=True);p.add_argument('--requirements',required=True);p.add_argument('--summary',required=True);p.add_argument('--workflow')
+            p.add_argument('--evidence',required=True);p.add_argument('--requirements',required=True);p.add_argument('--summary',required=True);p.add_argument('--type',choices=['feat','fix','refactor'],required=True);p.add_argument('--detail',action='append',required=True);p.add_argument('--workflow');p.add_argument('--no-github',action='store_true')
     p=sub.add_parser('record');p.add_argument('--worktree',required=True);p.add_argument('--requirement',required=True);p.add_argument('--stage',choices=['baseline','red','green','mutation','regression','check'],required=True);p.add_argument('--output',required=True);p.add_argument('--assertion',default='');p.add_argument('--report',action='append');p.add_argument('--require-test',action='append');p.add_argument('--kind',choices=['unit','component','api','db','e2e','contract','build']);p.add_argument('--completion-mode',choices=['tdd','baseline_satisfied']);p.add_argument('test_command',nargs=argparse.REMAINDER)
-    p=sub.add_parser('provision-member');p.add_argument('identity');p.add_argument('--gitee');p.add_argument('--layer',choices=['frontend','backend'],required=True);p.add_argument('--modules',required=True);p.add_argument('--replace',help='Replace the retired example member without keeping overlapping ownership')
+    p=sub.add_parser('provision-member');p.add_argument('identity');p.add_argument('--gitee');p.add_argument('--layer',choices=['frontend','backend','fullstack'],required=True);p.add_argument('--modules',required=True);p.add_argument('--replace',help='Replace the retired example member without keeping overlapping ownership')
     p=sub.add_parser('build');p.add_argument('--install',action='store_true');p.add_argument('--start',action='store_true');p.add_argument('--buffer',action='store_true')
     args=parser.parse_args()
     if args.command=='init-buffer':init_buffer(args)
+    elif args.command=='github-retry':github_retry(args)
     elif args.command=='install-skills':install_skills(args)
     elif args.command=='plan':plan(args)
     elif args.command=='worktree':worktree(args)

@@ -9,9 +9,7 @@ description: 为 FduStudyRoom 在 Windows 或 macOS 检查、补齐开发环境�
 
 让成员在Windows或macOS取得正确源码，复用或补齐环境，构建并启动主应用或协作缓冲站，交付可访问地址和真实验证结果。缺少IDE时给出安装提示；不把搭环境扩展成业务开发。
 
-参考 harmony-bootstrap 的“检查已有环境 → 取得源码 → 补齐工具 → 建立运行配置 → 输出环境摘要”顺序。
-本项目的 Node / Java / PostgreSQL 和 Docker 实现按 [阶段细则](references/stages.md) 执行；
-DevEco、SDK、HAP 与设备命令不能复制，逐项说明见项目根目录的 `docs/workflow/harmony-reuse.md`。
+环境检查、工具补齐、构建及运行按 [阶段细则](references/stages.md) 执行。
 初始化完成后复用已有环境，日常只检查变化和目标构建，不每次重复安装。
 
 ## 执行条件

@@ -9,8 +9,7 @@ description: 按已登记身份自动推进 FduStudyRoom 所属模块，从环�
 
 根据成员身份，从需求文档中找到本人未完成的需求，在模块边界内完成分析、测试、实现、验证和缓冲站上传。中断后从有效检查点恢复；已验收项核对证据后跳过，外部受阻项保留并继续独立任务。
 
-本技能沿用参考单题流程的“基线 → 边界 → 需求 → 场景 TDD → 回归 → 人工验收 / 交付”主线。
-可复用文字以参考原文为底稿，平台及协作差异见项目根目录的 `docs/workflow/harmony-reuse.md`。
+执行顺序为“基线 → 边界 → 需求 → 场景 TDD → 回归 → 验收与交付”。
 
 本技能是总入口，调用 [campus-build](../campus-build/SKILL.md)、[campus-req](../campus-req/SKILL.md)、[campus-test](../campus-test/SKILL.md)、[campus-tdd](../campus-tdd/SKILL.md)。AI实际编写代码和测试，工具管理状态、隔离和证据；不能只生成计划就声称完成开发。
 
@@ -32,7 +31,7 @@ description: 按已登记身份自动推进 FduStudyRoom 所属模块，从环�
 | 个人凭据 | 本机忽略文件提供，不写入对话、日志或Git |
 | 恢复记录 | 已存在时复用workflow ID、工作树、检查点和缓冲单号 |
 
-调用示例：`$campus-workflow 我的身份是 frontend-a，处理未完成需求`。
+调用示例：`$campus-workflow 我的身份是 b，处理未完成需求`。
 
 ## 执行要求
 
@@ -47,18 +46,31 @@ Stage 0 启动与恢复
   → Stage 1 工作区(workspace) → Stage 2 基线(baseline)
   → Stage 2.5 边界事实 → Stage 3 需求(requirements) → Stage 4 测试方案(test-plan)
   → Stage 5 TDD(tdd) → Stage 6 回归(regression)
-  → Stage 7 上传(upload) → Stage 8 跟踪/继续其他模块
+  → Stage 7 双路交付(upload) → Stage 8 CI/部署 → Stage 9 跟踪/继续其他模块
 ```
 
-首次执行、恢复或阶段切换时读取 [执行协议](references/execution.md)。Stage 1—6的括号值对应工具检查点；上传和审核状态以网站真实返回为准，不手写成功标记。子技能已通过的检查点直接复用。
+涉及交付时读取 [交付与部署协议](references/delivery.md)。首次执行、恢复或阶段切换时读取 [执行协议](references/execution.md)。Stage 1—6的括号值对应工具检查点；上传和审核状态以网站真实返回为准，不手写成功标记。子技能已通过的检查点直接复用。
 
 ### Stage 0：启动、认证与恢复
 
-**执行**：核对加载的五个技能与项目源版本；需要时用install-skills的--check比较。调用campus-build检查环境，已有兼容工具与有效构建可复用；缓冲站不可达先诊断，不冒充协调人新建身份。运行 `python scripts/team.py plan <身份> --status 全部`，核对已完成项所指文件及真实审核/CI记录，再运行 `python scripts/team.py workflow <身份>`，取得workflow_id和next。指定模块加--module，仅查看用--preview。仅查询时输出状态后结束，不执行Stage 1—8。
+**执行**：核对加载的五个技能与项目源版本；需要时用install-skills的--check比较。调用campus-build检查环境，已有兼容工具与有效构建可复用；缓冲站不可达先诊断，不冒充协调人新建身份。运行 `python scripts/team.py plan <身份> --status 全部`，核对已完成项所指文件及真实审核/CI记录，再运行 `python scripts/team.py workflow <身份>`，取得workflow_id和next。指定模块加--module，仅查看用--preview。仅查询时输出状态后结束，不执行Stage 1—9。
 
 **输出**：已认证身份、冻结基线、已完成证据核对、本人待办及恢复点。
 
 **通过条件**：身份/基线/技能版本一致。已完成项有依据；证据缺失登记核验缺口，不擅自把accepted改为pending。恢复时核对HEAD、未提交工作、检查点及网站状态，不覆盖旧记录。
+
+### 六人分工与层切换
+
+示例成员 a—f 分别负责 M01—M06，每个人同时拥有本领域的前后端任务。身份和访问码只有一份。总流程先处理 backend，再处理 frontend；plan、workflow、worktree 显式带 --layer。两个层使用不同 worktree、workflow ID、容器及收据，不扩大到其他领域。
+
+```text
+python scripts/team.py workflow b --layer backend
+python scripts/team.py worktree b M02 --layer backend
+python scripts/team.py workflow b --layer frontend
+python scripts/team.py worktree b M02 --layer frontend
+```
+
+前后端测试各自通过后，还需验证本领域的实际前后端联调。示例配置不会替换已运行缓冲站的旧成员；协调人核对交接后再调整私有配置。
 
 ### Stage 1：建立限界工作区（workspace）
 
@@ -90,7 +102,7 @@ Stage 0 启动与恢复
 
 ### Stage 3：需求分解（requirements）
 
-**执行**：调用campus-req，按参考 Stage 1—5 保留完整原文、场景和对象对应，识别待实现项、依赖与问题。重大歧义先查既有决策，缺少依据时仅阻塞受影响需求。
+**执行**：调用campus-req，按 Stage 1—5 保留完整原文、场景和对象对应，识别待实现项、依赖与问题。重大歧义先查既有决策，缺少依据时仅阻塞受影响需求。
 
 **输出**：本模块本层analysis.json，覆盖全部本轮条目及受阻记录。
 
@@ -98,7 +110,7 @@ Stage 0 启动与恢复
 
 ### Stage 4：测试设计（test-plan）
 
-**执行**：以设计模式调用campus-test，按参考检查方案划分等价类，写清怎样算对、预期依据、样本、观察与比较，映射测试ID和类型。node / SSR、真实浏览器和人工结果分别记录；必需 UI 自动化缺失时保留受阻，不能改 kind 标签过门禁。
+**执行**：以设计模式调用campus-test，按检查方案划分等价类，写清怎样算对、预期依据、样本、观察与比较，映射测试ID和类型。node / SSR、真实浏览器和人工结果分别记录；必需 UI 自动化缺失时保留受阻，不能改 kind 标签过门禁。
 
 **输出**：analysis.json中的cells及场景到测试的覆盖关系。
 
@@ -120,20 +132,28 @@ Stage 0 启动与恢复
 
 **通过条件**：regression检查点通过；源码、analysis和证据摘要一致。mock/组件测试不冒充真实跨服务联调，未运行项单列。
 
-### Stage 7：上传缓冲站（upload）
+### Stage 7：上传缓冲站和 GitHub（upload）
 
-**执行**：运行guard，带--workflow提交本轮需求ID、说明、diff和证据。上传前再次核对当前输入；出错保留材料，修正可诊断问题后再提交。
+**执行**：运行guard，带--workflow提交本轮需求ID、说明、diff和证据；使用 --type feat/fix/refactor、--summary 标题及重复的 --detail 分点。submit 在缓冲站收件后自动导出同一差异并推送 GitHub 开发分支；两项分别记录真实状态。上传前再次核对当前输入；出错保留材料，修正可诊断问题后再提交。
 
 **输出**：网站真实返回的缓冲单号、模块和状态；用户可审阅的文件与功能说明、测试结果、当前可访问地址及尚未验收项。
 
 **通过条件**：网站确认接收且身份/模块匹配。未上传成功不能进入已交付；Gitee 正式交付提交不绕过人工验收。
 
 
-**GitHub 开发分支**：缓冲站确认接收后，取回该单号的差异并核对摘要，在独立导出目录从同一批准基线应用该差异，生成 development/<模块>/<成员>/<单号> 分支提交，直接推送 https://github.com/wangjr20210114-hue/FduStudyRoom.git。使用当前成员自己的授权，不分发仓库所有者的凭据；缺少仓库写权限时单独记录受阻。
+**GitHub 开发分支**：缓冲站确认接收后，取回该单号的差异并核对摘要，在独立导出目录从同一批准基线应用该差异，生成 development/<模块>/<成员>/<层>/<单号> 分支提交，直接推送 https://github.com/wangjr20210114-hue/FduStudyRoom.git。使用当前成员自己的授权，不分发仓库所有者的凭据；缺少仓库写权限时单独记录受阻。
 
 导出不改变原模块工作树、analysis、测试输入或缓冲站原始证据。GitHub 只接收代码和批准的版本化文档，不上传私有收据、访问码、日志或数据库材料。记录实际提交号、分支、URL 与差异摘要；推送失败保留导出目录和缓冲单号待重试，不撤回已收件项，不强推或自动解决冲突。GitHub 开发分支成功不代表 Gitee 审核、合并或生产发布通过。
 
-### Stage 8：跟踪、继续与交接
+### Stage 8：检查 GitHub CI 与站点部署
+
+**执行**：推送后查看对应 SHA 的 GitHub Actions。工具回归、前端测试和构建、后端测试和构建全部通过后才能交付部署包。用户已授权本仓库所有分支在 CI 通过后自动更新华为体验站 studyroom.seatraces.com，部署由 Actions 的 huawei-experience 环境和受限 SSH 接收器执行。正式生产仍需人工审批。GitHub 推送成功不作为站点上线成功的证据。域名、SSH 发布通道或网络缺失时记录具体阻塞。
+
+**输出**：GitHub 分支和提交、Actions 地址、构建结果、部署状态、站点地址及实际运行版本。
+
+**通过条件**：检查首页、两个服务的健康接口、登录配置接口及 version.json；运行版本必须对应本次提交。失败保留上一版本及数据库备份。应用回退与数据库恢复分别处理，数据库不自动还原。
+
+### Stage 9：跟踪、继续与交接
 
 **执行**：继续本人其他可开发模块。等待项保存原因、单号、已试动作和解除条件；条件变化后同一入口恢复。审核退回时保留历史，补充退回后的新测试证据。全部剩余项均在等待时结束本轮，不快速轮询。
 

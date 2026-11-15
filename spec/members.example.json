@@ -1,46 +1,56 @@
 {
-  "version": 1,
+  "version": 2,
   "members": [
     {
-      "id": "backend-a",
+      "id": "a",
       "gitee": null,
-      "layer": "backend",
+      "layer": "fullstack",
       "modules": [
-        "M01",
-        "M02",
+        "M01"
+      ],
+      "example": true
+    },
+    {
+      "id": "b",
+      "gitee": null,
+      "layer": "fullstack",
+      "modules": [
+        "M02"
+      ],
+      "example": true
+    },
+    {
+      "id": "c",
+      "gitee": null,
+      "layer": "fullstack",
+      "modules": [
         "M03"
       ],
       "example": true
     },
     {
-      "id": "backend-b",
+      "id": "d",
       "gitee": null,
-      "layer": "backend",
+      "layer": "fullstack",
       "modules": [
-        "M04",
-        "M05",
-        "M06"
+        "M04"
       ],
       "example": true
     },
     {
-      "id": "frontend-a",
+      "id": "e",
       "gitee": null,
-      "layer": "frontend",
+      "layer": "fullstack",
       "modules": [
-        "M02",
-        "M03"
+        "M05"
       ],
       "example": true
     },
     {
-      "id": "frontend-b",
+      "id": "f",
       "gitee": null,
-      "layer": "frontend",
+      "layer": "fullstack",
       "modules": [
-        "M01",
-        "M04",
-        "M05",
         "M06"
       ],
       "example": true

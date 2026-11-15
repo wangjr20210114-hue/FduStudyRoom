@@ -32,4 +32,36 @@ class PatchGateTest {
   assertEquals("DUPLICATE_MODULE_LAYER_OWNER",assertThrows(IllegalArgumentException.class,()->new BufferSettings(file.toString())).getMessage());
  }
  @Test void identityIsNotAuthentication(){assertNull(settings.authenticate("Bearer frontend-a"));assertNull(settings.authenticate(null));assertFalse(member.publicView().containsKey("tokenHash"));assertEquals("frontend-a",member.id());}
+ @Test void fullstackMemberUsesSeparateLayerSessions()throws Exception {
+  var mapper=JsonMapper.builder().build();
+  Files.writeString(root.resolve("spec/modules.json"),mapper.writeValueAsString(Map.of("modules",List.of(Map.of("id","M02","write_paths",Map.of("frontend",List.of("frontend/src/modules/resource/"),"backend",List.of("backend/resource/")))))));
+  Path file=root.resolve("config.local");
+  var owner=Map.of("id","b","layer","fullstack","modules",List.of("M02"),"tokenHash",BufferSettings.sha("test-b".getBytes()));
+  Files.writeString(file,mapper.writeValueAsString(Map.of("root",root.toString(),"members",List.of(owner),"baseline","a".repeat(40))));
+  var configured=new BufferSettings(file.toString());var person=configured.authenticate("Bearer test-b");
+  assertEquals(List.of("backend","frontend"),person.layers());
+  assertEquals(List.of("backend/resource/"),configured.allowed(person.scoped("backend"),"M02"));
+  assertEquals(List.of("frontend/src/modules/resource/"),configured.allowed(person.scoped("frontend"),"M02"));
+  assertThrows(GateException.class,()->configured.allowed(person.scoped("frontend"),"M05"));
+  var front=Map.of("id","other","layer","frontend","modules",List.of("M02"),"tokenHash",BufferSettings.sha("test-other".getBytes()));
+  Files.writeString(file,mapper.writeValueAsString(Map.of("root",root.toString(),"members",List.of(owner,front))));
+  assertEquals("DUPLICATE_MODULE_LAYER_OWNER",assertThrows(IllegalArgumentException.class,()->new BufferSettings(file.toString())).getMessage());
+ }
+
+ @Test void frontendTokenCannotRequestBackendSession()throws Exception {
+  var request=new org.springframework.mock.web.MockHttpServletRequest("GET","/api/me");
+  request.addHeader("Authorization","Bearer secret-test-token");request.addHeader("X-Campus-Layer","backend");
+  var response=new org.springframework.mock.web.MockHttpServletResponse();
+  new AccessFilter(settings).doFilter(request,response,(req,res)->fail("Unassigned layer reached controller"));
+  assertEquals(403,response.getStatus());assertTrue(response.getContentAsString().contains("LAYER_NOT_ASSIGNED"));
+ }
+ @Test void selectedSessionReachesControllerAndUnknownLayersAreDenied()throws Exception {
+  var request=new org.springframework.mock.web.MockHttpServletRequest("GET","/api/me");
+  request.addHeader("Authorization","Bearer secret-test-token");request.addHeader("X-Campus-Layer","frontend");
+  var response=new org.springframework.mock.web.MockHttpServletResponse();
+  new AccessFilter(settings).doFilter(request,response,(req,res)->assertEquals("frontend",((BufferSettings.Member)req.getAttribute("member")).layer()));
+  assertEquals(200,response.getStatus());
+  assertThrows(GateException.class,()->member.scoped("root"));
+ }
+
 }

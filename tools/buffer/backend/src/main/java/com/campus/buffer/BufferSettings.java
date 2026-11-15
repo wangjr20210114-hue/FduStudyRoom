@@ -9,6 +9,12 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 public class BufferSettings {
  public record Member(String id,String gitee,String layer,List<String> modules,boolean admin,String tokenHash) {
+   List<String> layers() { return "fullstack".equals(layer)?List.of("backend","frontend"):List.of(layer); }
+   Member scoped(String selected) {
+     if(selected==null || selected.isBlank())return this;
+     if(!layers().contains(selected))throw new GateException(403,"LAYER_NOT_ASSIGNED");
+     return new Member(id,gitee,selected,modules,admin,tokenHash);
+   }
    Map<String,Object> publicView() { return Map.of("id",id,"gitee",gitee==null?"":gitee,"layer",layer,"modules",modules,"admin",admin); }
  }
  private final Map<String,Object> config;
@@ -31,8 +37,11 @@ public class BufferSettings {
    for(Member member:members){
      if(!hashes.add(member.tokenHash()))throw new IllegalArgumentException("DUPLICATE_MEMBER_TOKEN");
      if(!member.admin())for(String module:member.modules()){
-       allowed(member,module);
-       if(!ownership.add(module+":"+member.layer()))throw new IllegalArgumentException("DUPLICATE_MODULE_LAYER_OWNER");
+       for(String layer:member.layers()){
+         if(!Set.of("frontend","backend").contains(layer))throw new IllegalArgumentException("INVALID_MEMBER_LAYER");
+         allowed(member.scoped(layer),module);
+         if(!ownership.add(module+":"+layer))throw new IllegalArgumentException("DUPLICATE_MODULE_LAYER_OWNER");
+       }
      }
    }
    if(interval()<259200)throw new IllegalArgumentException("INTERVAL_BELOW_72_HOURS");
@@ -69,6 +78,6 @@ public class BufferSettings {
  public List<String> allowed(Member member,String module) {
    if(!member.modules().contains(module))throw new GateException(403,"MODULE_NOT_ASSIGNED");
    return ((List<Map<String,Object>>)manifest.get("modules")).stream().filter(m->module.equals(m.get("id")))
-    .map(m->(List<String>)((Map<String,Object>)m.get("write_paths")).get(member.layer())).findFirst().orElseThrow(()->new GateException(403,"MODULE_NOT_ASSIGNED"));
+    .map(m->(List<String>)((Map<String,Object>)m.get("write_paths")).get(member.layer())).filter(Objects::nonNull).findFirst().orElseThrow(()->new GateException(403,"MODULE_NOT_ASSIGNED"));
  }
 }

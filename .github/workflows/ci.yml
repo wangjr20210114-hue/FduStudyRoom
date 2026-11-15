@@ -1,0 +1,106 @@
+name: Product CI
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: huawei-experience-site
+  cancel-in-progress: false
+  queue: max
+jobs:
+  verify-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: campus_migration_probe
+          POSTGRES_USER: module_user
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U module_user -d campus_migration_probe"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: '**/pom.xml'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Commit description
+        run: |
+          git show -s --format=%B "$GITHUB_SHA" > /tmp/commit-description.txt
+          python3 scripts/check-commit.py /tmp/commit-description.txt
+      - name: Workflow tooling tests
+        run: python3 -m unittest discover -s tests/team -v
+      - name: Buffer service tests
+        run: sh backend/mvnw -B -f tools/buffer/backend/pom.xml verify
+      - name: Frontend tests and build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test -- --maxWorkers=1
+          npm run build
+      - name: Backend tests and build
+        working-directory: backend
+        env:
+          CAMPUS_TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/campus_migration_probe
+          CAMPUS_TEST_DB_USER: module_user
+          CAMPUS_TEST_DB_PASSWORD: ci-only-password
+        run: sh mvnw -B verify
+      - name: Package verified outputs
+        env:
+          RELEASE_BRANCH: ${{ github.ref_name }}
+        run: |
+          python3 scripts/package-product.py --output /tmp/product.tar.gz --commit "$GITHUB_SHA" --sequence "$GITHUB_RUN_NUMBER" --branch "$RELEASE_BRANCH"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: product-${{ github.sha }}
+          path: /tmp/product.tar.gz
+          retention-days: 7
+  deploy-huawei:
+    if: vars.HUAWEI_SITE_READY == 'true'
+    needs: verify-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: huawei-experience
+      url: https://studyroom.seatraces.com
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: product-${{ github.sha }}
+          path: release
+      - name: Update authorized experience site
+        env:
+          DEPLOY_KEY: ${{ secrets.HUAWEI_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.HUAWEI_KNOWN_HOSTS }}
+        run: |
+          test -n "$DEPLOY_KEY"
+          test -n "$KNOWN_HOSTS"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/huawei
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/huawei ~/.ssh/known_hosts
+          trap 'rm -f ~/.ssh/huawei' EXIT
+          ssh -T -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -i ~/.ssh/huawei -p 22 fdu-deploy@119.3.126.218 deploy < release/product.tar.gz
+      - name: Verify public HTTPS and source version
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          curl --fail --retry 6 --retry-delay 5 --retry-all-errors --connect-timeout 10 --max-time 30 https://studyroom.seatraces.com/health/resource
+          curl --fail --retry 3 --retry-delay 5 --connect-timeout 10 --max-time 30 https://studyroom.seatraces.com/health/workflow
+          curl --fail --connect-timeout 10 --max-time 30 https://studyroom.seatraces.com/version.json > /tmp/deployed-version.json
+          python3 -c 'import json,os; v=json.load(open("/tmp/deployed-version.json")); assert v["commit"]==os.environ["EXPECTED_COMMIT"]'

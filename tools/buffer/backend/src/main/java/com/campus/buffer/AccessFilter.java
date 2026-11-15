@@ -13,6 +13,12 @@ public class AccessFilter extends OncePerRequestFilter {
   if(!request.getRequestURI().startsWith("/api/")){chain.doFilter(request,response);return;}
   var member=settings.authenticate(request.getHeader("Authorization"));
   if(member==null){deny(response,401,"AUTHENTICATION_REQUIRED");return;}
+  try { member=member.scoped(request.getHeader("X-Campus-Layer")); }
+  catch(GateException e){deny(response,e.status,e.code);return;}
+  if("fullstack".equals(member.layer()) && !request.getRequestURI().matches("/api/submissions/[0-9a-f-]{36}(/patch)?") && !Set.of("/api/me","/api/status","/api/submissions","/api/requirements").contains(request.getRequestURI())){
+    deny(response,400,"SELECT_LAYER_REQUIRED");return;
+  }
+  if("fullstack".equals(member.layer()) && !Set.of("GET","HEAD").contains(request.getMethod())){deny(response,400,"SELECT_LAYER_REQUIRED");return;}
   if(!Set.of("GET","HEAD").contains(request.getMethod())){
    String origin=request.getHeader("Origin");
    if(origin!=null && !settings.allowedOrigins().contains(origin)){deny(response,403,"ORIGIN_NOT_ALLOWED");return;}

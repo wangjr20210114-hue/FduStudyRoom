@@ -1,0 +1,84 @@
+name: fdu-study-room-production
+x-api: &api
+  image: ${JAVA_IMAGE:-eclipse-temurin:21-jre-jammy}
+  restart: unless-stopped
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: [/tmp:rw,nosuid,nodev,size=128m]
+  mem_limit: 768m
+  pids_limit: 192
+  command: [java, -XX:MaxRAMPercentage=65.0, -jar, /app/app.jar]
+  depends_on:
+    postgres: {condition: service_healthy}
+  healthcheck:
+    test: [CMD-SHELL, "bash -c 'exec 3<>/dev/tcp/127.0.0.1/$$SERVER_PORT'"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 40s
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc}
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      RESOURCE_DB_PASSWORD: ${RESOURCE_DB_PASSWORD:?}
+      WORKFLOW_DB_PASSWORD: ${WORKFLOW_DB_PASSWORD:?}
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./initialize-database.sh:/docker-entrypoint-initdb.d/10-campus.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  resource:
+    <<: *api
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 8080
+      CAMPUS_DB_URL: jdbc:postgresql://postgres:5432/fdu_study_room
+      CAMPUS_DB_USER: campus_resource
+      CAMPUS_DB_PASSWORD: ${RESOURCE_DB_PASSWORD:?}
+      CAMPUS_AUTH_SIGNING_KEY: ${AUTH_SIGNING_KEY:?}
+      CAMPUS_AUTH_SERVICE_KEY: ${AUTH_SERVICE_KEY:?}
+    volumes:
+      - ${RELEASE_DIR:?}/resource.jar:/app/app.jar:ro
+  workflow:
+    <<: *api
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 8081
+      CAMPUS_DB_URL: jdbc:postgresql://postgres:5432/fdu_workflow
+      CAMPUS_DB_USER: campus_workflow
+      CAMPUS_DB_PASSWORD: ${WORKFLOW_DB_PASSWORD:?}
+      CAMPUS_AUTH_SIGNING_KEY: ${AUTH_SIGNING_KEY:?}
+      CAMPUS_AUTH_SERVICE_KEY: ${AUTH_SERVICE_KEY:?}
+      CAMPUS_WORKFLOW_IDENTITY_URL: http://resource:8080/internal/auth/introspect
+    volumes:
+      - ${RELEASE_DIR:?}/workflow.jar:/app/app.jar:ro
+  web:
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
+    restart: unless-stopped
+    mem_limit: 128m
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "${PUBLIC_BIND:-127.0.0.1}:80:80"
+      - "${PUBLIC_BIND:-127.0.0.1}:443:443"
+      - "127.0.0.1:18080:8088"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${RELEASE_DIR:?}/web:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      resource: {condition: service_healthy}
+      workflow: {condition: service_healthy}
+volumes:
+  pgdata: {}
+  caddy_data: {}
+  caddy_config: {}

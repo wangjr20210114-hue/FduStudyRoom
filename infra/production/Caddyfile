@@ -1,0 +1,36 @@
+(campus) {
+    request_body {
+        max_size 8MB
+    }
+    handle /health/resource {
+        rewrite * /health
+        reverse_proxy resource:8080
+    }
+    handle /health/workflow {
+        rewrite * /health
+        reverse_proxy workflow:8081
+    }
+    @workflow path /api/approvals* /api/room-requests* /api/repairs* /api/maintenance* /api/notifications* /api/audit* /api/statistics*
+    handle @workflow {
+        reverse_proxy workflow:8081
+    }
+    handle /api/* {
+        reverse_proxy resource:8080
+    }
+    handle /version.json {
+        root * /srv
+        file_server
+        header Cache-Control no-store
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}
+{$SITE_ADDRESS:localhost} {
+    import campus
+}
+http://:8088 {
+    import campus
+}

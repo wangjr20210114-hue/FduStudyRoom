@@ -3,6 +3,8 @@ import argparse,base64,hashlib,json,os,re,secrets,subprocess,sys,time,urllib.par
 from pathlib import Path
 from policy import PolicyError,load,authorize,git,evidence_valid,guard
 from environment import docker,docker_path,bind_identity,PG
+from members import scoped
+from commits import message
 
 def execute(args,cwd=None,env=None,timeout=900,input=None):
     p=subprocess.run([str(x) for x in args],cwd=cwd,env=env,input=input,capture_output=True,timeout=timeout)
@@ -31,7 +33,8 @@ def verify(config,item):
     root=Path(config['root']);repo=Path(config['repository']);identifier=str(uuid.UUID(item['id']))
     if not item.get('reviewer') or item['reviewer']==item['member_id']:raise PolicyError('HUMAN_REVIEW_REQUIRED')
     member=next((m for m in config['members'] if m['id']==item['member_id']),None)
-    if not member or member['layer']!=item['layer']:raise PolicyError('MEMBER_MISMATCH')
+    if not member:raise PolicyError('MEMBER_MISMATCH')
+    member=scoped(member,item['layer'])
     meta=item['metadata'];base=meta['base']
     if base!=config['baseline'] or not re.fullmatch('[0-9a-f]{40}',base):raise PolicyError('BASELINE_CHANGED')
     evidence_valid(meta['evidence'],meta['requirements']);patch=base64.b64decode(item['patch'],validate=True)
@@ -86,7 +89,7 @@ def verify(config,item):
         if result.returncode:return {'state':'VERIFY_FAILED','code':'INDEPENDENT_TESTS_FAILED','category':'tests','log':str(home/'ci.log'),'ci_image':image}
         # The test process must not rewrite the production inputs it just verified.
         if subprocess.run(['git','-c','safe.directory='+str(worktree),'-C',worktree,'diff','--exit-code'],capture_output=True).returncode:raise PolicyError('CI_CHANGED_SUBMITTED_SOURCE')
-        execute(['git','-c','safe.directory='+str(worktree),'-c','user.name='+member['id'],'-c','user.email='+member['id']+'@team.invalid','-C',worktree,'commit','-m','feat('+item['module_id']+'): '+str(meta['summary'])+'\n\nRequirements: '+','.join(meta['requirements'])+'\nReviewed-by: '+str(item['reviewer'])])
+        execute(['git','-c','safe.directory='+str(worktree),'-c','user.name='+member['id'],'-c','user.email='+member['id']+'@team.invalid','-C',worktree,'commit','-m',message(meta.get('commit_type','feat'),item['module_id'],meta['summary'],meta.get('details',[meta['summary']]),meta['requirements'],item['reviewer'])])
         commit=git(worktree,'rev-parse','HEAD').decode().strip();git(repo,'branch',branch,commit)
         data={'state':'VERIFIED','category':'success','branch':branch,'commit':commit,'patch_sha256':fingerprint,'ci_image':image,'ci_log_sha256':hashlib.sha256(log.encode()).hexdigest(),'verification_scope':'module; real cross-module/production acceptance remains separate'}
         cached.write_text(json.dumps(data),encoding='utf-8');return data
