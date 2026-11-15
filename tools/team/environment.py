@@ -1,6 +1,7 @@
 """Recoverable local build and per-member Docker environments (Windows/macOS)."""
 import hashlib,json,os,platform,re,secrets,shutil,socket,subprocess,sys,tarfile,time,urllib.request,zipfile
 from pathlib import Path
+from contextlib import contextmanager
 from policy import PolicyError,module_for
 PG='postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc'
 
@@ -278,6 +279,45 @@ def start_application(root,picked,env):
     url=f"http://127.0.0.1:{runtime['frontend_port']}";wait_http(url+'/api/auth/config')
     print('Application ready: '+url+'/login; private admin credentials in .campus/app/runtime.local')
 
+@contextmanager
+def verification_environment(root, env):
+    """Prepare only this checkout's verification services, separate from application data."""
+    root=Path(root);private=root/'.campus/verify';private.mkdir(parents=True,exist_ok=True)
+    state=private/'runtime.local'
+    runtime=json.loads(state.read_text(encoding='utf-8')) if state.exists() else {'postgres_password':secrets.token_urlsafe(32)}
+    if not isinstance(runtime.get('postgres_password'),str) or len(runtime['postgres_password'])<24:raise PolicyError('INVALID_VERIFICATION_CONFIG')
+    save(state,runtime)
+    project='fdu-verify-'+hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:12]
+    mailpit='axllent/mailpit@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387'
+    services={'postgres':{'image':PG,'environment':{'POSTGRES_DB':'module_test','POSTGRES_USER':'module_user','POSTGRES_PASSWORD':runtime['postgres_password']},'ports':['127.0.0.1:0:5432'],'volumes':['postgres:/var/lib/postgresql'],'healthcheck':{'test':['CMD-SHELL','pg_isready -U module_user -d module_test'],'interval':'2s','retries':30}},
+      'smtp':{'image':mailpit,'read_only':True,'cap_drop':['ALL'],'security_opt':['no-new-privileges:true'],'mem_limit':'128m','tmpfs':['/tmp:rw,nosuid,nodev,size=32m'],'environment':{'MP_DATABASE':'/tmp/mailpit.db'},'ports':['127.0.0.1:0:1025','127.0.0.1:0:8025'],'healthcheck':{'test':['CMD','/mailpit','readyz'],'interval':'2s','retries':30}}}
+    compose=private/'compose.local.json';save(compose,{'name':project,'services':services,'volumes':{'postgres':{}}})
+    command=docker(root)+['compose','-p',project,'-f',docker_path(compose)]
+    try:
+        run(command+['up','-d','--wait','--wait-timeout','120'])
+        for name in ['campus_migration_probe','campus_buffer_test']:
+            found=run(command+['exec','-T','postgres','psql','-U','module_user','-d','postgres','-tA','-c',"SELECT 1 FROM pg_database WHERE datname='"+name+"'"])
+            if found!='1':run(command+['exec','-T','postgres','psql','-U','module_user','-d','postgres','-v','ON_ERROR_STOP=1','-c','CREATE DATABASE '+name+' OWNER module_user'])
+        def port(service,target):
+            value=run(command+['port',service,str(target)])
+            match=re.fullmatch(r'127\.0\.0\.1:([0-9]+)',value)
+            if not match or not 0<int(match[1])<65536:raise PolicyError('VERIFICATION_PORT_UNAVAILABLE')
+            return match[1]
+        postgres=port('postgres',5432);smtp=port('smtp',1025);inbox=port('smtp',8025)
+        output={**env,'CAMPUS_TEST_SMTP_HOST':'127.0.0.1','CAMPUS_TEST_SMTP_PORT':smtp,'CAMPUS_TEST_MAILPIT_URL':'http://127.0.0.1:'+inbox}
+        for prefix,name in [('CAMPUS_DB','module_test'),('CAMPUS_TEST_DB','campus_migration_probe'),('CAMPUS_BUFFER_TEST_DB','campus_buffer_test')]:
+            output.update({prefix+'_URL':'jdbc:postgresql://127.0.0.1:'+postgres+'/'+name,prefix+'_USER':'module_user',prefix+'_PASSWORD':runtime['postgres_password']})
+        yield output
+    finally:
+        failed=sys.exc_info()[0] is not None
+        try:
+            run(command+['down'])
+            save(private/'cleanup.local',{'state':'STOPPED','volumes':'preserved','project':project})
+        except Exception as error:
+            save(private/'cleanup.local',{'state':'ERROR','project':project,'reason':type(error).__name__})
+            if not failed:raise
+
+
 def build(root,args):
     global LOG_DIRECTORY
     root=Path(root);state=root/'.campus/build.local';results=[];LOG_DIRECTORY=root/'.campus/build-logs'
@@ -296,16 +336,21 @@ def build(root,args):
         if not node_modules.exists():run([picked['node'],npm,'ci'],cwd=native/'frontend',env=env)
         stage('4 frozen frontend dependencies',detail='Shared by app and buffer; no second lockfile')
         wrapper=native/'backend'/('mvnw.cmd' if os.name=='nt' else 'mvnw')
+        maven=[str(wrapper)] if os.name=='nt' else ['sh',str(wrapper)]
         if args.buffer:
             if not (root/'.campus/buffer/config.local').exists():run([sys.executable,root/'scripts/team.py','init-buffer'])
             stage('5 private buffer config')
-            run([str(wrapper),'-B','-q','-f',str(native/'tools/buffer/backend/pom.xml'),'verify'],cwd=native/'backend',env=env);stage('6 buffer backend verify')
+            with verification_environment(root,env) as verify_env:
+                stage('5 verification services',detail='private PostgreSQL and SMTP ready')
+                run(maven+['-B','-q','-f',str(native/'tools/buffer/backend/pom.xml'),'verify'],cwd=native/'backend',env=verify_env);stage('6 buffer backend verify')
             run([picked['node'],node_modules/'vue-tsc/bin/vue-tsc.js','--noEmit','-p',native/'tools/buffer/frontend/tsconfig.json'],cwd=native,env=env)
             run([picked['node'],node_modules/'vitest/vitest.mjs','run','--config',native/'tools/buffer/frontend/vite.config.ts','--maxWorkers','1'],cwd=native/'tools/buffer/frontend',env=env)
             run([picked['node'],node_modules/'vite/bin/vite.js','build'],cwd=native/'tools/buffer/frontend',env=env);stage('7 buffer frontend verify')
             if args.start:start_buffer(root,picked,env)
         else:
-            run([str(wrapper),'-B','-q','verify'],cwd=native/'backend',env=env);stage('5 backend verify')
+            with verification_environment(root,env) as verify_env:
+                stage('5 verification services',detail='private PostgreSQL and SMTP ready')
+                run(maven+['-B','-q','verify'],cwd=native/'backend',env=verify_env);stage('6 backend verify')
             run([picked['node'],node_modules/'vue-tsc/bin/vue-tsc.js','--noEmit','-p','tsconfig.json'],cwd=native/'frontend',env=env)
             run([picked['node'],node_modules/'typescript/bin/tsc','--noEmit','-p','tsconfig.node.json'],cwd=native/'frontend',env=env)
             run([picked['node'],node_modules/'vitest/vitest.mjs','run','--maxWorkers','1'],cwd=native/'frontend',env=env)
