@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(classes=WorkflowApplication.class,webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,
  properties={"campus.auth.signing-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","campus.auth.service-key=repair-isolated-fixture-service-key-000000","server.address=127.0.0.1","campus.migrations.modules=repair","campus.repair.poll-ms=3600000"})
 @Import(RepairEvaluationAuditBaselineTest.FixtureConfiguration.class)
+@org.springframework.test.annotation.DirtiesContext(classMode=org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class RepairEvaluationAuditBaselineTest {
  static final UUID ADMIN=UUID.randomUUID(),WORKER=UUID.randomUUID(),REPORTER=UUID.randomUUID(),OTHER=UUID.randomUUID();
  static final Set<String> ALL=Set.of("repair:evaluate","repair:accept","repair:history:read","repair:report","repair:maintain","repair:assign","repair:admin-cancel");
@@ -43,6 +44,7 @@ class RepairEvaluationAuditBaselineTest {
  static final AtomicInteger RESOURCE_CALLS=new AtomicInteger();
  static volatile boolean RESOURCE_DOWN=false,LOSE_RESPONSE=false,DOWNSTREAM_DOWN=false,EMAIL_VERIFIED=true;
  static final java.util.concurrent.atomic.AtomicReference<Instant> NOW=new java.util.concurrent.atomic.AtomicReference<>(Instant.parse("2026-11-16T00:00:00Z"));
+ static final ExecutorService IDENTITY_EXECUTOR=Executors.newCachedThreadPool();
  static final HttpServer IDENTITY;
  static {
   try {
@@ -77,7 +79,7 @@ class RepairEvaluationAuditBaselineTest {
     }else if(path.startsWith("/internal/resources/sources/M3/")){out=SOURCES.get(UUID.fromString(path.substring(path.lastIndexOf('/')+1)));if(out==null){x.sendResponseHeaders(404,-1);return;}}
     else{if(DOWNSTREAM_DOWN&&path.endsWith("maintenance-events")){x.sendResponseHeaders(404,-1);return;}MESSAGES.add(JSON.readValue(x.getRequestBody().readAllBytes(),Map.class));out=Map.of("status","ACCEPTED");}
     byte[] b=JSON.writeValueAsBytes(out);x.getResponseHeaders().set("Content-Type","application/json");x.sendResponseHeaders(200,b.length);x.getResponseBody().write(b);
-   }finally{x.close();}});IDENTITY.setExecutor(Executors.newCachedThreadPool());IDENTITY.start();
+   }finally{x.close();}});IDENTITY.setExecutor(IDENTITY_EXECUTOR);IDENTITY.start();
   }catch(Exception e){throw new ExceptionInInitializerError(e);}
  }
  @DynamicPropertySource static void props(DynamicPropertyRegistry r){r.add("campus.workflow.identity-url",()->"http://127.0.0.1:"+IDENTITY.getAddress().getPort()+"/introspect");r.add("campus.repair.workflow-url",()->"http://127.0.0.1:"+IDENTITY.getAddress().getPort());}
@@ -88,6 +90,12 @@ class RepairEvaluationAuditBaselineTest {
  @Autowired TokenService tokens;
  @Autowired org.springframework.context.ApplicationContext context;
  final HttpClient http=HttpClient.newHttpClient();
+ @AfterEach void closeTestClient(){http.close();}
+ @AfterAll static void stopFixture()throws InterruptedException{
+  IDENTITY.stop(0);
+  IDENTITY_EXECUTOR.shutdown();
+  if(!IDENTITY_EXECUTOR.awaitTermination(5,TimeUnit.SECONDS))IDENTITY_EXECUTOR.shutdownNow();
+ }
  @BeforeEach void reset(){RESOURCE_DOWN=false;LOSE_RESPONSE=false;DOWNSTREAM_DOWN=false;EMAIL_VERIFIED=true;NOW.set(Instant.parse("2026-11-16T00:00:00Z"));REVOKED.clear();PERMISSIONS.put(ADMIN,ALL);PERMISSIONS.put(WORKER,ALL);PERMISSIONS.put(REPORTER,Set.of("repair:report","repair:history:read"));PERMISSIONS.put(OTHER,Set.of("repair:maintain","repair:history:read"));}
  boolean table(){return jdbc.queryForObject("select to_regclass('m3.repair_orders') is not null",Boolean.class);}
  UUID order(String status,UUID accepted){UUID id=UUID.randomUUID();if(table())jdbc.update("insert into m3.repair_orders(id,reporter_id,room_id,description,technician_id,status,due_at,accepted_by,accepted_at,version) values(?,?,?,?,?,?,now()+interval '1 day',?,case when ?::uuid is null then null else now() end,1)",id,REPORTER,UUID.randomUUID(),"broken lamp",WORKER,status,accepted,accepted);return id;}
