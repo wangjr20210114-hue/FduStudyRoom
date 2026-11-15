@@ -111,7 +111,8 @@ import tools.jackson.databind.json.JsonMapper;
     public void event(UUID op,String module,UUID source,int version,String kind,UUID room,String fp,Map<String,Object>data,Instant at,boolean replay,UUID actor){
         db.update("INSERT INTO resource.resource_operations(operation_id,source_module,source_id,source_version,kind,room_id,fingerprint,snapshot,applied_at,replay) VALUES(?,?,?,?,?,?,?,?::jsonb,?,?)",op,module,source,version,kind,room,fp,JSON.writeValueAsString(data),OffsetDateTime.ofInstant(at,ZoneOffset.UTC),replay);
         if(!replay){
-            var projection=map("roomId",room,"version",version,"enabled",bool(data,"active",bool(data,"enabled",false)),"status",data.containsKey("status")?text(data,"status"):"APPLIED");
+            var projection=map("version",version,"enabled",bool(data,"active",bool(data,"enabled",false)),"status",data.containsKey("status")?text(data,"status"):"APPLIED");
+            if(room!=null)projection.put("roomId",room);
             if(data.get("seatId")!=null)projection.put("seatId",data.get("seatId"));
             String trace=text(data,"requestTraceId");
             if(trace==null&&org.springframework.web.context.request.RequestContextHolder.getRequestAttributes() instanceof org.springframework.web.context.request.ServletRequestAttributes attributes){
