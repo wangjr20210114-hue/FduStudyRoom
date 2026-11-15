@@ -28,6 +28,14 @@ def require(condition, message):
         raise PlanError(message)
 
 
+def digest_matches_newlines(raw, expected):
+    candidates = {raw}
+    lf = raw.replace(b'\r\n', b'\n')
+    if b'\r' not in lf:
+        candidates.update((lf, lf.replace(b'\n', b'\r\n')))
+    return any(hashlib.sha256(value).hexdigest() == expected for value in candidates)
+
+
 def boundary(data):
     path = (ROOT / data['workflow_boundary_path']).resolve()
     require(path.is_relative_to(ROOT.resolve()), 'workflow索引路径越界')
@@ -39,11 +47,7 @@ def snapshot(data):
     path = (ROOT / row['source_snapshot']).resolve()
     require(path.is_relative_to(ROOT.resolve()), '历史来源路径越界')
     raw = path.read_bytes()
-    candidates = {raw}
-    lf = raw.replace(b'\r\n', b'\n')
-    if b'\r' not in lf:
-        candidates.update((lf, lf.replace(b'\n', b'\r\n')))
-    require(any(hashlib.sha256(value).hexdigest() == row['source_snapshot_sha256'] for value in candidates), '历史来源已变更，需明确评审')
+    require(digest_matches_newlines(raw, row['source_snapshot_sha256']), '历史来源已变更，需明确评审')
     return json.loads(raw)
 
 
@@ -71,7 +75,7 @@ def current_boundary(data, requirements):
 def load():
     data = json.loads(INDEX.read_text(encoding='utf-8'))
     raw = (ROOT / data['catalog_path']).read_bytes()
-    require(hashlib.sha256(raw).hexdigest() == data['catalog_sha256'], '需求来源已变更，先评审并更新追踪')
+    require(digest_matches_newlines(raw, data['catalog_sha256']), '需求来源已变更，先评审并更新追踪')
     catalog = json.loads(raw)
     requirements = copy.deepcopy(catalog['requirements'])
     lookup = {q['id']: q for q in requirements}

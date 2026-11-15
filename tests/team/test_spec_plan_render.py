@@ -50,6 +50,42 @@ class SnapshotTests(unittest.TestCase):
                     self.read_snapshot(raw)
 
 
+class CurrentCatalogTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.requirements = [{'id': 'FIXTURE', 'acceptance': ['original acceptance']}]
+        self.lf = (json.dumps({'requirements': self.requirements}, indent=2) + chr(10)).encode()
+        self.crlf = self.lf.replace(bytes([10]), bytes([13, 10]))
+
+    def load_catalog(self, raw, expected):
+        index = self.root / 'index.json'
+        index.write_text(json.dumps({'catalog_path': 'catalog.json', 'catalog_sha256': hashlib.sha256(expected).hexdigest()}))
+        (self.root / 'catalog.json').write_bytes(raw)
+        with patch.object(renderer, 'ROOT', self.root), patch.object(renderer, 'INDEX', index):
+            return renderer.load()
+
+    def test_current_catalog_accepts_only_equivalent_lf_and_crlf_for_either_recorded_digest(self):
+        for expected in [self.lf, self.crlf]:
+            for raw in [self.lf, self.crlf]:
+                with self.subTest(expected=expected, actual=raw):
+                    try: index, requirements = self.load_catalog(raw, expected)
+                    except renderer.PlanError as error:
+                        self.fail('Equivalent Git line endings must preserve the recorded current catalog: ' + str(error))
+                    self.assertEqual(self.requirements, requirements)
+                    self.assertEqual(hashlib.sha256(expected).hexdigest(), index['catalog_sha256'])
+                    self.assertEqual(raw, (self.root / 'catalog.json').read_bytes(), 'Validation must not rewrite the source')
+
+    def test_current_catalog_rejects_acceptance_tampering_reformatting_and_bare_cr(self):
+        for raw in [self.lf.replace(b'original acceptance', b'changed acceptance'),
+                    self.lf.replace(b'  "requirements"', b'    "requirements"'),
+                    self.lf.replace(bytes([10]), bytes([13]))]:
+            with self.subTest(raw=raw):
+                with self.assertRaisesRegex(renderer.PlanError, '需求来源已变更'):
+                    self.load_catalog(raw, self.crlf)
+
+
 class CurrentBusinessViewsTests(unittest.TestCase):
     def current(self):
         return renderer.load()
