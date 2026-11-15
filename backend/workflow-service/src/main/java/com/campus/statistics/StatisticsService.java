@@ -52,9 +52,13 @@ public class StatisticsService {
   result.put("historyComplete",complete);result.put("historyAvailableFrom",available);
   long checked=count(reservation,"checkedInCount"),noShow=count(reservation,"noShowCount"),cohort;
   try{cohort=Math.addExact(checked,noShow);}catch(ArithmeticException e){throw unavailable();}
+  long pending=reservation.has("pendingEvaluationCount")?count(reservation,"pendingEvaluationCount"):0;
+  long unconfirmed=reservation.has("excludedUnconfirmedCount")?count(reservation,"excludedUnconfirmedCount"):0;
+  result.put("pendingEvaluationCount",pending);result.put("excludedUnconfirmedCount",unconfirmed);result.put("outcomesComplete",pending==0);
   result.put("checkedInCount",checked);result.put("noShowCount",noShow);result.put("cohortCount",cohort);
   for(String field:List.of("excludedBeforeStartCancelledCount","excludedSystemTerminatedCount","notDueCount"))result.put(field,count(reservation,field));
   result.put("checkInRate",ratio(BigDecimal.valueOf(checked),BigDecimal.valueOf(cohort)));result.put("noShowRate",ratio(BigDecimal.valueOf(noShow),BigDecimal.valueOf(cohort)));
+  if(pending>0){result.put("checkInRate",null);result.put("noShowRate",null);}
   if(!complete){
    result.put("status","HISTORY_UNAVAILABLE");result.put("checkInRate",null);result.put("noShowRate",null);for(String key:List.of("capacitySeatSeconds","occupiedSeatSeconds","occupiedM1SeatSeconds","occupiedM2SeatSeconds","confirmedBookingCount","confirmedM1BookingCount","confirmedM2BookingCount","occupancyRate"))result.put(key,null);
    return result;
@@ -62,6 +66,6 @@ public class StatisticsService {
   BigDecimal capacity=number(resource,"capacitySeatSeconds"),occupied=number(resource,"occupiedSeatSeconds"),m1=number(resource,"occupiedM1SeatSeconds"),m2=number(resource,"occupiedM2SeatSeconds");
   long bookings=count(resource,"confirmedBookingCount"),b1=count(resource,"confirmedM1BookingCount"),b2=count(resource,"confirmedM2BookingCount");
   if(m1.add(m2).compareTo(occupied)!=0||occupied.compareTo(capacity)>0||b1>bookings||b2!=bookings-b1)throw unavailable();
-  result.put("capacitySeatSeconds",capacity);result.put("occupiedSeatSeconds",occupied);result.put("occupiedM1SeatSeconds",m1);result.put("occupiedM2SeatSeconds",m2);result.put("confirmedBookingCount",bookings);result.put("confirmedM1BookingCount",b1);result.put("confirmedM2BookingCount",b2);result.put("occupancyRate",ratio(occupied,capacity));result.put("status",capacity.signum()==0?"NO_CAPACITY":"OK");return result;
+  result.put("capacitySeatSeconds",capacity);result.put("occupiedSeatSeconds",occupied);result.put("occupiedM1SeatSeconds",m1);result.put("occupiedM2SeatSeconds",m2);result.put("confirmedBookingCount",bookings);result.put("confirmedM1BookingCount",b1);result.put("confirmedM2BookingCount",b2);result.put("occupancyRate",ratio(occupied,capacity));result.put("status",capacity.signum()==0?"NO_CAPACITY":pending>0?"PENDING_EVALUATION":"OK");return result;
  }
 }

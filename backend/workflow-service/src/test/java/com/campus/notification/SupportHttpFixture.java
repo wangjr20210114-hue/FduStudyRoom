@@ -33,6 +33,7 @@ public abstract class SupportHttpFixture {
  protected final UUID user=UUID.randomUUID(),denied=UUID.randomUUID(),room=UUID.randomUUID();
  protected volatile boolean permit=true;protected volatile int sourceStatus=200;
  protected volatile boolean wrongScope=false,brokenSource=false,history=true,zero=false;
+ protected volatile long pendingEvaluation=0,unconfirmed=0;
  protected final List<String> sourceRequests=new CopyOnWriteArrayList<>();
  protected ConfigurableApplicationContext app;protected HttpServer upstream;protected String base;protected JdbcTemplate jdbc;protected TokenService tokens;
  protected final Instant from=Instant.parse("2030-06-03T00:00:00Z"),to=Instant.parse("2030-06-03T04:00:00Z"),asOf=Instant.parse("2030-06-03T05:00:00Z");
@@ -57,7 +58,7 @@ public abstract class SupportHttpFixture {
    finally{http.close();}
   }
  }
- @BeforeEach void resetFixture(){permit=true;sourceStatus=200;wrongScope=false;brokenSource=false;history=true;zero=false;sourceRequests.clear();app.getEnvironment().getPropertySources().remove("support-overrides");}
+ @BeforeEach void resetFixture(){permit=true;sourceStatus=200;wrongScope=false;brokenSource=false;history=true;zero=false;pendingEvaluation=0;unconfirmed=0;sourceRequests.clear();app.getEnvironment().getPropertySources().remove("support-overrides");}
  protected void overrides(Map<String,Object> values){app.getEnvironment().getPropertySources().addFirst(new MapPropertySource("support-overrides",values));}
  protected void respond(com.sun.net.httpserver.HttpExchange e,int status,Object body)throws java.io.IOException {
   byte[] b=json.writeValueAsBytes(body);e.getResponseHeaders().set("Content-Type","application/json");e.sendResponseHeaders(status,b.length);e.getResponseBody().write(b);e.close();
@@ -72,7 +73,7 @@ public abstract class SupportHttpFixture {
    out.put("historyComplete",history);out.put("historyAvailableFrom",history?from.minusSeconds(3600).toString():from.plusSeconds(1).toString());
    for(var entry:Map.of("capacitySeatSeconds",zero?0L:28800L,"occupiedSeatSeconds",zero?0L:10800L,"occupiedM1SeatSeconds",zero?0L:3600L,"occupiedM2SeatSeconds",zero?0L:7200L,"confirmedBookingCount",zero?0L:2L,"confirmedM1BookingCount",zero?0L:1L,"confirmedM2BookingCount",zero?0L:1L).entrySet())out.put(entry.getKey(),history?entry.getValue():null);
    if(brokenSource)out.put("capacitySeatSeconds",-1);
-  }else{out.put("checkedInCount",zero?0:1);out.put("noShowCount",zero?0:1);out.put("excludedBeforeStartCancelledCount",1);out.put("excludedSystemTerminatedCount",1);out.put("notDueCount",2);}
+  }else{out.put("checkedInCount",zero?0:1);out.put("noShowCount",zero?0:1);out.put("excludedBeforeStartCancelledCount",1);out.put("excludedSystemTerminatedCount",1);out.put("notDueCount",2);out.put("pendingEvaluationCount",pendingEvaluation);out.put("excludedUnconfirmedCount",unconfirmed);}
   respond(e,200,out);
  }
  protected String cookie(UUID id){return "__Host-FDU_SESSION="+tokens.issue(id,1);}
