@@ -38,7 +38,7 @@ def verify_patch(root,member,module,patch,policy):
 
 def review_command(layer):
     if layer=='frontend':return 'cd /workspace/frontend && (test -e node_modules || ln -s /opt/warm/frontend/node_modules node_modules) && npm test -- --maxWorkers=1 && npm run build'
-    if layer=='backend':return 'cp -R /opt/warm/m2 /tmp/m2 && cd /workspace/backend && MAVEN_USER_HOME=/tmp/m2 mvn -o -B -Dmaven.repo.local=/tmp/m2/repository verify'
+    if layer=='backend':return 'cp -R /opt/warm/m2 /tmp/m2 && cd /workspace/backend && MAVEN_USER_HOME=/tmp/m2 mvn -o -B -Dmaven.repo.local=/tmp/m2/repository verify -DreuseForks=false'
     raise PolicyError('INVALID_LAYER')
 
 def require_approved_baseline(config,repo,base):
