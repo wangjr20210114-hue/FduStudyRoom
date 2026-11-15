@@ -4,7 +4,177 @@
   "layer": "backend",
   "requirements": [
     {
-      "id": "M3-06",
+      "id": "M3-01",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "关联实际教室，可选座位；必填故障说明",
+        "本人可查本人，管理员查调度范围",
+        "报修本身不等于维修中下架"
+      ],
+      "scenarios": [
+        {
+          "id": "M3-01.S01",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "user1已登录，R101和其中的A01存在。"
+          ],
+          "actions": [
+            "打开报修页面，选择R101；需要时再选A01。",
+            "填写不为空的故障说明，点击“提交”。"
+          ],
+          "expected": [
+            "生成属于本人的新工单，可按权限查看详情。此时只是上报，不自动变成维修中，也不因新工单立即停用座位。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S050.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n用户打开报修页面，选择教室、按需选择座位并填写故障说明，提交后生成本人新工单，不立即进入维修或停用资源。\n\n### 操作步骤与预期结果\n\n1. user1登录，R101和A01存在，打开报修页面。\n2. 选择R101，需要时再选A01，填写非空故障说明。\n3. 点击提交，系统生成属于本人的新工单，可按权限查看详情。\n4. 此时仅为上报，不自动显示维修中，也不立即下架座位。\n\n<details>\n<summary>场景编号与精确规则补充（S050.SC01）</summary>\n\n- 场景名称：选教室、填写故障说明后提交报修\n- 场景编号：S050.SC01\n\n**对应的业务要求**\n\n- M3-01.AC1：选择真实教室，需要时选座位，故障说明必填\n- M3-01.AC3：提交报修不等于已经开始维修或停用座位\n\n**精确条件**\n\n- user1已登录，R101/A01存在\n\n**精确动作**\n\n- 提交R101、可选A01及非空故障说明\n\n**结果与约束**\n\n- 创建本人NEW工单及受控详情；不自动进入维修中，不因NEW工单下架座位\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-01.S01#1",
+              "criterion": 1,
+              "basis": "关联实际教室，可选座位；必填故障说明",
+              "kind": "api",
+              "expected": "生成属于本人的新工单，可按权限查看详情。此时只是上报，不自动变成维修中，也不因新工单立即停用座位。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#reportCreatesValidOwnOrder",
+                "com.campus.repair.RepairLifecycleApiTest#reportListsOwnAndRejectsForgery",
+                "com.campus.repair.RepairLifecycleApiTest#reportDeniedCreateHasDurableSafeAudit"
+              ]
+            },
+            {
+              "id": "M3-01.S01#3",
+              "criterion": 3,
+              "basis": "报修本身不等于维修中下架",
+              "kind": "api",
+              "expected": "生成属于本人的新工单，可按权限查看详情。此时只是上报，不自动变成维修中，也不因新工单立即停用座位。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#reportCreatesValidOwnOrder",
+                "com.campus.repair.RepairLifecycleApiTest#reportListsOwnAndRejectsForgery",
+                "com.campus.repair.RepairLifecycleApiTest#reportDeniedCreateHasDurableSafeAudit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-01.S02",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "A01属于R101，另有R102。"
+          ],
+          "actions": [
+            "分别提交空说明、不存在的教室，以及R102配上不属于它的A01。"
+          ],
+          "expected": [
+            "每次都被拒绝，不产生工单，也不改变教室或座位的可用情况。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S050.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n报修说明为空、教室不存在或座位不属于所选教室时，系统拒绝提交，资源状态不变。\n\n### 操作步骤与预期结果\n\n1. A01属于R101，系统还登记了R102。\n2. 用户分别提交空说明、不存在教室、R102搭配A01的请求。\n3. 每次都被拒绝，不生成工单，不改变教室或座位的可用性。\n\n<details>\n<summary>场景编号与精确规则补充（S050.SC02）</summary>\n\n- 场景名称：位置或说明填错时，不创建工单\n- 场景编号：S050.SC02\n\n**对应的业务要求**\n\n- M3-01.AC1：选择真实教室，需要时选座位，故障说明必填\n\n**精确条件**\n\n- A01属于R101，R102存在\n\n**精确动作**\n\n- 分别提交空说明、不存在教室、R102+A01组合\n\n**结果与约束**\n\n- 各次拒绝且不建工单、不改资源可用性\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-01.S02#1",
+              "criterion": 1,
+              "basis": "关联实际教室，可选座位；必填故障说明",
+              "kind": "api",
+              "expected": "每次都被拒绝，不产生工单，也不改变教室或座位的可用情况。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#reportCreatesValidOwnOrder",
+                "com.campus.repair.RepairLifecycleApiTest#reportListsOwnAndRejectsForgery",
+                "com.campus.repair.RepairLifecycleApiTest#reportDeniedCreateHasDurableSafeAudit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-01.S03",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "user1和user2各有工单。"
+          ],
+          "actions": [
+            "user1尝试指定user2的工单编号查看详情。",
+            "再由有调度权限的管理员查询工单。"
+          ],
+          "expected": [
+            "user1不能看他人的工单；管理员只看到获授权的调度范围，页面传来的用户编号不能增加权限。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S050.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n用户只能查看自己的报修单，管理员按调度权限查看，不能通过修改请求里的用户编号获得额外权限。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有工单。\n2. user1指定user2工单编号查看详情，被拒绝。\n3. 有调度权限的管理员查询，只得到授权范围内的工单。\n4. 页面自填的用户编号不会扩大实际权限。\n\n<details>\n<summary>场景编号与精确规则补充（S050.SC03）</summary>\n\n- 场景名称：用户只看自己的报修，管理员按调度权限查看\n- 场景编号：S050.SC03\n\n**对应的业务要求**\n\n- M3-01.AC2：用户看自己的工单，管理员看获授权调度范围\n\n**精确条件**\n\n- user1与user2各有工单\n\n**精确动作**\n\n- user1指定user2工单ID，再由有调度权限管理员查询\n\n**结果与约束**\n\n- 普通用户越权拒绝；管理员仅按获授权调度范围查看，不因前端传userId越权\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S050\n- 业务分组：报修与维修\n- 范围：核心业务\n- 对应要求：M3-01\n- 有关业务功能：[S007 所有功能都按当前登录人的身份和权限处理](S007.md)、[S014 管理员新增、修改和停用教室](S014.md)、[S015 管理员维护座位编号、插座和启用状态](S015.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-01.S03#2",
+              "criterion": 2,
+              "basis": "本人可查本人，管理员查调度范围",
+              "kind": "api",
+              "expected": "user1不能看他人的工单；管理员只看到获授权的调度范围，页面传来的用户编号不能增加权限。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#reportCreatesValidOwnOrder",
+                "com.campus.repair.RepairLifecycleApiTest#reportListsOwnAndRejectsForgery",
+                "com.campus.repair.RepairLifecycleApiTest#reportDeniedCreateHasDurableSafeAudit"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M3-02",
       "source": {
         "kind": "derived",
         "pdf_pages": [
@@ -13,233 +183,1123 @@
         "note": "由任务书约束推导，属于需验收的设计决策"
       },
       "acceptance": [
-        "合法评分及文字评价，只有允许的验收方可提交",
-        "保留维修、返工、多轮验收轨迹",
-        "维修人员不能自行验收自身任务"
+        "管理员派给有效维护人员，记录派单/转派",
+        "维护人员只能操作分配给自己的工单",
+        "并发和旧版本更新被拒绝"
       ],
       "scenarios": [
         {
-          "id": "M3-06.S01",
+          "id": "M3-02.S01",
           "covers": [
             1
           ],
-          "original_text": "\n\n### 场景概述\n\n获授权的验收人给已验收工单评分，分数只能是1到5的整数。无效分数和其他人员的代评不会保存。\n\n### 操作步骤与预期结果\n\n1. admin2打开已验收而尚未评分的工单，每种尝试使用独立工单。\n2. 分别提交1分和5分，系统保存成功。\n3. 另分别提交0分、6分和小数，系统拒绝，原评分不变。\n4. 非授权验收方尝试评分也被拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC01）</summary>\n\n- 场景名称：有权验收的人才能评分，分数必须是1到5的整数\n- 场景编号：S055.SC01\n\n**对应的业务要求**\n\n- M3-06.AC1：只有允许的验收方能提交符合范围的评分和文字评价\n\n**精确条件**\n\n- admin2为合法验收人，准备两条独立已验收工单；每次非法评分用未评分的独立初态\n\n**精确动作**\n\n- 在两条工单分别提交评分1和5；另以独立工单分别提交0、6及小数\n\n**结果与约束**\n\n- 评分1与5分别保存；0、6及小数均拒绝且原评分不变；只有授权验收方可提交，非验收方不能代评\n\n</details>\n\n",
-          "business_scene_refs": [
-            "S055.SC01"
-          ],
           "preconditions": [
-            "本人隔离PostgreSQL中构造已验收未评分工单及两轮维修事件；真实HTTP身份适配fixture返回当前权限，不是共同身份服务联调"
+            "新工单W1尚待分配；worker1已启用且有维修权限。"
           ],
           "actions": [
-            "授权验收人提交1和5及无效分数与文字",
-            "其他人尝试代评"
+            "管理员打开派单页面，把W1派给worker1。",
+            "再按规则转派给worker2，查看两人的任务列表和工单时间线。"
           ],
           "expected": [
-            "合法评分及文字评价，只有允许的验收方可提交"
+            "当前负责人和任务列表一致，时间线保留两次分配过程，不把旧负责人记录覆盖掉。"
           ],
           "depends_on": [],
+          "business_scene_refs": [
+            "S051.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n管理员把新工单派给有效维护人员，之后转派时，任务列表和当前负责人同步变化，原分配历史仍保留。\n\n### 操作步骤与预期结果\n\n1. W1是新工单，worker1已启用且有维修权限。\n2. 管理员打开派单页面，把W1派给worker1，当前负责人和其任务列表同步。\n3. 按规则转派给worker2，查看两人列表，当前任务归属与新负责人一致。\n4. 时间线保留两次分配，不覆盖旧责任记录。\n\n<details>\n<summary>场景编号与精确规则补充（S051.SC01）</summary>\n\n- 场景名称：派给能维修的人员，转派后两边列表同步\n- 场景编号：S051.SC01\n\n**对应的业务要求**\n\n- M3-02.AC1：管理员派给有效维护人员，并记录历次派单转派\n\n**精确条件**\n\n- NEW工单W1、worker1已启用且具维修权限\n\n**精确动作**\n\n- admin1派给worker1再按规则转派worker2\n\n**结果与约束**\n\n- 当前责任人与任务列表同步；时间线保留两次派单，不覆盖旧责任记录\n\n</details>\n\n",
           "objects": [
             {
               "kind": "api",
-              "key": "repair.evaluation",
+              "key": "repair.lifecycle",
               "status": "missing",
-              "evidence": "已检索workflow-service/src/main/java，只有workflow健康及身份适配器，无repair实现"
-            },
-            {
-              "kind": "table",
-              "key": "m3.repair_orders / m3.repair_events",
-              "status": "missing",
-              "evidence": "round2-contracts确认尚无业务表，模块迁移目录为空"
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
             }
           ],
           "cells": [
             {
-              "id": "M3-06.S01#1",
+              "id": "M3-02.S01#1",
               "criterion": 1,
-              "basis": "合法评分及文字评价，只有允许的验收方可提交",
+              "basis": "管理员派给有效维护人员，记录派单/转派",
               "kind": "api",
-              "expected": "ratingsPersistForActualAcceptor: 合法评分及文字评价，只有允许的验收方可提交",
-              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
-              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
-              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "expected": "当前负责人和任务列表一致，时间线保留两次分配过程，不把旧负责人记录覆盖掉。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
               "test_ids": [
-                "com.campus.repair.RepairEvaluationApiTest#ratingsPersistForActualAcceptor"
-              ]
-            },
-            {
-              "id": "M3-06.S01#2",
-              "criterion": 1,
-              "basis": "合法评分及文字评价，只有允许的验收方可提交",
-              "kind": "api",
-              "expected": "invalidScoresAndTextNeverMutate: 合法评分及文字评价，只有允许的验收方可提交",
-              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
-              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
-              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
-              "test_ids": [
-                "com.campus.repair.RepairEvaluationApiTest#invalidScoresAndTextNeverMutate"
-              ]
-            },
-            {
-              "id": "M3-06.S01#3",
-              "criterion": 1,
-              "basis": "合法评分及文字评价，只有允许的验收方可提交",
-              "kind": "api",
-              "expected": "currentPermissionsAndAcceptorBinding: 合法评分及文字评价，只有允许的验收方可提交",
-              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
-              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
-              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
-              "test_ids": [
-                "com.campus.repair.RepairEvaluationApiTest#currentPermissionsAndAcceptorBinding"
-              ]
-            },
-            {
-              "id": "M3-06.S01#4",
-              "criterion": 1,
-              "basis": "合法评分及文字评价，只有允许的验收方可提交",
-              "kind": "api",
-              "expected": "optimisticConcurrencyPreventsDuplicateEvaluation: 合法评分及文字评价，只有允许的验收方可提交",
-              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
-              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
-              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
-              "test_ids": [
-                "com.campus.repair.RepairEvaluationApiTest#optimisticConcurrencyPreventsDuplicateEvaluation"
-              ]
-            },
-            {
-              "id": "M3-06.S01#5",
-              "criterion": 1,
-              "basis": "合法评分及文字评价，只有允许的验收方可提交",
-              "kind": "api",
-              "expected": "cookieCsrfAndStrictPayload: 合法评分及文字评价，只有允许的验收方可提交",
-              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
-              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
-              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
-              "test_ids": [
-                "com.campus.repair.RepairEvaluationApiTest#cookieCsrfAndStrictPayload"
-              ]
-            },
-            {
-              "id": "M3-06.S01#6",
-              "criterion": 1,
-              "basis": "合法评分及文字评价，只有允许的验收方可提交",
-              "kind": "db",
-              "expected": "databaseConstraintsAndReplay: 合法评分及文字评价，只有允许的验收方可提交",
-              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
-              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
-              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
-              "test_ids": [
-                "com.campus.repair.RepairEvaluationApiTest#databaseConstraintsAndReplay"
+                "com.campus.repair.RepairLifecycleApiTest#assignmentPreservesDeadlineAndHistory",
+                "com.campus.repair.RepairLifecycleApiTest#assignmentConcurrencyAndAssignee",
+                "com.campus.repair.RepairLifecycleApiTest#assignmentDeniedAttemptHasMatchingTraceAudit"
               ]
             }
           ]
         },
         {
-          "id": "M3-06.S02",
+          "id": "M3-02.S02",
           "covers": [
+            1,
             2
           ],
-          "original_text": "\n\n### 场景概述\n\n工单多次返工和验收后，用户在时间线仍能看到每一轮处理过程，最终状态不覆盖此前历史。\n\n### 操作步骤与预期结果\n\n1. W1先申请完工、被验收驳回，再次完工后验收通过。\n2. 用户打开工单详情和时间线。\n3. 每一轮的维修、处理人、时刻、结果和理由均保留，最新状态不覆盖前轮。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC02）</summary>\n\n- 场景名称：返工多次后，之前的过程仍能看到\n- 场景编号：S055.SC02\n\n**对应的业务要求**\n\n- M3-06.AC2：保留维修、返工和多次验收的过程\n\n**精确条件**\n\n- W1曾完工、验收驳回、再次完工并通过\n\n**精确动作**\n\n- 读取工单时间线\n\n**结果与约束**\n\n- 保留每轮维修、处理人、时刻、结果和理由；最新状态不覆盖前轮历史\n\n</details>\n\n",
-          "business_scene_refs": [
-            "S055.SC02"
-          ],
           "preconditions": [
-            "本人隔离PostgreSQL中构造已验收未评分工单及两轮维修事件；真实HTTP身份适配fixture返回当前权限，不是共同身份服务联调"
+            "W1分给worker1，worker2没有被分配；另一候选维护人员已停用。"
           ],
           "actions": [
-            "读取工单详情及完整时间线"
+            "worker2尝试处理W1。",
+            "管理员再尝试把工单派给已停用的候选人。"
           ],
           "expected": [
-            "保留维修、返工、多轮验收轨迹"
+            "两次都拒绝，W1负责人和状态不变。"
           ],
           "depends_on": [],
+          "business_scene_refs": [
+            "S051.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n维护人员不能处理未分配给自己的工单，停用人员也不能接新派单，失败操作不改变原负责人和状态。\n\n### 操作步骤与预期结果\n\n1. W1属于worker1，worker2未被分配；另一候选维护人员已停用。\n2. worker2尝试处理W1，系统拒绝。\n3. 管理员尝试派给停用候选人，也被拒绝。\n4. W1负责人和状态保持不变。\n\n<details>\n<summary>场景编号与精确规则补充（S051.SC02）</summary>\n\n- 场景名称：不是自己的任务不能处理，停用人员不能接新单\n- 场景编号：S051.SC02\n\n**对应的业务要求**\n\n- M3-02.AC1：管理员派给有效维护人员，并记录历次派单转派\n- M3-02.AC2：维护人员只操作分配给自己的工单\n\n**精确条件**\n\n- W1当前分配worker1；worker2未分配，另一候选已停用\n\n**精确动作**\n\n- worker2操作W1，并尝试给停用候选派单\n\n**结果与约束**\n\n- 两次均拒绝；W1责任人与状态不变\n\n</details>\n\n",
           "objects": [
             {
               "kind": "api",
-              "key": "repair.history",
+              "key": "repair.lifecycle",
               "status": "missing",
-              "evidence": "已检索workflow-service/src/main/java，只有workflow健康及身份适配器，无repair实现"
-            },
-            {
-              "kind": "table",
-              "key": "m3.repair_orders / m3.repair_events",
-              "status": "missing",
-              "evidence": "round2-contracts确认尚无业务表，模块迁移目录为空"
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
             }
           ],
           "cells": [
             {
-              "id": "M3-06.S02#1",
-              "criterion": 2,
-              "basis": "保留维修、返工、多轮验收轨迹",
+              "id": "M3-02.S02#1",
+              "criterion": 1,
+              "basis": "管理员派给有效维护人员，记录派单/转派",
               "kind": "api",
-              "expected": "historyRetainsEveryRepairAndAcceptance: 保留维修、返工、多轮验收轨迹",
-              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
-              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
-              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "expected": "两次都拒绝，W1负责人和状态不变。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
               "test_ids": [
-                "com.campus.repair.RepairEvaluationApiTest#historyRetainsEveryRepairAndAcceptance"
+                "com.campus.repair.RepairLifecycleApiTest#assignmentPreservesDeadlineAndHistory",
+                "com.campus.repair.RepairLifecycleApiTest#assignmentConcurrencyAndAssignee",
+                "com.campus.repair.RepairLifecycleApiTest#assignmentDeniedAttemptHasMatchingTraceAudit"
+              ]
+            },
+            {
+              "id": "M3-02.S02#2",
+              "criterion": 2,
+              "basis": "维护人员只能操作分配给自己的工单",
+              "kind": "api",
+              "expected": "两次都拒绝，W1负责人和状态不变。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#assignmentPreservesDeadlineAndHistory",
+                "com.campus.repair.RepairLifecycleApiTest#assignmentConcurrencyAndAssignee",
+                "com.campus.repair.RepairLifecycleApiTest#assignmentDeniedAttemptHasMatchingTraceAudit"
               ]
             }
           ]
         },
         {
-          "id": "M3-06.S03",
+          "id": "M3-02.S03",
           "covers": [
             3
           ],
-          "original_text": "\n\n### 场景概述\n\n维修人即使在验收或评分请求里冒充其他管理员，也不能自己验收或代评，原工单和资源状态保持不变。\n\n### 操作步骤与预期结果\n\n1. worker1是W1维修人，使用自己的真实登录信息。\n2. 直接请求验收或评价接口，并把请求里的身份填成admin2。\n3. 系统按worker1拒绝，工单、评分和资源状态均不变。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC03）</summary>\n\n- 场景名称：维修人改请求里的身份，也不能自验或代评\n- 场景编号：S055.SC03\n\n**对应的业务要求**\n\n- M3-06.AC3：维修人不能验收自己的任务\n\n**精确条件**\n\n- worker1是W1维修者\n\n**精确动作**\n\n- 直接调用验收/评价接口伪装admin2\n\n**结果与约束**\n\n- 均按真实身份拒绝；工单、评分和资源状态不改变\n\n</details>\n\n",
-          "business_scene_refs": [
-            "S055.SC03"
-          ],
           "preconditions": [
-            "本人隔离PostgreSQL中构造已验收未评分工单及两轮维修事件；真实HTTP身份适配fixture返回当前权限，不是共同身份服务联调"
+            "W1当前为第4版，两次转派都拿着这份资料。"
           ],
           "actions": [
-            "维修人通过真实Cookie身份请求验收及评分，伪装admin2"
+            "同时提交两笔基于第4版的转派，再查看负责人和任务列表。"
           ],
           "expected": [
-            "维修人员不能自行验收自身任务"
+            "只有一次成功，另一笔提示冲突。任务不能同时归给两个人。"
           ],
           "depends_on": [],
+          "business_scene_refs": [
+            "S051.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n两次转派同时基于同一份旧资料提交时，只允许一次成功，避免一张工单同时归两人。\n\n### 操作步骤与预期结果\n\n1. W1当前第4版，两份转派都携带第4版。\n2. 同时提交两次转派。\n3. 只有一次成功，另一笔提示冲突；查看负责人和任务列表，只对应一个当前执行人。\n\n<details>\n<summary>场景编号与精确规则补充（S051.SC03）</summary>\n\n- 场景名称：同时转派时，只接受基于最新资料的那一次\n- 场景编号：S051.SC03\n\n**对应的业务要求**\n\n- M3-02.AC3：同时修改或拿旧版本修改时，冲突请求被拒绝\n\n**精确条件**\n\n- W1版本4，同时两次转派\n\n**精确动作**\n\n- 并发以expectedVersion=4提交\n\n**结果与约束**\n\n- 只有一次成功，另一次冲突；任务不会同时归属两人\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S051\n- 业务分组：报修与维修\n- 范围：核心业务\n- 对应要求：M3-02\n- 有关业务功能：[S005 管理员修改账号权限和使用资格](S005.md)、[S050 用户上报故障并查看自己的报修](S050.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
           "objects": [
             {
               "kind": "api",
-              "key": "repair.acceptance",
+              "key": "repair.lifecycle",
               "status": "missing",
-              "evidence": "已检索workflow-service/src/main/java，只有workflow健康及身份适配器，无repair实现"
-            },
-            {
-              "kind": "table",
-              "key": "m3.repair_orders / m3.repair_events",
-              "status": "missing",
-              "evidence": "round2-contracts确认尚无业务表，模块迁移目录为空"
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
             }
           ],
           "cells": [
             {
-              "id": "M3-06.S03#1",
+              "id": "M3-02.S03#3",
               "criterion": 3,
-              "basis": "维修人员不能自行验收自身任务",
+              "basis": "并发和旧版本更新被拒绝",
               "kind": "api",
-              "expected": "technicianCannotImpersonateAcceptor: 维修人员不能自行验收自身任务",
-              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
-              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
-              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "expected": "只有一次成功，另一笔提示冲突。任务不能同时归给两个人。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
               "test_ids": [
-                "com.campus.repair.RepairEvaluationApiTest#technicianCannotImpersonateAcceptor"
+                "com.campus.repair.RepairLifecycleApiTest#assignmentPreservesDeadlineAndHistory",
+                "com.campus.repair.RepairLifecycleApiTest#assignmentConcurrencyAndAssignee",
+                "com.campus.repair.RepairLifecycleApiTest#assignmentDeniedAttemptHasMatchingTraceAudit"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M3-03",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          2
+        ],
+        "note": "由任务书约束推导，属于需验收的设计决策"
+      },
+      "acceptance": [
+        "进入维修中经HTTP限制全室座位",
+        "持久任务重试，不能直接修改M1/资源库",
+        "现存预约处置、通知和历史记录有明确规则"
+      ],
+      "scenarios": [
+        {
+          "id": "M3-03.S01",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "W1已分给worker1，R101的两个座位原本可用。"
+          ],
+          "actions": [
+            "worker1打开自己的维修任务，点击“开始维修”。",
+            "等待真实资源接口确认，再查看教室和工单。"
+          ],
+          "expected": [
+            "确认限制生效后才显示维修中。全室座位不能新预约，能追到维修单W1；不直接修改资源数据库。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S052.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n维护人员点击开始维修，系统确认整间教室限制生效后，才显示维修中。全室座位不能新预约，并能追到工单来源。\n\n### 操作步骤与预期结果\n\n1. W1已分给worker1，R101两个座位原本可用。\n2. worker1打开自己的任务，点击“开始维修”。\n3. 系统通过真实资源接口确认限制，工单随后显示维修中。\n4. 用户不能再新预约全室座位，来源指向W1，流程不直接改资源数据库。\n\n<details>\n<summary>场景编号与精确规则补充（S052.SC01）</summary>\n\n- 场景名称：确认教室限制生效后，再显示维修中\n- 场景编号：S052.SC01\n\n**对应的业务要求**\n\n- M3-03.AC1：进入维修中时，通过网络限制全室座位\n- M3-03.AC2：保存待办以便重试，不直接修改预约或资源数据库\n\n**精确条件**\n\n- W1已分配worker1，R101两座当前可用\n\n**精确动作**\n\n- worker1开始维修，确认资源HTTP写回\n\n**结果与约束**\n\n- 仅资源限制确认后显示维修中；全室座位不可新预约，记录M3/W1来源；不直接写资源库\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-03.S01#1",
+              "criterion": 1,
+              "basis": "进入维修中经HTTP限制全室座位",
+              "kind": "api",
+              "expected": "确认限制生效后才显示维修中。全室座位不能新预约，能追到维修单W1；不直接修改资源数据库。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#startRequiresRealAckAndExactTimestamp",
+                "com.campus.repair.RepairLifecycleApiTest#startRetriesDurablyWithoutUnsafeAudit"
               ]
             },
             {
-              "id": "M3-06.S03#2",
-              "criterion": 3,
-              "basis": "维修人员不能自行验收自身任务",
+              "id": "M3-03.S01#2",
+              "criterion": 2,
+              "basis": "持久任务重试，不能直接修改M1/资源库",
               "kind": "api",
-              "expected": "authorizedAcceptanceRemainsExplicitlyPending: 维修人员不能自行验收自身任务",
-              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
-              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
-              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "expected": "确认限制生效后才显示维修中。全室座位不能新预约，能追到维修单W1；不直接修改资源数据库。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
               "test_ids": [
-                "com.campus.repair.RepairEvaluationApiTest#authorizedAcceptanceRemainsExplicitlyPending"
+                "com.campus.repair.RepairLifecycleApiTest#startRequiresRealAckAndExactTimestamp",
+                "com.campus.repair.RepairLifecycleApiTest#startRetriesDurablyWithoutUnsafeAudit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-03.S02",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "资源接口无法连接，W1准备开始维修。"
+          ],
+          "actions": [
+            "提交开始维修操作，再重启维修服务。"
+          ],
+          "expected": [
+            "页面显示限制处理中或失败重试，待办在重启后还在。不能直接改资源数据库，也不能虚假显示已下架。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S052.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n开始维修时资源接口不可达，页面显示限制处理中或失败重试。服务恢复仍继续待办，不把尚未确认的下架说成已完成。\n\n### 操作步骤与预期结果\n\n1. 资源接口断网，W1准备开始维修。\n2. 维护人员提交开始操作，页面显示限制处理中或失败重试。\n3. 维修服务重启后，待办仍保存并可继续处理。\n4. 系统不直接修改资源库，也不虚报已经下架。\n\n<details>\n<summary>场景编号与精确规则补充（S052.SC02）</summary>\n\n- 场景名称：限制接口断网时，显示处理中或重试\n- 场景编号：S052.SC02\n\n**对应的业务要求**\n\n- M3-03.AC2：保存待办以便重试，不直接修改预约或资源数据库\n\n**精确条件**\n\n- 资源接口断网，W1发起维修\n\n**精确动作**\n\n- 提交开始操作并重启服务\n\n**结果与约束**\n\n- 显示限制处理中/失败重试；任务持久保留；没有直接改资源数据库或不实“已下架”提示\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-03.S02#2",
+              "criterion": 2,
+              "basis": "持久任务重试，不能直接修改M1/资源库",
+              "kind": "api",
+              "expected": "页面显示限制处理中或失败重试，待办在重启后还在。不能直接改资源数据库，也不能虚假显示已下架。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#startRequiresRealAckAndExactTimestamp",
+                "com.campus.repair.RepairLifecycleApiTest#startRetriesDurablyWithoutUnsafeAudit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-03.S03",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "R101有未来未签到、已签到但未结束、已经结束三类个人预约。"
+          ],
+          "actions": [
+            "让维修限制生效，并发送可重试的预约影响通知。"
+          ],
+          "expected": [
+            "预约模块按约定结束前两类未结束预约，不记违约并通知用户。已结束历史不改；整室占用仍保留，并提示资源异常。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S052.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n维修正式生效后，系统结束教室内尚未结束的个人预约并通知，不记违约；已结束历史保留，整室申请提示异常。\n\n### 操作步骤与预期结果\n\n1. R101有未来未签到、已签到未结束和已结束三类个人预约。\n2. 维修限制生效，系统发送可重试的预约影响事件。\n3. 前两类以维修原因结束并通知，不记违约；已结束记录不改。\n4. 整室占用来源仍保留，并显示资源异常。\n\n<details>\n<summary>场景编号与精确规则补充（S052.SC03）</summary>\n\n- 场景名称：维修影响尚未结束的预约，不改过去历史\n- 场景编号：S052.SC03\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n\n**精确条件**\n\n- R101存在未来BOOKED、已签到未结束和已结束预约\n\n**精确动作**\n\n- 维修生效并发送可重试影响事件\n\n**结果与约束**\n\n- 预约域按P05终结未结束项且不记违约并通知；已结束历史不变；整室来源保留并提示异常\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S052\n- 业务分组：报修与维修\n- 范围：核心业务\n- 对应要求：M3-03\n- 有关业务功能：[S019 维修时停用整间教室，恢复时逐项检查原因](S019.md)、[S051 管理员派单、转派，并保留负责人记录](S051.md)、[S079 维修开始后，结束受影响的个人预约但不记违约](S079.md)。\n- 相关业务规则：[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-03.S03#3",
+              "criterion": 3,
+              "basis": "现存预约处置、通知和历史记录有明确规则",
+              "kind": "api",
+              "expected": "预约模块按约定结束前两类未结束预约，不记违约并通知用户。已结束历史不改；整室占用仍保留，并提示资源异常。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#startRequiresRealAckAndExactTimestamp",
+                "com.campus.repair.RepairLifecycleApiTest#startRetriesDurablyWithoutUnsafeAudit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-03.S04",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "维修限制或恢复尚未确认，维修服务在调用前或资源处理后意外停止。"
+          ],
+          "actions": [
+            "服务恢复后，查看工单和资源状态，等待系统继续核对原工单操作。"
+          ],
+          "expected": [
+            "按工单来源和版本查清结果，不重复创建限制或释放。结果不明时页面可见，不靠人工直接修改资源库。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S060.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n维修限制或恢复过程中服务意外停止，恢复后系统继续核对原工单，未确认时页面如实显示，不重复限制或释放。\n\n### 操作步骤与预期结果\n\n1. 维修服务在资源调用前或资源处理后意外停止，结果尚未确认。\n2. 服务恢复后，用户查看工单与资源状态。\n3. 系统按原工单来源和版本继续核对，不重复创建限制或释放。\n4. 未知结果可见，不靠人工直接修改资源数据库。\n\n<details>\n<summary>场景编号与精确规则补充（S060.SC01）</summary>\n\n- 场景名称：维修服务重启后，不丢失限制或恢复待办\n- 场景编号：S060.SC01\n\n**对应的业务要求**\n\n- M3-03.AC2：保存待办以便重试，不直接修改预约或资源数据库\n- M3-05.AC3：通过后通过网络解除这张工单自己的限制\n\n**精确条件**\n\n- 资源调用前或确认后维修进程崩溃\n\n**精确动作**\n\n- 分别重启并重试同工单命令\n\n**结果与约束**\n\n- 限制/释放均按源和版本对账，不重复创建；未知结果可见，不靠人工改资源库\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-03.S04#2",
+              "criterion": 2,
+              "basis": "持久任务重试，不能直接修改M1/资源库",
+              "kind": "api",
+              "expected": "按工单来源和版本查清结果，不重复创建限制或释放。结果不明时页面可见，不靠人工直接修改资源库。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#startRequiresRealAckAndExactTimestamp",
+                "com.campus.repair.RepairLifecycleApiTest#startRetriesDurablyWithoutUnsafeAudit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-03.S05",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "R101有3笔尚未结束的预约：未来待签到、开始后未签到、已签到正在使用。"
+          ],
+          "actions": [
+            "处理经过服务身份认证的W1维修生效事件。"
+          ],
+          "expected": [
+            "这3笔都以系统维修原因结束并通知，不记违约。只处理R101，不误改其他教室。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S079.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n教室维修生效后，系统结束其中未来、未签到和正在使用的个人预约，统一说明维修原因并通知，不记违约。\n\n### 操作步骤与预期结果\n\n1. R101有未来待签到、开始后未签到和已签到未结束3笔预约。\n2. 系统接收经服务身份认证的W1维修生效事件。\n3. 3笔均以系统维修原因结束并通知，不计违约。\n4. 只处理R101，不误改其他教室。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC01）</summary>\n\n- 场景名称：未来、未签到和正在使用的预约都按维修原因结束\n- 场景编号：S079.SC01\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n\n**精确条件**\n\n- R101有未来BOOKED、开始后未签到和已签到未结束三条预约\n\n**精确动作**\n\n- 处理经过服务认证的W1维修生效事件\n\n**结果与约束**\n\n- 三者均以SYSTEM_MAINTENANCE终结并通知，不计违约；仅处理R101，不误改其他教室\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-03.S05#3",
+              "criterion": 3,
+              "basis": "现存预约处置、通知和历史记录有明确规则",
+              "kind": "api",
+              "expected": "这3笔都以系统维修原因结束并通知，不记违约。只处理R101，不误改其他教室。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#startRequiresRealAckAndExactTimestamp",
+                "com.campus.repair.RepairLifecycleApiTest#startRetriesDurablyWithoutUnsafeAudit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-03.S06",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "R101另有已结束和已提前取消的预约。"
+          ],
+          "actions": [
+            "处理相同维修事件，再看这两笔历史。"
+          ],
+          "expected": [
+            "原状态和时间不变，不重新取消，不新增释放或通知。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S079.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n教室开始维修时，已经结束或提前取消的预约历史不再重做取消、释放或通知，原状态和时间保持。\n\n### 操作步骤与预期结果\n\n1. R101还有已结束和已提前取消的预约。\n2. 系统处理同一维修生效事件。\n3. 查看两笔历史，状态和时间不变，不新增取消、释放或通知。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC02）</summary>\n\n- 场景名称：已经结束或取消的历史，不重新处理\n- 场景编号：S079.SC02\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n\n**精确条件**\n\n- R101另有已结束和已提前取消预约\n\n**精确动作**\n\n- 处理同一维修事件\n\n**结果与约束**\n\n- 两条历史保持原状态/时间；不重新记取消、释放或通知\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-03.S06#3",
+              "criterion": 3,
+              "basis": "现存预约处置、通知和历史记录有明确规则",
+              "kind": "api",
+              "expected": "原状态和时间不变，不重新取消，不新增释放或通知。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#startRequiresRealAckAndExactTimestamp",
+                "com.campus.repair.RepairLifecycleApiTest#startRetriesDurablyWithoutUnsafeAudit"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M3-04",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "按due_at升级并通知管理人员",
+        "同一升级级别只记录一次，崩溃恢复不重复升级",
+        "责任人和处理历史可查"
+      ],
+      "scenarios": [
+        {
+          "id": "M3-04.S01",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "08:00派单，测试维修期限为120分钟，W1尚未通过独立验收。"
+          ],
+          "actions": [
+            "分别在09:59:59和10:00:00运行到期检查。"
+          ],
+          "expected": [
+            "前一次不升级处理；后一次上报给一级管理员并通知，记录升级时间，仍保留原维修负责人。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S053.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n维修工单超过约定时限仍未独立验收，系统上报给一级管理员并通知，保留原维修负责人和升级时间。\n\n### 操作步骤与预期结果\n\n1. 示例08:00派单，时限120分钟，W1未通过独立验收。\n2. 09:59:59处理检查，不升级。\n3. 10:00:00到期后，系统上报一级管理员并通知。\n4. 记录升级时间，同时保留原维修负责人。\n\n<details>\n<summary>场景编号与精确规则补充（S053.SC01）</summary>\n\n- 场景名称：到约定期限才上报给管理员\n- 场景编号：S053.SC01\n\n**对应的业务要求**\n\n- M3-04.AC1：到保存的截止时间后上报并通知管理人员\n- M3-04.AC3：能查看原负责人和完整处理过程\n\n**精确条件**\n\n- 08:00派单、SLA120分钟，W1尚未独立验收\n\n**精确动作**\n\n- 在09:59:59与10:00:00驱动升级\n\n**结果与约束**\n\n- 前者无升级；后者到一级管理员并通知，保留原维修责任人及升级时间\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-04.S01#1",
+              "criterion": 1,
+              "basis": "按due_at升级并通知管理人员",
+              "kind": "api",
+              "expected": "前一次不升级处理；后一次上报给一级管理员并通知，记录升级时间，仍保留原维修负责人。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#escalationBoundaryAndUniqueness",
+                "com.campus.repair.RepairLifecycleApiTest#escalationSkipsTerminal"
+              ]
+            },
+            {
+              "id": "M3-04.S01#3",
+              "criterion": 3,
+              "basis": "责任人和处理历史可查",
+              "kind": "api",
+              "expected": "前一次不升级处理；后一次上报给一级管理员并通知，记录升级时间，仍保留原维修负责人。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#escalationBoundaryAndUniqueness",
+                "com.campus.repair.RepairLifecycleApiTest#escalationSkipsTerminal"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-04.S02",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "W1已经有一级升级记录。"
+          ],
+          "actions": [
+            "重启服务，多次处理同一个到期任务。"
+          ],
+          "expected": [
+            "这个级别只保留一份处理记录和通知，不自动转派，也不无限往上增加级别。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S053.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n同一级维修超时升级已经记录后，重启或重复检查不会再次上报，也不自动转派或无限升级。\n\n### 操作步骤与预期结果\n\n1. W1已有一级升级记录。\n2. 服务重启后，多次处理同一到期任务。\n3. 同一级只保留一份业务记录和通知，不自动换负责人，也不不断增加级别。\n\n<details>\n<summary>场景编号与精确规则补充（S053.SC02）</summary>\n\n- 场景名称：重启或重复检查，不反复上报同一级\n- 场景编号：S053.SC02\n\n**对应的业务要求**\n\n- M3-04.AC2：同一级只记一次，服务重启不会重复上报\n\n**精确条件**\n\n- W1一级升级已记录\n\n**精确动作**\n\n- 重启并重复处理同一到期任务\n\n**结果与约束**\n\n- 同一升级级别只有一次业务记录和通知事件，不自动转派或不断增加级别\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-04.S02#2",
+              "criterion": 2,
+              "basis": "同一升级级别只记录一次，崩溃恢复不重复升级",
+              "kind": "api",
+              "expected": "这个级别只保留一份处理记录和通知，不自动转派，也不无限往上增加级别。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#escalationBoundaryAndUniqueness",
+                "com.campus.repair.RepairLifecycleApiTest#escalationSkipsTerminal"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-04.S03",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "分别准备已通过验收完成和已安全取消的W1。"
+          ],
+          "actions": [
+            "在原截止时间运行升级检查。"
+          ],
+          "expected": [
+            "不升级，不再通知“仍未处理”；历史中仍保留原负责人和处理过程。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S053.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n工单已经验收完成或安全取消，到原截止时间不会再上报未处理，过去的负责人和过程仍可查。\n\n### 操作步骤与预期结果\n\n1. 分别有已验收完成和已安全取消的工单。\n2. 系统在原截止时间执行检查。\n3. 不升级，不发送仍未处理的通知，历史仍保留原负责人和处理过程。\n\n<details>\n<summary>场景编号与精确规则补充（S053.SC03）</summary>\n\n- 场景名称：已验收完成或安全取消的工单，不再报超时\n- 场景编号：S053.SC03\n\n**对应的业务要求**\n\n- M3-04.AC3：能查看原负责人和完整处理过程\n\n**精确条件**\n\n- W1已通过验收完成或已安全取消\n\n**精确动作**\n\n- 到原due_at执行升级检查\n\n**结果与约束**\n\n- 不升级、不通知“仍未处理”；历史仍保留原责任人与处理过程\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S053\n- 业务分组：报修与维修\n- 范围：核心业务\n- 对应要求：M3-04\n- 有关业务功能：[S006 管理员设置预约时长和各类时限](S006.md)、[S051 管理员派单、转派，并保留负责人记录](S051.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P07](../policies.md#p07)、[P10](../policies.md#p10)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-04.S03#3",
+              "criterion": 3,
+              "basis": "责任人和处理历史可查",
+              "kind": "api",
+              "expected": "不升级，不再通知“仍未处理”；历史中仍保留原负责人和处理过程。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#escalationBoundaryAndUniqueness",
+                "com.campus.repair.RepairLifecycleApiTest#escalationSkipsTerminal"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M3-05",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          1,
+          2
+        ],
+        "note": "由任务书约束推导，属于需验收的设计决策"
+      },
+      "acceptance": [
+        "维护人员申请完工，验收人独立于维修人",
+        "验收不通过继续维修，不提前恢复座位",
+        "验收通过网络释放本工单限制"
+      ],
+      "scenarios": [
+        {
+          "id": "M3-05.S01",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "worker1处理W1后已提交完工。"
+          ],
+          "actions": [
+            "打开W1查看状态，再由worker1尝试验收自己的工单。"
+          ],
+          "expected": [
+            "工单待验收，资源仍受限制。自验被拒绝，不会因为提交完工就恢复座位。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S054.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n维修人提交完工后，工单进入待验收，教室仍受限制。维修人不能自行验收自己的工单，座位不会因此直接恢复。\n\n### 操作步骤与预期结果\n\n1. worker1处理W1后提交完工，打开详情看到待验收。\n2. worker1尝试验收自己的W1，系统拒绝。\n3. 资源仍受W1限制，未因申请完工或自验尝试恢复。\n\n<details>\n<summary>场景编号与精确规则补充（S054.SC01）</summary>\n\n- 场景名称：维修人提交完工后，不能自己验收\n- 场景编号：S054.SC01\n\n**对应的业务要求**\n\n- M3-05.AC1：维修人提出完工申请，验收人与维修人不同\n\n**精确条件**\n\n- worker1处理W1后提交完工\n\n**精确动作**\n\n- worker1尝试验收自己的W1\n\n**结果与约束**\n\n- 进入待验收且资源仍受限制；自验拒绝，不能因完工申请直接恢复座位\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-05.S01#1",
+              "criterion": 1,
+              "basis": "维护人员申请完工，验收人独立于维修人",
+              "kind": "api",
+              "expected": "工单待验收，资源仍受限制。自验被拒绝，不会因为提交完工就恢复座位。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#acceptanceReworkAndIndependentRelease",
+                "com.campus.repair.RepairLifecycleApiTest#acceptanceExcludesPastWorkerAndWaitsForRestore"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-05.S02",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "admin2有验收权限，且不是W1的维修人worker1。"
+          ],
+          "actions": [
+            "打开验收页面，填写不为空的理由，选择验收不通过。"
+          ],
+          "expected": [
+            "工单继续维修，保留返工记录，W1的限制不解除，并通知维修人和报修人。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S054.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n独立验收人说明原因并判定不通过后，工单继续维修，保留返工过程并通知相关人员，教室限制不解除。\n\n### 操作步骤与预期结果\n\n1. admin2有验收权限且不是W1维修人，打开验收页面。\n2. 填写非空理由，选择验收不通过。\n3. 工单继续维修并保存返工记录，W1限制仍在。\n4. 维修人和报修人收到对应通知。\n\n<details>\n<summary>场景编号与精确规则补充（S054.SC02）</summary>\n\n- 场景名称：验收没通过，说明原因后继续维修\n- 场景编号：S054.SC02\n\n**对应的业务要求**\n\n- M3-05.AC2：验收不通过就继续维修，不能提前恢复座位\n\n**精确条件**\n\n- admin2具验收权限且不是worker1\n\n**精确动作**\n\n- 以非空理由验收不通过\n\n**结果与约束**\n\n- 继续维修并保留返工记录，W1限制不解除；通知维修人与报修人\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-05.S02#2",
+              "criterion": 2,
+              "basis": "验收不通过继续维修，不提前恢复座位",
+              "kind": "api",
+              "expected": "工单继续维修，保留返工记录，W1的限制不解除，并通知维修人和报修人。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#acceptanceReworkAndIndependentRelease",
+                "com.campus.repair.RepairLifecycleApiTest#acceptanceExcludesPastWorkerAndWaitsForRestore"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-05.S03",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "W1和W2都限制R101，admin2独立验收W1。"
+          ],
+          "actions": [
+            "选择验收通过，并通过真实接口解除W1的资源限制。"
+          ],
+          "expected": [
+            "只有W1限制解除，W2仍生效，座位不能因为W1完成就恢复。如果恢复结果暂时查不清，明确显示待恢复。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S054.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n独立验收通过后只解除当前工单的限制；同教室还有另一张维修单时，不能一起恢复，结果未确认则显示待恢复。\n\n### 操作步骤与预期结果\n\n1. W1、W2都限制R101，admin2独立验收W1。\n2. admin2选择验收通过，系统调用真实资源解除接口。\n3. 只有W1限制解除，W2仍有效，座位不能因此全部恢复。\n4. 如果解除结果尚未确认，页面明确显示待恢复。\n\n<details>\n<summary>场景编号与精确规则补充（S054.SC03）</summary>\n\n- 场景名称：验收通过只解除这张工单的限制\n- 场景编号：S054.SC03\n\n**对应的业务要求**\n\n- M3-05.AC3：通过后通过网络解除这张工单自己的限制\n\n**精确条件**\n\n- W1/W2同时限制R101，admin2独立验收W1\n\n**精确动作**\n\n- 通过并调用真实资源解除接口\n\n**结果与约束**\n\n- W1限制解除，W2仍有效，座位不因只完成W1就恢复；若资源确认未知则明确待恢复状态\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S054\n- 业务分组：报修与维修\n- 范围：核心业务\n- 对应要求：M3-05\n- 有关业务功能：[S052 维护人员开始维修后，停用整间教室并处理已有预约](S052.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P06](../policies.md#p06)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-05.S03#3",
+              "criterion": 3,
+              "basis": "验收通过网络释放本工单限制",
+              "kind": "api",
+              "expected": "只有W1限制解除，W2仍生效，座位不能因为W1完成就恢复。如果恢复结果暂时查不清，明确显示待恢复。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#acceptanceReworkAndIndependentRelease",
+                "com.campus.repair.RepairLifecycleApiTest#acceptanceExcludesPastWorkerAndWaitsForRestore"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-05.S04",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "维修限制或恢复尚未确认，维修服务在调用前或资源处理后意外停止。"
+          ],
+          "actions": [
+            "服务恢复后，查看工单和资源状态，等待系统继续核对原工单操作。"
+          ],
+          "expected": [
+            "按工单来源和版本查清结果，不重复创建限制或释放。结果不明时页面可见，不靠人工直接修改资源库。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S060.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n维修限制或恢复过程中服务意外停止，恢复后系统继续核对原工单，未确认时页面如实显示，不重复限制或释放。\n\n### 操作步骤与预期结果\n\n1. 维修服务在资源调用前或资源处理后意外停止，结果尚未确认。\n2. 服务恢复后，用户查看工单与资源状态。\n3. 系统按原工单来源和版本继续核对，不重复创建限制或释放。\n4. 未知结果可见，不靠人工直接修改资源数据库。\n\n<details>\n<summary>场景编号与精确规则补充（S060.SC01）</summary>\n\n- 场景名称：维修服务重启后，不丢失限制或恢复待办\n- 场景编号：S060.SC01\n\n**对应的业务要求**\n\n- M3-03.AC2：保存待办以便重试，不直接修改预约或资源数据库\n- M3-05.AC3：通过后通过网络解除这张工单自己的限制\n\n**精确条件**\n\n- 资源调用前或确认后维修进程崩溃\n\n**精确动作**\n\n- 分别重启并重试同工单命令\n\n**结果与约束**\n\n- 限制/释放均按源和版本对账，不重复创建；未知结果可见，不靠人工改资源库\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-05.S04#3",
+              "criterion": 3,
+              "basis": "验收通过网络释放本工单限制",
+              "kind": "api",
+              "expected": "按工单来源和版本查清结果，不重复创建限制或释放。结果不明时页面可见，不靠人工直接修改资源库。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#acceptanceReworkAndIndependentRelease",
+                "com.campus.repair.RepairLifecycleApiTest#acceptanceExcludesPastWorkerAndWaitsForRestore"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M3-07",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          4
+        ],
+        "note": "由任务书约束推导，属于需验收的设计决策"
+      },
+      "acceptance": [
+        "可取消状态与授权人明确，修复中取消走审批规则",
+        "重复请求不多次释放，其他工单限制仍保留",
+        "向报修人及执行人通知结果"
+      ],
+      "scenarios": [
+        {
+          "id": "M3-07.S01",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "W1为新建或已分配状态，还没有产生维修限制。"
+          ],
+          "actions": [
+            "报修人打开自己的工单并取消。",
+            "再由另一个无权用户尝试取消别人的工单。"
+          ],
+          "expected": [
+            "本人取消成功，并通知报修人和已分配的执行人；他人越权取消被拒绝。原本没有限制，不凭空产生一次释放操作。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S056.SC01"
+          ],
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n工单还没开始维修时，报修人或管理员可以按权限取消。普通用户不能取消别人的工单，未产生的资源限制也不需要释放。\n\n### 操作步骤与预期结果\n\n1. W1为新建或已分配状态，尚无维修限制。\n2. 报修人打开自己的工单并取消，系统保存取消结果。\n3. 报修人和已分配执行人收到通知，不凭空产生资源释放。\n4. 无权用户取消另一人的工单，被拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S056.SC01）</summary>\n\n- 场景名称：还没开修时，报修人或管理员可以取消\n- 场景编号：S056.SC01\n\n**对应的业务要求**\n\n- M3-07.AC1：说明谁能在什么状态取消；维修中的取消要走审批\n- M3-07.AC3：将结果通知报修人和执行人\n\n**精确条件**\n\n- W1为NEW或ASSIGNED，尚无维修限制\n\n**精确动作**\n\n- 报修人取消，再由他人尝试取消另一人的工单\n\n**结果与约束**\n\n- 本人取消成功并通知报修人/已分配执行人；越权取消拒绝；不制造资源释放\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-07.S01#1",
+              "criterion": 1,
+              "basis": "可取消状态与授权人明确，修复中取消走审批规则",
+              "kind": "api",
+              "expected": "本人取消成功，并通知报修人和已分配的执行人；他人越权取消被拒绝。原本没有限制，不凭空产生一次释放操作。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#cancelBeforeStartIsIdempotent",
+                "com.campus.repair.RepairLifecycleApiTest#cancelRequiresReviewAndSafety",
+                "com.campus.repair.RepairLifecycleApiTest#cancelReviewReplayCannotBypassRevokedPermission"
+              ]
+            },
+            {
+              "id": "M3-07.S01#3",
+              "criterion": 3,
+              "basis": "向报修人及执行人通知结果",
+              "kind": "api",
+              "expected": "本人取消成功，并通知报修人和已分配的执行人；他人越权取消被拒绝。原本没有限制，不凭空产生一次释放操作。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#cancelBeforeStartIsIdempotent",
+                "com.campus.repair.RepairLifecycleApiTest#cancelRequiresReviewAndSafety",
+                "com.campus.repair.RepairLifecycleApiTest#cancelReviewReplayCannotBypassRevokedPermission"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-07.S02",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "W1正在维修，资源限制有效。"
+          ],
+          "actions": [
+            "发起取消申请。",
+            "分别在独立测试中，由非维修本人的验收方否决或确认安全。"
+          ],
+          "expected": [
+            "等待期间不解除限制；否决后继续维修。只有独立安全验收通过才取消并安排解除W1自己的限制，维修人不能自己确认。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S056.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n维修中申请取消要先经过独立安全验收。等待或否决期间教室仍受限制，确认安全后才取消并恢复本工单影响。\n\n### 操作步骤与预期结果\n\n1. W1维修中，限制有效，用户发起取消申请。\n2. 等待期间仍不释放资源。\n3. 独立验收方否决时，工单继续维修；另一次独立情形确认安全时，才取消并安排解除W1限制。\n4. 维修人不能自己确认安全。\n\n<details>\n<summary>场景编号与精确规则补充（S056.SC02）</summary>\n\n- 场景名称：维修中的工单，取消前还要有人确认安全\n- 场景编号：S056.SC02\n\n**对应的业务要求**\n\n- M3-07.AC1：说明谁能在什么状态取消；维修中的取消要走审批\n\n**精确条件**\n\n- W1为IN_PROGRESS且限制有效\n\n**精确动作**\n\n- 发起取消申请，再分别由独立验收方否决或确认安全\n\n**结果与约束**\n\n- 申请期间限制不释放；否决继续维修；确认安全后才CANCELLED并发解除本源任务，维修人不能自行确认\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-07.S02#1",
+              "criterion": 1,
+              "basis": "可取消状态与授权人明确，修复中取消走审批规则",
+              "kind": "api",
+              "expected": "等待期间不解除限制；否决后继续维修。只有独立安全验收通过才取消并安排解除W1自己的限制，维修人不能自己确认。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#cancelBeforeStartIsIdempotent",
+                "com.campus.repair.RepairLifecycleApiTest#cancelRequiresReviewAndSafety",
+                "com.campus.repair.RepairLifecycleApiTest#cancelReviewReplayCannotBypassRevokedPermission"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-07.S03",
+          "covers": [
+            2,
+            3
+          ],
+          "preconditions": [
+            "W1已安全取消，W2仍限制同一教室。"
+          ],
+          "actions": [
+            "重复处理W1的取消和释放命令。"
+          ],
+          "expected": [
+            "保持同一结果，不重复通知或释放。W2的限制和整室占用继续有效。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S056.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n已经安全取消的工单重复收到取消或释放请求，仍返回原结果，不重复通知，也不解除同教室其他限制。\n\n### 操作步骤与预期结果\n\n1. W1已安全取消，W2仍限制同一教室。\n2. 系统再次处理W1取消和释放请求。\n3. 结果不变，不重复通知或释放，W2限制及整室占用继续有效。\n\n<details>\n<summary>场景编号与精确规则补充（S056.SC03）</summary>\n\n- 场景名称：取消后再重复操作，仍不能解除另一张工单的限制\n- 场景编号：S056.SC03\n\n**对应的业务要求**\n\n- M3-07.AC2：重复请求不多次恢复，其他工单限制仍保留\n- M3-07.AC3：将结果通知报修人和执行人\n\n**精确条件**\n\n- W1安全取消，W2仍限制同室\n\n**精确动作**\n\n- 重放W1取消/释放命令\n\n**结果与约束**\n\n- 逻辑结果不变，不重复通知/释放；W2限制和整室占用仍生效\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S056\n- 业务分组：报修与维修\n- 范围：核心业务\n- 对应要求：M3-07\n- 有关业务功能：[S050 用户上报故障并查看自己的报修](S050.md)、[S051 管理员派单、转派，并保留负责人记录](S051.md)、[S054 维修人申请完工，由另一人验收后再恢复](S054.md)。\n- 相关业务规则：[P01](../policies.md#p01)、[P06](../policies.md#p06)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-07.S03#2",
+              "criterion": 2,
+              "basis": "重复请求不多次释放，其他工单限制仍保留",
+              "kind": "api",
+              "expected": "保持同一结果，不重复通知或释放。W2的限制和整室占用继续有效。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#cancelBeforeStartIsIdempotent",
+                "com.campus.repair.RepairLifecycleApiTest#cancelRequiresReviewAndSafety",
+                "com.campus.repair.RepairLifecycleApiTest#cancelReviewReplayCannotBypassRevokedPermission"
+              ]
+            },
+            {
+              "id": "M3-07.S03#3",
+              "criterion": 3,
+              "basis": "向报修人及执行人通知结果",
+              "kind": "api",
+              "expected": "保持同一结果，不重复通知或释放。W2的限制和整室占用继续有效。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#cancelBeforeStartIsIdempotent",
+                "com.campus.repair.RepairLifecycleApiTest#cancelRequiresReviewAndSafety",
+                "com.campus.repair.RepairLifecycleApiTest#cancelReviewReplayCannotBypassRevokedPermission"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-07.S04",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "W1已进入新一轮返工，新的维修限制正在生效。"
+          ],
+          "actions": [
+            "发来旧版本的验收释放，再重复发送旧回调。"
+          ],
+          "expected": [
+            "新的返工限制不被解除。旧状态或旧版本被拒绝，其他工单不受影响。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S060.SC02"
+          ],
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n工单已进入新一轮返工后，上一轮验收的释放消息即使迟到或重发，也不能提前开放教室。\n\n### 操作步骤与预期结果\n\n1. W1新版本返工限制正在生效。\n2. 旧版本验收释放消息到达，再重复回调。\n3. 系统拒绝过期状态，保留新限制，其他工单不受影响。\n\n<details>\n<summary>场景编号与精确规则补充（S060.SC02）</summary>\n\n- 场景名称：返工后收到上次的完工回复，不能提前开放\n- 场景编号：S060.SC02\n\n**对应的业务要求**\n\n- M3-07.AC2：重复请求不多次恢复，其他工单限制仍保留\n\n**精确条件**\n\n- W1已有新版本返工限制\n\n**精确动作**\n\n- 投递旧版本验收释放和重复回调\n\n**结果与约束**\n\n- 不解除新返工限制；终态/任务版本拒绝过期消息，其他工单不受影响\n\n</details>\n\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-07.S04#2",
+              "criterion": 2,
+              "basis": "重复请求不多次释放，其他工单限制仍保留",
+              "kind": "api",
+              "expected": "新的返工限制不被解除。旧状态或旧版本被拒绝，其他工单不受影响。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#cancelBeforeStartIsIdempotent",
+                "com.campus.repair.RepairLifecycleApiTest#cancelRequiresReviewAndSafety",
+                "com.campus.repair.RepairLifecycleApiTest#cancelReviewReplayCannotBypassRevokedPermission"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-07.S05",
+          "covers": [
+            1,
+            2,
+            3
+          ],
+          "preconditions": [
+            "同一张W1同时存在取消申请和正常验收操作。"
+          ],
+          "actions": [
+            "同一版本的取消与正常验收同时提交，再查看工单和资源状态。"
+          ],
+          "expected": [
+            "最后只有一个获准结果和对应的一次恢复指令；解除前必须有真实安全验收。通知和操作记录不重复生成。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S060.SC03"
+          ],
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n同一工单的取消与正常验收同时提交，系统只接受一个有效结果，且恢复前必须经过真实安全验收。\n\n### 操作步骤与预期结果\n\n1. W1同一版本同时收到取消和正常验收操作。\n2. 系统处理两种操作，用户查看工单和资源状态。\n3. 最后只有一个获准结果及对应一次恢复指令，解除前已有真实安全验收。\n4. 通知和操作记录按同一结果去重，不重复生成。\n\n<details>\n<summary>场景编号与精确规则补充（S060.SC03）</summary>\n\n- 场景名称：取消和验收同时发生，也只能恢复一次\n- 场景编号：S060.SC03\n\n**对应的业务要求**\n\n- M3-07.AC1：说明谁能在什么状态取消；维修中的取消要走审批\n- M3-07.AC2：重复请求不多次恢复，其他工单限制仍保留\n- M3-07.AC3：将结果通知报修人和执行人\n\n**精确条件**\n\n- 同一W1同时有取消申请和正常验收操作\n\n**精确动作**\n\n- 用版本屏障并发处理后查询资源来源\n\n**结果与约束**\n\n- 只有一个获准终态与本源恢复指令，限制解除前须真实安全验收；通知与审计按同一结果去重\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S060\n- 业务分组：报修与维修\n- 范围：核心业务\n- 对应要求：M3-03、M3-05、M3-07\n- 有关业务功能：[S052 维护人员开始维修后，停用整间教室并处理已有预约](S052.md)、[S054 维修人申请完工，由另一人验收后再恢复](S054.md)、[S056 取消工单时，确认维修中的教室是否安全](S056.md)。\n- 相关业务规则：[P01](../policies.md#p01)、[P05](../policies.md#p05)、[P06](../policies.md#p06)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.lifecycle",
+              "status": "missing",
+              "evidence": "Actual repair controller only has evaluation/history and orphan acceptance guard"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-07.S05#1",
+              "criterion": 1,
+              "basis": "可取消状态与授权人明确，修复中取消走审批规则",
+              "kind": "api",
+              "expected": "最后只有一个获准结果和对应的一次恢复指令；解除前必须有真实安全验收。通知和操作记录不重复生成。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#cancelBeforeStartIsIdempotent",
+                "com.campus.repair.RepairLifecycleApiTest#cancelRequiresReviewAndSafety",
+                "com.campus.repair.RepairLifecycleApiTest#cancelReviewReplayCannotBypassRevokedPermission"
+              ]
+            },
+            {
+              "id": "M3-07.S05#2",
+              "criterion": 2,
+              "basis": "重复请求不多次释放，其他工单限制仍保留",
+              "kind": "api",
+              "expected": "最后只有一个获准结果和对应的一次恢复指令；解除前必须有真实安全验收。通知和操作记录不重复生成。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#cancelBeforeStartIsIdempotent",
+                "com.campus.repair.RepairLifecycleApiTest#cancelRequiresReviewAndSafety",
+                "com.campus.repair.RepairLifecycleApiTest#cancelReviewReplayCannotBypassRevokedPermission"
+              ]
+            },
+            {
+              "id": "M3-07.S05#3",
+              "criterion": 3,
+              "basis": "向报修人及执行人通知结果",
+              "kind": "api",
+              "expected": "最后只有一个获准结果和对应的一次恢复指令；解除前必须有真实安全验收。通知和操作记录不重复生成。",
+              "sample": "Real isolated PostgreSQL and public HTTP fixtures; no cross-domain DB writes",
+              "observation": "HTTP state/version, persisted m3 history and outbox, captured downstream body",
+              "comparison": "Exact values, ownership, unchanged deadline, monotone versions, idempotency",
+              "test_ids": [
+                "com.campus.repair.RepairLifecycleApiTest#cancelBeforeStartIsIdempotent",
+                "com.campus.repair.RepairLifecycleApiTest#cancelRequiresReviewAndSafety",
+                "com.campus.repair.RepairLifecycleApiTest#cancelReviewReplayCannotBypassRevokedPermission"
               ]
             }
           ]
@@ -262,16 +1322,36 @@
       "sha256": "d81d9ee8f8657a0114d4e417b3f6ea2a47a96615e38fd5981d6088d501652a79",
       "text": "# 验收方评分，并保留每一轮返工记录\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s055sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n获授权的验收人给已验收工单评分，分数只能是1到5的整数。无效分数和其他人员的代评不会保存。\n\n### 操作步骤与预期结果\n\n1. admin2打开已验收而尚未评分的工单，每种尝试使用独立工单。\n2. 分别提交1分和5分，系统保存成功。\n3. 另分别提交0分、6分和小数，系统拒绝，原评分不变。\n4. 非授权验收方尝试评分也被拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC01）</summary>\n\n- 场景名称：有权验收的人才能评分，分数必须是1到5的整数\n- 场景编号：S055.SC01\n\n**对应的业务要求**\n\n- M3-06.AC1：只有允许的验收方能提交符合范围的评分和文字评价\n\n**精确条件**\n\n- admin2为合法验收人，准备两条独立已验收工单；每次非法评分用未评分的独立初态\n\n**精确动作**\n\n- 在两条工单分别提交评分1和5；另以独立工单分别提交0、6及小数\n\n**结果与约束**\n\n- 评分1与5分别保存；0、6及小数均拒绝且原评分不变；只有授权验收方可提交，非验收方不能代评\n\n</details>\n\n<a id=\"s055sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n工单多次返工和验收后，用户在时间线仍能看到每一轮处理过程，最终状态不覆盖此前历史。\n\n### 操作步骤与预期结果\n\n1. W1先申请完工、被验收驳回，再次完工后验收通过。\n2. 用户打开工单详情和时间线。\n3. 每一轮的维修、处理人、时刻、结果和理由均保留，最新状态不覆盖前轮。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC02）</summary>\n\n- 场景名称：返工多次后，之前的过程仍能看到\n- 场景编号：S055.SC02\n\n**对应的业务要求**\n\n- M3-06.AC2：保留维修、返工和多次验收的过程\n\n**精确条件**\n\n- W1曾完工、验收驳回、再次完工并通过\n\n**精确动作**\n\n- 读取工单时间线\n\n**结果与约束**\n\n- 保留每轮维修、处理人、时刻、结果和理由；最新状态不覆盖前轮历史\n\n</details>\n\n<a id=\"s055sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n维修人即使在验收或评分请求里冒充其他管理员，也不能自己验收或代评，原工单和资源状态保持不变。\n\n### 操作步骤与预期结果\n\n1. worker1是W1维修人，使用自己的真实登录信息。\n2. 直接请求验收或评价接口，并把请求里的身份填成admin2。\n3. 系统按worker1拒绝，工单、评分和资源状态均不变。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC03）</summary>\n\n- 场景名称：维修人改请求里的身份，也不能自验或代评\n- 场景编号：S055.SC03\n\n**对应的业务要求**\n\n- M3-06.AC3：维修人不能验收自己的任务\n\n**精确条件**\n\n- worker1是W1维修者\n\n**精确动作**\n\n- 直接调用验收/评价接口伪装admin2\n\n**结果与约束**\n\n- 均按真实身份拒绝；工单、评分和资源状态不改变\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S055\n- 业务分组：报修与维修\n- 范围：核心业务\n- 对应要求：M3-06\n- 有关业务功能：[S054 维修人申请完工，由另一人验收后再恢复](S054.md)。\n- 相关业务规则：[P07](../policies.md#p07)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
       "kind": "business_spec; admin2验收方评分按本轮协调人明确说明执行"
+    },
+    {
+      "path": "spec/requirements.json",
+      "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631",
+      "requirement_ids": [
+        "M3-01",
+        "M3-02",
+        "M3-03",
+        "M3-04",
+        "M3-05",
+        "M3-07"
+      ],
+      "text": "[{\"id\": \"M3-01\", \"module\": \"M05\", \"title\": \"故障上报和工单查询\", \"source\": {\"kind\": \"explicit\", \"pdf_pages\": [1], \"note\": \"任务书明确要求\"}, \"acceptance\": [\"关联实际教室，可选座位；必填故障说明\", \"本人可查本人，管理员查调度范围\", \"报修本身不等于维修中下架\"], \"layers\": [\"backend\", \"frontend\"], \"baseline_status\": {\"backend\": \"pending\", \"frontend\": \"pending\"}, \"external_dependencies\": [], \"verification\": {\"red\": \"新增行为测试，未实现时必须以目标断言失败\", \"green\": \"实现后同一测试通过，相关回归通过\", \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"}, \"evidence\": [], \"execution_owner\": \"member\", \"integration_dependencies\": [\"IAM-05\", \"RES-05\", \"RES-06\", \"SUP-01\", \"SUP-02\"]}, {\"id\": \"M3-02\", \"module\": \"M05\", \"title\": \"派单和维修人员任务\", \"source\": {\"kind\": \"derived\", \"pdf_pages\": [1], \"note\": \"由任务书约束推导，属于需验收的设计决策\"}, \"acceptance\": [\"管理员派给有效维护人员，记录派单/转派\", \"维护人员只能操作分配给自己的工单\", \"并发和旧版本更新被拒绝\"], \"layers\": [\"backend\", \"frontend\"], \"baseline_status\": {\"backend\": \"pending\", \"frontend\": \"pending\"}, \"external_dependencies\": [], \"verification\": {\"red\": \"新增行为测试，未实现时必须以目标断言失败\", \"green\": \"实现后同一测试通过，相关回归通过\", \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"}, \"evidence\": [], \"execution_owner\": \"member\", \"integration_dependencies\": [\"IAM-05\", \"RES-05\", \"RES-06\", \"SUP-01\", \"SUP-02\"]}, {\"id\": \"M3-03\", \"module\": \"M05\", \"title\": \"维修中网络下架教室\", \"source\": {\"kind\": \"derived\", \"pdf_pages\": [2], \"note\": \"由任务书约束推导，属于需验收的设计决策\"}, \"acceptance\": [\"进入维修中经HTTP限制全室座位\", \"持久任务重试，不能直接修改M1/资源库\", \"现存预约处置、通知和历史记录有明确规则\"], \"layers\": [\"backend\", \"frontend\"], \"baseline_status\": {\"backend\": \"pending\", \"frontend\": \"pending\"}, \"external_dependencies\": [], \"verification\": {\"red\": \"新增行为测试，未实现时必须以目标断言失败\", \"green\": \"实现后同一测试通过，相关回归通过\", \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"}, \"evidence\": [], \"execution_owner\": \"member\", \"integration_dependencies\": [\"IAM-05\", \"RES-05\", \"RES-06\", \"SUP-01\", \"SUP-02\"]}, {\"id\": \"M3-04\", \"module\": \"M05\", \"title\": \"超时升级\", \"source\": {\"kind\": \"explicit\", \"pdf_pages\": [1], \"note\": \"任务书明确要求\"}, \"acceptance\": [\"按due_at升级并通知管理人员\", \"同一升级级别只记录一次，崩溃恢复不重复升级\", \"责任人和处理历史可查\"], \"layers\": [\"backend\", \"frontend\"], \"baseline_status\": {\"backend\": \"pending\", \"frontend\": \"pending\"}, \"external_dependencies\": [], \"verification\": {\"red\": \"新增行为测试，未实现时必须以目标断言失败\", \"green\": \"实现后同一测试通过，相关回归通过\", \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"}, \"evidence\": [], \"execution_owner\": \"member\", \"integration_dependencies\": [\"IAM-05\", \"RES-05\", \"RES-06\", \"SUP-01\", \"SUP-02\"]}, {\"id\": \"M3-05\", \"module\": \"M05\", \"title\": \"完工申请与独立验收\", \"source\": {\"kind\": \"derived\", \"pdf_pages\": [1, 2], \"note\": \"由任务书约束推导，属于需验收的设计决策\"}, \"acceptance\": [\"维护人员申请完工，验收人独立于维修人\", \"验收不通过继续维修，不提前恢复座位\", \"验收通过网络释放本工单限制\"], \"layers\": [\"backend\", \"frontend\"], \"baseline_status\": {\"backend\": \"pending\", \"frontend\": \"pending\"}, \"external_dependencies\": [], \"verification\": {\"red\": \"新增行为测试，未实现时必须以目标断言失败\", \"green\": \"实现后同一测试通过，相关回归通过\", \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"}, \"evidence\": [], \"execution_owner\": \"member\", \"integration_dependencies\": [\"IAM-05\", \"RES-05\", \"RES-06\", \"SUP-01\", \"SUP-02\"]}, {\"id\": \"M3-07\", \"module\": \"M05\", \"title\": \"工单取消与幂等恢复\", \"source\": {\"kind\": \"derived\", \"pdf_pages\": [4], \"note\": \"由任务书约束推导，属于需验收的设计决策\"}, \"acceptance\": [\"可取消状态与授权人明确，修复中取消走审批规则\", \"重复请求不多次释放，其他工单限制仍保留\", \"向报修人及执行人通知结果\"], \"layers\": [\"backend\", \"frontend\"], \"baseline_status\": {\"backend\": \"pending\", \"frontend\": \"pending\"}, \"external_dependencies\": [], \"verification\": {\"red\": \"新增行为测试，未实现时必须以目标断言失败\", \"green\": \"实现后同一测试通过，相关回归通过\", \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"}, \"evidence\": [], \"execution_owner\": \"member\", \"integration_dependencies\": [\"IAM-05\", \"RES-05\", \"RES-06\", \"SUP-01\", \"SUP-02\"]}]"
     }
   ],
   "boundary": {
     "pages": [],
     "components": [],
     "data": [
-      "已核验workflow现有RemoteIdentityLookup真实HTTP身份适配；独立runner/PG；本轮可构造0/1/多事件前态"
+      {
+        "key": "m3",
+        "evidence": "V1 repair_orders/repair_events; old 9 tests verified; identity and resources via public HTTP only"
+      }
     ],
     "unverified": [
-      "未运行前端，非本层。未实现上游工单创建/派单/完工/资源解除；只构造本库测试前态。最终真实身份服务联调由协调人执行。"
+      {
+        "key": "frontend",
+        "reason": "Backend work order only",
+        "tried": "Read existing repair/routes.ts placeholders"
+      }
     ]
   },
   "issues": [
@@ -283,7 +1363,17 @@
     {
       "id": "U02",
       "status": "已确认",
-      "description": "M3-05资源恢复不在本轮；验收接口仅做可信身份防自验检查，合法请求返回明确409 ACCEPTANCE_INTEGRATION_PENDING，不写完成状态、不调用未实现资源服务。"
+      "description": "Historical previous round only: M3-05 was pending then. Current managed lifecycle implements real acceptance/release; orphan legacy rows retain explicit 409 because their source cannot be verified."
+    },
+    {
+      "id": "H03",
+      "status": "已确认",
+      "description": "User2026-11-16 decisions frozen in round3-integration-decisions.md: preserve first dueAt; exclude all actual technicians; one independent administrator may review and inspect. Legacy orphan acceptance guard retained; real lifecycle requires actual resource ACK."
+    },
+    {
+      "id": "SCHEMA03",
+      "status": "已确认",
+      "description": "Coordinator reviewed own V3 nullable source for failed-create audit; only AUDIT task may have no order FK; trusted principal and actual response trace, no raw body. Review2026-11-16 not human acceptance."
     }
   ]
 }

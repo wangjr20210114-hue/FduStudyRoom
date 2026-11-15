@@ -13,17 +13,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RepairEvaluationService {
  private final JdbcTemplate jdbc;
+ @org.springframework.beans.factory.annotation.Autowired private RepairFlow flow;
  public RepairEvaluationService(JdbcTemplate jdbc){this.jdbc=jdbc;}
  public record Order(UUID id,UUID reporterId,UUID technicianId,String status,UUID acceptedBy,Instant acceptedAt,String acceptanceComment,Integer rating,String evaluation,Instant evaluatedAt,int version){}
  public record Event(UUID id,UUID actorId,String eventType,String fromStatus,String toStatus,UUID assignedTo,String note,Instant createdAt,int orderVersion,Integer rating){}
  @Transactional
  public Order evaluate(UUID id,IdentityPrincipal actor,Map<String,Object> body){
-  permission(actor,"repair:evaluate");Order order=load(id,true);rejectTechnician(order,actor);
+  permission(actor,"repair:evaluate");Order order=load(id,true);rejectTechnician(order,actor);if(flow!=null&&flow.managed(id))flow.checkIndependent(id,actor);
   if(!"COMPLETED".equals(order.status()))throw new ApiException(409,"REPAIR_NOT_COMPLETED");
   if(!actor.id().equals(order.acceptedBy()))throw new ApiException(403,"REPAIR_NOT_ACCEPTOR");
   fields(body,Set.of("rating","evaluation","version"));int rating=integer(body,"rating");
   if(rating<1||rating>5)throw new ApiException(400,"REPAIR_INVALID_RATING");
-  String evaluation=text(body,"evaluation");int version=integer(body,"version");
+  String evaluation=evaluationText(body.get("evaluation"));int version=integer(body,"version");
   if(order.version()!=version||order.evaluatedAt()!=null)throw new ApiException(409,"REPAIR_VERSION_CONFLICT");
   OffsetDateTime now=OffsetDateTime.now(ZoneOffset.UTC);
   int changed=jdbc.update("UPDATE m3.repair_orders SET rating=?,evaluation=?,evaluated_at=?,updated_at=?,version=version+1 WHERE id=? AND version=? AND evaluated_at IS NULL",rating,evaluation,now,now,id,version);
@@ -32,8 +33,8 @@ public class RepairEvaluationService {
   return load(id,false);
  }
  /** Enforce independent acceptance without claiming unavailable resource release has completed. */
- @Transactional(readOnly=true)
- public void acceptance(UUID id,IdentityPrincipal actor,Map<String,Object> body){
+ public void acceptance(UUID id,IdentityPrincipal actor,Map<String,Object> body,String trace){
+  if(flow!=null && flow.managed(id) && body.containsKey("operationId")){flow.command(id,actor,"acceptance",body,trace);return;}
   permission(actor,"repair:accept");Order order=load(id,false);rejectTechnician(order,actor);
   fields(body,Set.of("approved","comment","version"));
   if(!(body.get("approved") instanceof Boolean))throw new ApiException(400,"INVALID_REQUEST");
@@ -42,12 +43,14 @@ public class RepairEvaluationService {
   throw new ApiException(409,"ACCEPTANCE_INTEGRATION_PENDING");
  }
  @Transactional(readOnly=true)
- public Order detail(UUID id,IdentityPrincipal actor){permission(actor,"repair:history:read");Order o=load(id,false);participant(o,actor);return o;}
+ public Order detail(UUID id,IdentityPrincipal actor){permission(actor,"repair:history:read");Order o=load(id,false);if(flow!=null && flow.managed(id))flow.detail(id,actor);else participant(o,actor);return o;}
  @Transactional(readOnly=true)
  public List<Event> history(UUID id,IdentityPrincipal actor){
   detail(id,actor);
   return jdbc.query("SELECT * FROM m3.repair_events WHERE order_id=? ORDER BY created_at,id",(r,n)->new Event(r.getObject("id",UUID.class),r.getObject("actor_id",UUID.class),r.getString("event_type"),r.getString("from_status"),r.getString("to_status"),r.getObject("assigned_to",UUID.class),r.getString("note"),instant(r,"created_at"),r.getInt("order_version"),r.getObject("rating",Integer.class)),id);
  }
+ public Object fullDetail(UUID id,IdentityPrincipal actor){return flow!=null&&flow.managed(id)?flow.detail(id,actor):detail(id,actor);}
+ private static String evaluationText(Object value){if(!(value instanceof String v)||v.length()>500||(!v.isEmpty()&&v.isBlank()))throw new ApiException(400,"INVALID_REQUEST");return v;}
  private Order load(UUID id,boolean lock){
   var rows=jdbc.query("SELECT * FROM m3.repair_orders WHERE id=?"+(lock?" FOR UPDATE":""),(r,n)->new Order(r.getObject("id",UUID.class),r.getObject("reporter_id",UUID.class),r.getObject("technician_id",UUID.class),r.getString("status"),r.getObject("accepted_by",UUID.class),instant(r,"accepted_at"),r.getString("acceptance_comment"),r.getObject("rating",Integer.class),r.getString("evaluation"),instant(r,"evaluated_at"),r.getInt("version")),id);
   if(rows.isEmpty())throw new ApiException(404,"REPAIR_NOT_FOUND");return rows.getFirst();
