@@ -1,606 +1,1177 @@
 # PostgreSQL 表结构与关系
 
-| 属性 | 作用 |
+按当前主应用迁移的最终结构整理，共 37 张表。`resource-service` 使用 `iam`、`resource`、`m1`；`workflow-service` 使用 `m2`、`m3`、`support`。`integration` 当前只有 schema，没有应用表。
+
+不包含缓冲站数据库、测试夹具和 Flyway 历史表。下面的“外键”只表示迁移中实际声明的数据库外键；代码通过接口校验的 ID 关联放在末尾单独画图。
+
+| 标记 | 含义 |
 | --- | --- |
-| 设计范围 | 覆盖 M1、M2、M3 和公共层；19 张应用表，Flyway 工具历史按模块维护，不计入应用表。 |
-| 当前实现 | T07 已实现 iam 四张表、V2 密码迁移与资源服务 Flyway 历史；其余业务表按后续任务迁移。 |
-| 简化原则 | 不建立组织层级、校区楼宇主表、多范围授权、通用审批模板、独立签到违约验收表或多源同步平台。 |
-| 非空 | 是表示不能保存 SQL NULL；否表示允许为空，条件必填另列。 |
-| 主键 | 唯一定位记录。业务创建重试复用同一个 UUID，同 ID 不同参数必须拒绝。 |
-| 外键 | 是为数据库实际外键；跨服务用逻辑引用，不跨服务直接联表。 |
-| 唯一 | 单列或组合唯一；组合 U1 对应下方 U1 约束。 |
-| 默认值 | 插入缺省值，不代表修改时会自动更新。 |
-| CHECK | 校验当前行的取值或字段组合。 |
-| EXCLUDE | 防止同一座位或同一用户的有效占用时间重叠。 |
-| 扩展依赖 | seat_allocations 的 UUID 与时间范围组合排他约束，需要迁移启用 btree_gist。 |
-| INDEX | 加快查询，普通索引不保证唯一。 |
-| 应用校验 | 由业务事务或公开接口验证，不能当作数据库自动保证。 |
-| 时间约定 | 采用 timestamptz 时间点，按 Asia/Shanghai 展示；占用范围左闭右开。 |
-| JSONB 范围 | 仅存参数、规则快照、事件参数和外部缓存；核心用户与资源关联仍用明确字段。 |
+| 非空：是 | 不允许 SQL NULL；主键和 IDENTITY 字段也非空。 |
+| 默认值：— | 没有数据库 DEFAULT，需要应用填写或允许为空。 |
+| 组合 U1 / PK | 和同一张表的其他字段一起唯一，定义见表下约束。 |
+| CHECK | 数据库校验；字段允许 NULL 时，CHECK 不等同于非空。 |
+| UNIQUE 与 NULL | 普通 UNIQUE 允许多个 NULL；组合唯一含 NULL 时也按 PostgreSQL 默认规则处理。 |
+| EXCLUDE | 防止生效占用的座位或用户时间重叠，依赖迁移安装的 btree_gist。 |
+| 时间 | `timestamptz` 保存时间点；`time` 保存一天内的时间。界面按 Asia/Shanghai 展示。 |
+| 更新时间 | `DEFAULT now()` 只在插入时生效，不代表修改时数据库会自动刷新。 |
 
-## 1 身份与权限
+## 1 身份、权限与系统参数
 
-### iam.roles
+### iam.roles（角色）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
 | `code` | `varchar(64)` | 是 | 否 | 否 | 是 | — | — | — |
 | `name` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
-| `enabled` | `boolean` | 是 | 否 | 否 | 否 | true | — | — |
+| `enabled` | `boolean` | 是 | 否 | 否 | 否 | `true` | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `code`：角色的稳定编码，预置 USER、SYSTEM_ADMIN、MAINTAINER，允许管理员增加新角色
-- `name`：界面显示的角色名称
-- `enabled`：控制该角色是否继续提供权限
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `code`：角色编码，预置 USER、SYSTEM_ADMIN、MAINTAINER，也允许增加新角色。
+- `name`：界面显示的名称。
+- `enabled`：是否继续允许使用这个角色的权限。
 
-| 约束类型 | 定义 |
-| --- | --- |
-| U1 | UNIQUE (code) |
-
-### iam.permissions
+### iam.permissions（操作权限）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
 | `code` | `varchar(128)` | 是 | 否 | 否 | 是 | — | — | — |
 | `name` | `varchar(128)` | 是 | 否 | 否 | 否 | — | — | — |
 | `module` | `varchar(32)` | 是 | 否 | 否 | 否 | — | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `code`：后端识别的操作权限编码，例如 room:update、room:approve
-- `name`：管理员配置角色时看到的操作名称
-- `module`：用于按用户、资源、预约、审批和报修分组展示权限
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `code`：后端检查操作权限时使用的编码，例如 reservation:create。
+- `name`：界面显示的名称。
+- `module`：界面按业务分组显示权限时使用。
 
-| 约束类型 | 定义 |
-| --- | --- |
-| U1 | UNIQUE (code) |
-
-### iam.role_permissions
+### iam.role_permissions（角色拥有的权限）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `role_id` | `uuid` | 是 | 否 | 是 | 组合 U1 | — | — | iam.roles.id |
-| `permission_id` | `uuid` | 是 | 否 | 是 | 组合 U1 | — | — | iam.permissions.id |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `role_id` | `uuid` | 是 | 否 | 是 | 组合 U1 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `iam.roles.id` |
+| `permission_id` | `uuid` | 是 | 否 | 是 | 组合 U1 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `iam.permissions.id` |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `role_id`：关联获得权限的角色
-- `permission_id`：关联该角色允许执行的操作
+- `id`：这一条角色授权记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `role_id`：账号或授权记录对应的角色编号。
+- `permission_id`：对应的一项操作权限编号。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (role_id, permission_id) |
-| FOREIGN KEY | 所有实际外键 ON DELETE RESTRICT、ON UPDATE RESTRICT；有历史引用的账号和主数据采用停用 |
+| U1 | `UNIQUE (role_id,permission_id)` |
 
-### iam.users
+### iam.users（账号）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `login_name` | `varchar(128)` | 是 | 否 | 否 | U1、U2 | — | 本地接口限定规范化后 3—32 位 | — |
-| `password_hash` | `varchar(255)` | 条件必填 | 否 | 否 | 否 | — | LOCAL 来源非空；格式见下方 CHECK | — |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `login_name` | `varchar(128)` | 是 | 否 | 否 | 是 | — | — | — |
 | `display_name` | `varchar(128)` | 是 | 否 | 否 | 否 | — | — | — |
 | `email` | `varchar(254)` | 否 | 否 | 否 | 否 | — | — | — |
-| `identity_type` | `varchar(16)` | 否 | 否 | 否 | 否 | — | CHECK：STUDENT、STAFF；允许 NULL | — |
-| `identity_source` | `varchar(16)` | 是 | 否 | 否 | 否 | 'LOCAL' | CHECK：LOCAL、FUDAN_UIS、DEVELOPMENT | — |
-| `identity_active` | `boolean` | 是 | 否 | 否 | 否 | false | — | — |
-| `role_id` | `uuid` | 是 | 否 | 是 | 否 | — | — | iam.roles.id |
-| `department_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | identity_type = 'STUDENT' OR department_code IS NULL | — |
-| `can_apply_room` | `boolean` | 是 | 否 | 否 | 否 | false | — | — |
-| `enabled` | `boolean` | 是 | 否 | 否 | 否 | true | — | — |
-| `auth_version` | `integer` | 是 | 否 | 否 | 否 | 1 | CHECK：大于 0 | — |
+| `identity_type` | `varchar(16)` | 否 | 否 | 否 | 否 | — | `CHECK (identity_type IN ('STUDENT','STAFF'))` | — |
+| `identity_source` | `varchar(16)` | 是 | 否 | 否 | 否 | `'LOCAL'` | — | — |
+| `identity_active` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+| `role_id` | `uuid` | 是 | 否 | 是 | 否 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `iam.roles.id` |
+| `department_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `can_apply_room` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+| `enabled` | `boolean` | 是 | 否 | 否 | 否 | `true` | — | — |
+| `auth_version` | `integer` | 是 | 否 | 否 | 否 | `1` | `CHECK (auth_version > 0)` | — |
+| `password_hash` | `varchar(255)` | 否 | 否 | 否 | 否 | — | — | — |
+| `email_verified_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `email_version` | `integer` | 是 | 否 | 否 | 否 | `1` | `CHECK (email_version>0)` | — |
 
 **字段作用**
 
-- `id`：唯一标识用户，业务表使用该 ID 关联账号
-- `created_at`：记录账号首次建立时间
-- `updated_at`：记录最近修改时间，由应用更新
-- `login_name`：本系统账号；本地注册时去首尾空格并转小写，首位为字母或数字，其余允许字母、数字、下划线、点、短横线
-- `password_hash`：保存随机盐和密码哈希，不保存明文；旧非 LOCAL 账号允许为空，不能直接使用本地密码登录
-- `display_name`：界面显示名称；新注册时初始为账号
-- `email`：通知邮箱，未补全时允许为空；当前用户接口以 profileIncomplete 标记，后续邮件业务要求验证和补全
-- `identity_type`：保留旧学生、教职工身份元数据；新本地账号为空，不作为普通登录条件
-- `identity_source`：标记本地账号或历史账号来源；本地密码查询只接受 LOCAL，不代表已完成学校身份核验
-- `identity_active`：保留旧学校资格记录值；本地密码登录不使用此字段，不据此宣称复旦身份
-- `role_id`：每个账号关联一个角色；注册固定为 USER，管理和维护角色由管理员分配
-- `department_code`：管理员维护的可选院系资格，用于后续院系限定资源匹配；注册不接收此字段，未核实前不授予院系资格
-- `can_apply_room`：是否获得整教室申请资格，后续业务还需检查相应权限
-- `enabled`：控制账号是否可以登录及访问系统
-- `auth_version`：退出或变更访问权限时递增，使所有设备的旧会话失效
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `login_name`：用户登录时填写的账号。
+- `display_name`：界面显示的用户名称。
+- `email`：用户填写的通知邮箱。
+- `identity_type`：保留的学生或教职工身份类型；本地注册账号可以为空。
+- `identity_source`：账号来源，本地注册使用 LOCAL。
+- `identity_active`：保留的学校身份状态，不作为本地密码登录条件。
+- `role_id`：账号或授权记录对应的角色编号。
+- `department_code`：管理员维护的可选部门代码，用来匹配限定部门的教室。
+- `can_apply_room`：是否允许该账号申请整间教室，还需要相应操作权限。
+- `enabled`：是否允许这个账号登录和继续使用系统。
+- `auth_version`：会话版本号；退出或更改授权后递增，让旧登录会话失效。
+- `password_hash`：保存密码的加盐摘要，登录时用来验证密码。
+- `email_verified_at`：当前邮箱完成验证的时间；为空表示尚未验证。
+- `email_version`：当前邮箱版本，换邮箱后递增，让旧验证链接失效。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (login_name)，保留原有精确值唯一约束 |
-| U2 | UNIQUE INDEX ON lower(login_name) WHERE identity_source = 'LOCAL'，保证本地账号大小写不重复 |
-| INDEX | (role_id) |
-| CHECK | identity_type IN ('STUDENT', 'STAFF')；identity_source IN ('FUDAN_UIS', 'DEVELOPMENT', 'LOCAL') |
-| CHECK | identity_source <> 'LOCAL' OR password_hash IS NOT NULL |
-| CHECK | password_hash IS NULL OR password_hash ~ '^\{pbkdf2-sha256-v1\}[0-9a-f]{96}$' |
-| CHECK | identity_type = 'STUDENT' OR department_code IS NULL；auth_version > 0 |
-| 兼容规则 | PostgreSQL CHECK 接受 TRUE 或 NULL：identity_type 为空时该院系 CHECK 不禁止 department_code；院系资格由管理员核实，注册不能自报 |
-| 应用校验 | 本地账号匹配密码且账号、角色均启用才允许登录；哈希采用 PBKDF2-HMAC-SHA256，16 字节盐、600,000 次迭代、256 位结果 |
-| 应用校验 | 注册仅接收账号和密码；角色与启用状态变更校验 expectedAuthVersion，成功后递增；不能通过授权接口启用无密码旧账号 |
-| FOREIGN KEY | role_id 引用 iam.roles.id，ON DELETE RESTRICT、ON UPDATE RESTRICT；历史账号采用停用 |
+| CHECK | `CHECK (identity_type = 'STUDENT' OR department_code IS NULL)` |
+| CHECK | `CONSTRAINT users_identity_source_check CHECK (identity_source IN ('FUDAN_UIS','DEVELOPMENT','LOCAL'))` |
+| CHECK | `CONSTRAINT users_password_required CHECK (identity_source <> 'LOCAL' OR password_hash IS NOT NULL)` |
+| CHECK | `CONSTRAINT users_password_format CHECK (password_hash IS NULL OR password_hash ~ '^\{pbkdf2-sha256-v1\}[0-9a-f]{96}$')` |
+| 索引 | `CREATE INDEX users_role_idx ON iam.users(role_id)` |
+| 唯一索引 | `CREATE UNIQUE INDEX users_local_login_name_ci_idx ON iam.users(lower(login_name)) WHERE identity_source='LOCAL'` |
 
-V1 迁移不修改；V2 增加本地密码约束，保留全部旧账号、身份字段值及启用状态。当前用户接口不返回历史学校属性或密码哈希。详见 [普通账号登录](12-password-login.md)。
-
-## 2 教室座位与参数
-
-### resource.rooms
+### iam.system_settings（系统参数）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
+| `id` | `smallint` | 是 | 是 | 否 | 是 | — | `CHECK (id=1)` | — |
+| `version` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (version>0)` | — |
+| `max_reservation_hours` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (max_reservation_hours>0)` | — |
+| `before_start_reminder_minutes` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (before_start_reminder_minutes>0)` | — |
+| `after_start_reminder_minutes` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (after_start_reminder_minutes>0)` | — |
+| `checkin_deadline_minutes` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (checkin_deadline_minutes>after_start_reminder_minutes)` | — |
+| `approval_ttl_minutes` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (approval_ttl_minutes>0)` | — |
+| `repair_sla_minutes` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (repair_sla_minutes>0)` | — |
+
+**字段作用**
+
+- `id`：固定为 1，使系统参数只保留一行当前值。
+- `version`：当前数据版本，修改时用来检查是否已被其他操作更新。
+- `max_reservation_hours`：一次个人预约最多可以预约多少小时。
+- `before_start_reminder_minutes`：在预约开始前多少分钟发送提醒。
+- `after_start_reminder_minutes`：开始后仍未签到时，过多少分钟发送提醒。
+- `checkin_deadline_minutes`：预约开始后允许签到的分钟数。
+- `approval_ttl_minutes`：新整室申请使用的审批等待时限，单位为分钟。
+- `repair_sla_minutes`：新派单使用的维修时限，单位为分钟。
+
+初始化记录为：`version=1`、最长预约 `4` 小时、开始前提醒 `15` 分钟、开始后提醒 `10` 分钟、签到期限 `15` 分钟、审批时限 `60` 分钟、维修时限 `120` 分钟。这些是迁移插入的初始值，各字段没有设置 DEFAULT。
+
+### iam.system_settings_history（系统参数修改记录）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `actor_id` | `uuid` | 是 | 否 | 是 | 否 | — | `ON DELETE RESTRICT`；`ON UPDATE NO ACTION` | `iam.users.id` |
+| `changed_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `version` | `integer` | 是 | 否 | 否 | 是 | — | — | — |
+| `before_data` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `after_data` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `id`：这条记录的编号。
+- `actor_id`：执行这次操作的账号编号。
+- `changed_at`：本次系统参数修改的时间。
+- `version`：本次修改后的系统参数版本号。
+- `before_data`：保存修改前的整份系统参数。
+- `after_data`：保存修改后的整份系统参数。
+
+### iam.email_verification_challenges（邮箱验证记录）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `operation_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `user_id` | `uuid` | 是 | 否 | 是 | 否 | — | `ON DELETE RESTRICT`；`ON UPDATE NO ACTION` | `iam.users.id` |
+| `email` | `varchar(254)` | 是 | 否 | 否 | 否 | — | — | — |
+| `email_version` | `integer` | 是 | 否 | 否 | 否 | — | — | — |
+| `nonce` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `token_hash` | `char(64)` | 是 | 否 | 否 | 是 | — | — | — |
+| `issued_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `expires_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `consumed_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `delivery_status` | `varchar(32)` | 是 | 否 | 否 | 否 | `'UNKNOWN'` | — | — |
+| `delivery_error` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `next_retry_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `retryable` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+
+**字段作用**
+
+- `operation_id`：本次操作的编号；重试时仍使用同一个编号。
+- `user_id`：对应账号的编号。
+- `email`：本次验证针对的邮箱，换邮箱后旧验证记录不能继续使用。
+- `email_version`：本次验证对应的邮箱版本，用来识别换邮箱前的旧链接。
+- `nonce`：生成本次验证令牌时使用的随机值。
+- `token_hash`：验证令牌的摘要，用来查找验证记录。
+- `issued_at`：本次验证记录生成的时间。
+- `expires_at`：本次记录允许继续处理的截止时间。
+- `consumed_at`：验证链接首次使用成功的时间。
+- `delivery_status`：验证邮件最近一次发送结果。
+- `delivery_error`：验证邮件最近一次失败的原因代码。
+- `next_retry_at`：下一次允许尝试处理的时间。
+- `retryable`：是否允许再次尝试发送。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| CHECK | `CHECK(expires_at>issued_at)` |
+| 索引 | `CREATE INDEX email_challenges_user_idx ON iam.email_verification_challenges(user_id,issued_at)` |
+
+### iam.audit_outbox（账号与权限审计待办）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `event_key` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `actor_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
+| `action` | `varchar(128)` | 是 | 否 | 否 | 否 | — | — | — |
+| `source_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `payload` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `next_attempt_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `attempts` | `integer` | 是 | 否 | 否 | 否 | `0` | — | — |
+| `sent_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `last_error` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `event_key`：待发送审计事件的编号，与审计服务里的 event_key 对应。
+- `actor_id`：执行这次操作的账号编号。
+- `action`：这次执行的操作名称。
+- `source_id`：被操作的账号、角色或系统参数等对象的编号，具体含义由 action 决定。
+- `payload`：保存待发送的内容，失败后仍按同一份内容重试。
+- `created_at`：这条记录创建的时间。
+- `next_attempt_at`：下一次允许尝试发送审计事件的时间。
+- `attempts`：已经尝试处理的次数。
+- `sent_at`：审计服务确认已经接收这条事件的时间。
+- `last_error`：最近一次处理失败的原因代码。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| 索引 | `CREATE INDEX audit_outbox_pending_idx ON iam.audit_outbox(next_attempt_at) WHERE sent_at IS NULL` |
+
+## 2 教室、座位与资源状态
+
+### resource.rooms（教室）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
 | `code` | `varchar(64)` | 是 | 否 | 否 | 是 | — | — | — |
 | `name` | `varchar(128)` | 是 | 否 | 否 | 否 | — | — | — |
-| `campus` | `varchar(64)` | 是 | 否 | 否 | 组合 U2 | — | — | — |
-| `building` | `varchar(128)` | 是 | 否 | 否 | 组合 U2 | — | — | — |
-| `capacity` | `integer` | 是 | 否 | 否 | 否 | — | CHECK：大于 0 | — |
+| `campus` | `varchar(64)` | 是 | 否 | 否 | 组合 U1 | — | — | — |
+| `building` | `varchar(128)` | 是 | 否 | 否 | 组合 U1 | — | — | — |
+| `capacity` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (capacity > 0)` | — |
 | `department_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
 | `open_time` | `time` | 是 | 否 | 否 | 否 | — | — | — |
 | `close_time` | `time` | 是 | 否 | 否 | 否 | — | — | — |
 | `checkin_code` | `char(6)` | 否 | 否 | 否 | 否 | — | — | — |
 | `checkin_code_date` | `date` | 否 | 否 | 否 | 否 | — | — | — |
-| `external_code` | `varchar(128)` | 否 | 否 | 否 | 组合 U2 | — | — | — |
-| `booking_enabled` | `boolean` | 是 | 否 | 否 | 否 | false | — | — |
-| `enabled` | `boolean` | 是 | 否 | 否 | 否 | true | — | — |
+| `external_code` | `varchar(128)` | 否 | 否 | 否 | 组合 U1 | — | — | — |
+| `booking_enabled` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+| `enabled` | `boolean` | 是 | 否 | 否 | 否 | `true` | — | — |
+| `version` | `integer` | 是 | 否 | 否 | 否 | `1` | `CHECK (version>0)` | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `code`：全平台唯一的房间编号，例如 HD-HGX-103
-- `name`：展示房间名称
-- `campus`：保存校区名称供筛选，不单独建立校区表
-- `building`：保存楼宇名称供筛选，不单独建立楼宇表
-- `capacity`：整室申请时校验预计人数是否超出房间容量
-- `department_code`：空表示全校开放；非空时仅允许相同院系编码的用户使用
-- `open_time`：每天开始开放的时刻，按 Asia/Shanghai 解释
-- `close_time`：每天结束开放的时刻；小于开始时刻表示跨午夜，相等表示全天开放
-- `checkin_code`：当天签到编码，仅由教室屏幕专用接口展示，普通资源查询不返回
-- `checkin_code_date`：签到编码对应的上海日期，跨日后必须更新
-- `external_code`：可选的复旦查询源教室编号；无需独立映射表
-- `booking_enabled`：管理员取得实际管理授权后开放预约；仅查询的校方教室保持关闭
-- `enabled`：停用后禁止新预约，仍保留教室及历史记录
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `code`：系统内唯一的教室编号。
+- `name`：界面显示的教室名称。
+- `campus`：教室所在的校区名称。
+- `building`：教室所在的楼宇名称。
+- `capacity`：教室可以容纳的人数。
+- `department_code`：填入后，预约这间教室需要匹配用户的部门资格。
+- `open_time`：每天开始开放的时间。
+- `close_time`：每天结束开放的时间。
+- `checkin_code`：该教室当天使用的六位签到码。
+- `checkin_code_date`：当前签到码对应的日期。
+- `external_code`：外部系统里的教室编号，和校区、楼宇一起识别同一外部教室。
+- `booking_enabled`：是否允许接受新的预约。
+- `enabled`：是否允许继续使用这条数据。
+- `version`：当前数据版本，修改时用来检查是否已被其他操作更新。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (code) |
-| U2 | UNIQUE (campus, building, external_code) |
-| CHECK | checkin_code 与 checkin_code_date 同时为空或同时非空；编码为 6 位数字 |
-| 应用校验 | 院系代码为空时不限制院系；非空时与用户编码匹配。临时关闭使用 room_restrictions，不另建节假日表 |
-| 应用校验 | open_time < close_time 为当日时段；大于时为跨午夜；相等时表示全天开放 |
+| U1 | `CONSTRAINT rooms_external_source_unique UNIQUE(campus,building,external_code)` |
+| CHECK | `CONSTRAINT rooms_checkin_code_pair CHECK ((checkin_code IS NULL AND checkin_code_date IS NULL) OR (checkin_code IS NOT NULL AND checkin_code_date IS NOT NULL))` |
+| CHECK | `CONSTRAINT rooms_checkin_code_format CHECK (checkin_code IS NULL OR checkin_code ~ '^[0-9]{6}$')` |
 
-### resource.seats
+### resource.seats（座位）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `room_id` | `uuid` | 是 | 否 | 是 | 组合 U1 | — | — | resource.rooms.id |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `room_id` | `uuid` | 是 | 否 | 是 | 组合 U1 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `resource.rooms.id` |
 | `code` | `varchar(64)` | 是 | 否 | 否 | 组合 U1 | — | — | — |
-| `socket_type` | `varchar(16)` | 是 | 否 | 否 | 否 | 'NONE' | CHECK：NONE、FIXED、RAIL | — |
-| `enabled` | `boolean` | 是 | 否 | 否 | 否 | true | — | — |
+| `socket_type` | `varchar(16)` | 是 | 否 | 否 | 否 | `'NONE'` | `CHECK (socket_type IN('NONE','FIXED','RAIL'))` | — |
+| `enabled` | `boolean` | 是 | 否 | 否 | 否 | `true` | — | — |
+| `version` | `integer` | 是 | 否 | 否 | 否 | `1` | `CHECK (version>0)` | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `room_id`：标识座位所在的教室
-- `code`：教室内唯一座位编号，供选择和现场定位
-- `socket_type`：标注无插座、固定插座或导轨插座
-- `enabled`：控制座位是否允许新预约，不存储某个时段的占用状态
+- `id`：这条记录的编号。
+- `room_id`：对应的教室编号。
+- `code`：教室内的座位编号，同一教室内不能重复。
+- `socket_type`：座位的插座类型。
+- `enabled`：是否允许继续使用这条数据。
+- `version`：当前数据版本，修改时用来检查是否已被其他操作更新。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (room_id, code) |
-| INDEX | (room_id, enabled, socket_type) |
-| 应用校验 | 变更座位清单与整室占用使用同一教室事务锁；新增座位须同步既有整室占用 |
-| FOREIGN KEY | 所有实际外键 ON DELETE RESTRICT、ON UPDATE RESTRICT；有历史引用的账号和主数据采用停用 |
+| U1 | `UNIQUE(room_id,code)` |
 
-### resource.system_settings
+### resource.seat_allocations（座位实际占用）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `key` | `varchar(128)` | 是 | 否 | 否 | 是 | — | — | — |
-| `value` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `seat_id` | `uuid` | 是 | 否 | 是 | 组合 U1 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `resource.seats.id` |
+| `occupied_period` | `tstzrange` | 是 | 否 | 否 | 否 | — | — | — |
+| `source_module` | `varchar(8)` | 是 | 否 | 否 | 组合 U1 | — | `CHECK (source_module IN('M1','M2'))` | — |
+| `source_id` | `uuid` | 是 | 否 | 否 | 组合 U1 | — | — | — |
+| `source_version` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (source_version>0)` | — |
+| `user_id` | `uuid` | 否 | 否 | 是 | 否 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `iam.users.id` |
+| `active` | `boolean` | 是 | 否 | 否 | 否 | `true` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `key`：识别参数，例如最长预约小时数、提醒间隔、审批期限和维修期限
-- `value`：保存参数的具体值；由固定参数定义校验类型、单位和范围
+- `id`：这条记录的编号。
+- `seat_id`：对应的座位编号。
+- `occupied_period`：实际占用的时间段，包含开始时间、不包含结束时间。
+- `source_module`：来源业务类型，用来判断来源编号应怎样解释。
+- `source_id`：个人预约编号或整室申请编号，由 source_module 决定。
+- `source_version`：来源业务的版本号，用来拒绝迟到的旧请求。
+- `user_id`：个人占用时记录对应用户，整室占用时为空。
+- `active`：是否让这条占用继续参与座位和用户时间冲突检查。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (key) |
-| 应用校验 | 默认最长预约 4 小时，提前 15 分钟提醒，开始后 10 分钟提醒，15 分钟未签到取消。初始化只补缺失值 |
+| U1 | `UNIQUE(source_module,source_id,seat_id)` |
+| CHECK | `CHECK(NOT isempty(occupied_period) AND lower(occupied_period) IS NOT NULL AND upper(occupied_period) IS NOT NULL AND lower_inc(occupied_period) AND NOT upper_inc(occupied_period))` |
+| CHECK | `CHECK((source_module='M1' AND user_id IS NOT NULL) OR (source_module='M2' AND user_id IS NULL))` |
+| EXCLUDE | `EXCLUDE USING gist(seat_id WITH =,occupied_period WITH &&) WHERE(active)` |
+| EXCLUDE | `EXCLUDE USING gist(user_id WITH =,occupied_period WITH &&) WHERE(active AND source_module='M1')` |
 
-## 3 个人预约签到与违约
-
-### m1.seat_reservations
+### resource.room_restrictions（教室预约限制）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `user_id` | `uuid` | 是 | 否 | 是 | 否 | — | — | iam.users.id |
-| `seat_id` | `uuid` | 是 | 否 | 是 | 否 | — | — | resource.seats.id |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `room_id` | `uuid` | 是 | 否 | 是 | 否 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `resource.rooms.id` |
+| `blocked_period` | `tstzrange` | 是 | 否 | 否 | 否 | — | — | — |
+| `source_type` | `varchar(16)` | 是 | 否 | 否 | 组合 U1 | — | `CHECK (source_type IN('M3','ADMIN'))` | — |
+| `source_id` | `uuid` | 是 | 否 | 否 | 组合 U1 | — | — | — |
+| `source_version` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (source_version>0)` | — |
+| `reason` | `text` | 是 | 否 | 否 | 否 | — | — | — |
+| `active` | `boolean` | 是 | 否 | 否 | 否 | — | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+
+**字段作用**
+
+- `id`：这条记录的编号。
+- `room_id`：对应的教室编号。
+- `blocked_period`：该教室被限制预约的时间范围。
+- `source_type`：限制来自维修还是管理员操作。
+- `source_id`：维修工单或管理员限制操作的编号。
+- `source_version`：来源业务的版本号，用来拒绝迟到的旧请求。
+- `reason`：本次处理的原因。
+- `active`：这条资源状态是否仍然生效。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| U1 | `UNIQUE(source_type,source_id)` |
+| 索引 | `CREATE INDEX room_restrictions_active ON resource.room_restrictions(room_id,active)` |
+
+### resource.resource_operations（资源操作与历史快照）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `operation_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `source_module` | `varchar(16)` | 是 | 否 | 否 | 否 | — | — | — |
+| `source_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `source_version` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (source_version>0)` | — |
+| `kind` | `varchar(16)` | 是 | 否 | 否 | 否 | — | — | — |
+| `room_id` | `uuid` | 否 | 否 | 是 | 否 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `resource.rooms.id` |
+| `fingerprint` | `char(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `snapshot` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `applied_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `replay` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+| `audit_state` | `varchar(16)` | 是 | 否 | 否 | 否 | `'SKIP'` | `CHECK (audit_state IN('SKIP','PENDING','SENT','FAILED'))` | — |
+| `audit_attempts` | `integer` | 是 | 否 | 否 | 否 | `0` | — | — |
+| `audit_next` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `audit_payload` | `jsonb` | 否 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `operation_id`：本次操作的编号；重试时仍使用同一个编号。
+- `source_module`：来源业务类型，用来判断来源编号应怎样解释。
+- `source_id`：来源业务的编号，和来源类型一起确定是哪一笔业务。
+- `source_version`：来源业务的版本号，用来拒绝迟到的旧请求。
+- `kind`：区分占用、释放、限制和教室座位修改等资源操作。
+- `room_id`：对应的教室编号。
+- `fingerprint`：保存操作参数的摘要，重试时检查参数是否一致。
+- `snapshot`：保存本次资源操作后的状态，供重复请求和历史统计使用。
+- `applied_at`：资源操作写入记录的时间。
+- `replay`：是否只是已有操作的重复回执，避免重复计算历史变化。
+- `audit_state`：这次资源操作的审计消息处理进度。
+- `audit_attempts`：这条资源审计消息已尝试发送的次数。
+- `audit_next`：下一次允许发送资源审计消息的时间。
+- `audit_payload`：需要交给审计服务保存的事件内容。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| 索引 | `CREATE INDEX resource_operations_source ON resource.resource_operations(source_module,source_id,source_version DESC)` |
+| 索引 | `CREATE INDEX resource_operations_history ON resource.resource_operations(room_id,applied_at)` |
+| 索引 | `CREATE INDEX resource_audit_pending ON resource.resource_operations(audit_state,audit_next)` |
+
+## 3 个人预约
+
+### m1.seat_reservations（个人预约）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `user_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `seat_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
 | `starts_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
-| `ends_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | CHECK：ends_at > starts_at | — |
-| `status` | `varchar(24)` | 是 | 否 | 否 | 否 | 'RESERVED' | CHECK：RESERVED、CHECKED_IN、COMPLETED、CANCELLED、NO_SHOW | — |
+| `ends_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | `CHECK (ends_at > starts_at)` | — |
+| `status` | `varchar(24)` | 是 | 否 | 否 | 否 | `'RESERVED'` | — | — |
 | `checked_in_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
 | `checkin_deadline_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
-| `cancel_reason` | `varchar(32)` | 否 | 否 | 否 | 否 | — | CHECK：USER、NO_SHOW、REPAIR、ADMIN、EXTERNAL_CONFLICT | — |
+| `cancel_reason` | `varchar(32)` | 否 | 否 | 否 | 否 | — | — | — |
 | `cancelled_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
 | `policy_snapshot` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
-| `version` | `integer` | 是 | 否 | 否 | 否 | 1 | CHECK：大于 0 | — |
+| `version` | `integer` | 是 | 否 | 否 | 否 | `1` | `CHECK (version > 0)` | — |
+| `room_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
+| `room_snapshot` | `jsonb` | 否 | 否 | 否 | 否 | — | — | — |
+| `seat_snapshot` | `jsonb` | 否 | 否 | 否 | 否 | — | — | — |
+| `confirmed_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `terminal_status` | `varchar(24)` | 否 | 否 | 否 | 否 | — | — | — |
+| `resource_version` | `integer` | 是 | 否 | 否 | 否 | `1` | `CHECK (resource_version>0)` | — |
+| `resource_state` | `varchar(24)` | 是 | 否 | 否 | 否 | `'CONFIRMED'` | `CHECK (resource_state IN ('PENDING','CONFIRMED','RELEASE_PENDING','RELEASED','REJECTED'))` | — |
+| `resource_receipt` | `jsonb` | 否 | 否 | 否 | 否 | — | — | — |
+| `failure_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `record_seq` | `bigint` | 是 | 否 | 否 | 否 | 自动生成（IDENTITY） | `GENERATED ALWAYS AS IDENTITY` | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `user_id`：记录预约用户
-- `seat_id`：记录预约座位
-- `starts_at`：计划开始使用座位的时间
-- `ends_at`：计划结束使用座位的时间
-- `status`：同时承载预约生命周期和违约记录；NO_SHOW 就是一条未签到违约
-- `checked_in_at`：签到成功的实际时间，不另建签到记录表
-- `checkin_deadline_at`：保存该次预约的签到截止时间，避免以后修改参数影响已创建预约
-- `cancel_reason`：区分用户取消、未签到、维修或管理员取消
-- `cancelled_at`：预约取消或失约终止的时间
-- `policy_snapshot`：固定保存本次预约的时长、提醒和签到规则
-- `version`：用于签到、取消和超时任务的并发更新判断
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `user_id`：对应账号的编号。
+- `seat_id`：对应的座位编号。
+- `starts_at`：预约开始的时间。
+- `ends_at`：预约结束的时间。
+- `status`：记录当前进行到哪一步。
+- `checked_in_at`：用户成功签到的时间。
+- `checkin_deadline_at`：这次预约最晚允许签到的时间。
+- `cancel_reason`：取消或系统终结这笔业务的原因。
+- `cancelled_at`：这笔业务被取消或终结的时间。
+- `policy_snapshot`：保存创建预约时采用的规则，之后改配置不重算旧预约。
+- `version`：当前数据版本，修改时用来检查是否已被其他操作更新。
+- `room_id`：预约时对应的教室编号，保留的旧预约记录允许为空。
+- `room_snapshot`：保存预约时的教室信息，历史页面不随教室改名而变化。
+- `seat_snapshot`：保存预约时的座位信息，历史页面不随座位改名而变化。
+- `confirmed_at`：资源服务首次确认座位占用成功的时间。
+- `terminal_status`：等待释放座位结束后，这笔预约应变成的最终状态。
+- `resource_version`：发给资源服务的版本号，防止迟到请求恢复已取消的占用。
+- `resource_state`：记录资源是否已经确认占用、正在释放或已经释放。
+- `resource_receipt`：保存资源服务返回的确认结果。
+- `failure_code`：创建或处理失败的原因代码。
+- `record_seq`：数据库生成的递增记录号，翻页时用来固定首次查询范围。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| CHECK | status = CHECKED_IN 时 checked_in_at 非空；status IN (CANCELLED, NO_SHOW) 时 cancel_reason、cancelled_at 非空 |
-| INDEX | (user_id, starts_at DESC)；(status, checkin_deadline_at) |
-| 应用校验 | 整点小时预约且不超规则时长；检查开放时间、院系和资源冲突。仅用本人预约及当天教室编码签到 |
-| 应用校验 | 违约页面按 status = NO_SHOW 查询；历史复用创建新预约。维修取消不记违约；没有独立申诉、多轮纠正流程 |
-| FOREIGN KEY | 所有实际外键 ON DELETE RESTRICT、ON UPDATE RESTRICT；有历史引用的账号和主数据采用停用 |
+| CHECK | `CHECK (status <> 'CHECKED_IN' OR checked_in_at IS NOT NULL)` |
+| CHECK | `CHECK (status NOT IN ('CANCELLED','NO_SHOW') OR (cancel_reason IS NOT NULL AND cancelled_at IS NOT NULL))` |
+| CHECK | `CHECK (checkin_deadline_at > starts_at)` |
+| CHECK | `CONSTRAINT seat_reservations_status_check CHECK (status IN ('PENDING','RESERVED','CHECKED_IN','COMPLETED','CANCEL_PENDING','CANCELLED','NO_SHOW','REJECTED'))` |
+| CHECK | `CONSTRAINT seat_reservations_cancel_reason_check CHECK(cancel_reason IN ('USER','NO_SHOW','REPAIR','ADMIN','EXTERNAL_CONFLICT','SYSTEM_TIMEOUT','SYSTEM_MAINTENANCE'))` |
+| 索引 | `CREATE INDEX seat_reservations_user_start ON m1.seat_reservations(user_id,starts_at DESC)` |
+| 索引 | `CREATE INDEX seat_reservations_status_deadline ON m1.seat_reservations(status,checkin_deadline_at)` |
+| 唯一索引 | `CREATE UNIQUE INDEX reservation_record_seq ON m1.seat_reservations(record_seq)` |
+| 索引 | `CREATE INDEX reservation_room_active ON m1.seat_reservations(room_id,status,ends_at)` |
 
-## 4 统一占用与维修限制
-
-### resource.seat_allocations
+### m1.reminder_tasks（旧预约的签到提醒待办）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `seat_id` | `uuid` | 是 | 否 | 是 | 组合 U1 | — | — | resource.seats.id |
-| `occupied_period` | `tstzrange` | 是 | 否 | 否 | 否 | — | CHECK：非空、有限上下界、[开始,结束) | — |
-| `source_module` | `varchar(8)` | 是 | 否 | 否 | 组合 U1 | — | CHECK：M1、M2 | — |
-| `source_id` | `uuid` | 是 | 否 | 否 | 组合 U1 | — | — | 逻辑引用：m1.seat_reservations / m2.classroom_requests |
-| `source_version` | `integer` | 是 | 否 | 否 | 否 | 1 | CHECK：大于 0 | — |
-| `user_id` | `uuid` | 否 | 否 | 是 | 否 | — | — | iam.users.id |
-| `active` | `boolean` | 是 | 否 | 否 | 否 | true | — | — |
+| `event_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `reservation_id` | `uuid` | 是 | 否 | 是 | 是 | — | `ON DELETE NO ACTION`；`ON UPDATE NO ACTION` | `m1.seat_reservations.id` |
+| `scheduled_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `payload` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `status` | `varchar(24)` | 是 | 否 | 否 | 否 | `'PENDING'` | `CHECK (status IN ('PENDING','SENT','CANCEL_PENDING','CANCELLED'))` | — |
+| `attempts` | `integer` | 是 | 否 | 否 | 否 | `0` | `CHECK (attempts >= 0)` | — |
+| `next_retry_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `last_error_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `seat_id`：记录实际占用的座位
-- `occupied_period`：以左闭右开的时间范围检测重叠
-- `source_module`：区分个人预约 M1 和整室审批 M2
-- `source_id`：记录来源预约或整室申请 ID；按 source_module 解释
-- `source_version`：阻止迟到的旧占用指令覆盖更新的释放指令
-- `user_id`：M1 时填写预约用户，用于阻止同一人同时占用多个座位；M2 为空
-- `active`：是否仍占用资源；解除后保留来源记录
+- `event_id`：旧预约的签到提醒事件编号，重复投递时仍使用同一编号。
+- `reservation_id`：对应的个人预约编号。
+- `scheduled_at`：计划发送这条消息的时间。
+- `payload`：保留的旧预约需要发送的签到提醒内容。
+- `status`：记录当前进行到哪一步。
+- `attempts`：已经尝试处理的次数。
+- `next_retry_at`：下一次允许尝试处理的时间。
+- `last_error_code`：最近一次处理失败的原因代码。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (source_module, source_id, seat_id) |
-| CHECK | source_module = M1 时 user_id 非空；M2 时为空 |
-| EXCLUDE | GiST (seat_id WITH =, occupied_period WITH &&) WHERE active |
-| EXCLUDE | GiST (user_id WITH =, occupied_period WITH &&) WHERE active AND source_module = 'M1' |
-| 应用校验 | M2 为教室全部启用座位批量写占用；同一教室使用统一事务入口。相同来源版本重复调用无副作用，旧版本拒绝 |
-| 应用校验 | 先到的释放指令也保存失效记录和版本，防止稍后重试的旧占用重新生效 |
-| FOREIGN KEY | 所有实际外键 ON DELETE RESTRICT、ON UPDATE RESTRICT；有历史引用的账号和主数据采用停用 |
+| 索引 | `CREATE INDEX reminder_tasks_due ON m1.reminder_tasks(next_retry_at,scheduled_at) WHERE status IN ('PENDING','CANCEL_PENDING')` |
 
-### resource.room_restrictions
+### m1.reservation_commands（个人预约操作去重）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `room_id` | `uuid` | 是 | 否 | 是 | 否 | — | — | resource.rooms.id |
-| `blocked_period` | `tstzrange` | 是 | 否 | 否 | 否 | — | CHECK：非空、[开始,结束) | — |
-| `source_type` | `varchar(16)` | 是 | 否 | 否 | 组合 U1 | — | CHECK：M3、ADMIN | — |
-| `source_id` | `uuid` | 是 | 否 | 否 | 组合 U1 | — | — | 逻辑引用：m3.repair_orders / 管理员操作 |
-| `source_version` | `integer` | 是 | 否 | 否 | 否 | 1 | CHECK：大于 0 | — |
-| `reason` | `text` | 是 | 否 | 否 | 否 | — | — | — |
-| `active` | `boolean` | 是 | 否 | 否 | 否 | true | — | — |
+| `operation_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `reservation_id` | `uuid` | 是 | 否 | 是 | 否 | — | `ON DELETE CASCADE`；`ON UPDATE NO ACTION` | `m1.seat_reservations.id` |
+| `actor_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `action` | `varchar(32)` | 是 | 否 | 否 | 否 | — | — | — |
+| `fingerprint` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `room_id`：记录被限制的教室
-- `blocked_period`：整室不可预约的时间范围；维修可暂不设结束时间
-- `source_type`：区分维修工单和管理员临时关闭
-- `source_id`：M3 使用工单 ID，ADMIN 使用该次关闭操作的稳定 UUID
-- `source_version`：阻止旧的维修下架指令覆盖更新的恢复状态
-- `reason`：说明维修或关闭原因
-- `active`：表示此来源的限制是否生效；仅解除自己的来源
+- `operation_id`：本次操作的编号；重试时仍使用同一个编号。
+- `reservation_id`：对应的个人预约编号。
+- `actor_id`：执行这次操作的账号编号。
+- `action`：本次预约操作类型，用于核对重复请求。
+- `fingerprint`：保存操作参数的摘要，重试时检查参数是否一致。
+- `created_at`：这条记录创建的时间。
 
-| 约束类型 | 定义 |
-| --- | --- |
-| U1 | UNIQUE (source_type, source_id) |
-| INDEX | (room_id, active)；blocked_period USING GiST |
-| 应用校验 | 多张维修单允许重叠；解除一条不能清除其他限制。受影响预约取消并通知，不计违约 |
-| 应用校验 | 状态来源和变更写入 audit_logs，不再维护重复的资源日志表；保留来源版本以处理乱序重试 |
-| FOREIGN KEY | 所有实际外键 ON DELETE RESTRICT、ON UPDATE RESTRICT；有历史引用的账号和主数据采用停用 |
-
-## 5 整教室申请与多级审批
-
-### m2.classroom_requests
+### m1.reservation_outbox（个人预约持久待办）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `applicant_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | 逻辑引用：iam.users.id |
-| `room_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | 逻辑引用：resource.rooms.id |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `reservation_id` | `uuid` | 否 | 否 | 是 | 否 | — | `ON DELETE CASCADE`；`ON UPDATE NO ACTION` | `m1.seat_reservations.id` |
+| `kind` | `varchar(24)` | 是 | 否 | 否 | 否 | — | `CHECK (kind IN ('ALLOCATE','RELEASE','NOTIFY','NOTIFY_CANCEL','AUDIT'))` | — |
+| `payload` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `frozen` | `boolean` | 是 | 否 | 否 | 否 | `true` | — | — |
+| `reminder_kind` | `varchar(16)` | 否 | 否 | 否 | 否 | — | — | — |
+| `status` | `varchar(16)` | 是 | 否 | 否 | 否 | `'PENDING'` | `CHECK (status IN ('PENDING','CLAIMED','DONE','CANCELLED'))` | — |
+| `attempts` | `integer` | 是 | 否 | 否 | 否 | `0` | `CHECK (attempts>=0)` | — |
+| `next_retry_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `lease_until` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `claim_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
+| `response` | `jsonb` | 否 | 否 | 否 | 否 | — | — | — |
+| `last_error` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `id`：这条记录的编号。
+- `reservation_id`：对应的个人预约编号。
+- `kind`：区分确认占用、释放座位、发送通知、取消通知和发送审计等待办。
+- `payload`：保存待发送的内容，失败后仍按同一份内容重试。
+- `frozen`：是否已经固定完整通知内容和收件地址，重试时不再重建。
+- `reminder_kind`：这条待办属于开始前提醒还是开始后提醒。
+- `status`：记录当前进行到哪一步。
+- `attempts`：已经尝试处理的次数。
+- `next_retry_at`：下一次允许尝试处理的时间。
+- `lease_until`：本次领取待办的有效时间，超时后允许重新领取。
+- `claim_id`：本次领取待办的编号，避免过期处理者覆盖新结果。
+- `response`：保存资源或消息服务返回的处理结果。
+- `last_error`：最近一次处理失败的原因代码。
+- `created_at`：这条记录创建的时间。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| 索引 | `CREATE INDEX reservation_outbox_due ON m1.reservation_outbox(next_retry_at) WHERE status IN ('PENDING','CLAIMED')` |
+
+### m1.reservation_reminders（预约提醒登记）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `reservation_id` | `uuid` | 是 | 组合 PK | 是 | 组合 PK | — | `ON DELETE CASCADE`；`ON UPDATE NO ACTION` | `m1.seat_reservations.id` |
+| `kind` | `varchar(16)` | 是 | 组合 PK | 否 | 组合 PK | — | `CHECK (kind IN ('BEFORE','AFTER'))` | — |
+| `event_id` | `uuid` | 是 | 否 | 否 | 是 | — | — | — |
+| `due_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `reservation_id`：对应的个人预约编号。
+- `kind`：区分开始前提醒 BEFORE 和开始后提醒 AFTER。
+- `event_id`：这一种提醒对应的通知事件编号。
+- `due_at`：这一条提醒应当发送的时间。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| 组合主键 | `PRIMARY KEY(reservation_id,kind)` |
+
+### m1.reservation_violations（未签到违约记录）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `reservation_id` | `uuid` | 是 | 是 | 是 | 是 | — | `ON DELETE CASCADE`；`ON UPDATE NO ACTION` | `m1.seat_reservations.id` |
+| `user_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `occurred_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `reason` | `varchar(16)` | 是 | 否 | 否 | 否 | — | `CHECK (reason='NO_SHOW')` | — |
+
+**字段作用**
+
+- `reservation_id`：对应的个人预约编号。
+- `user_id`：对应账号的编号。
+- `occurred_at`：业务实际发生的时间。
+- `reason`：记录未签到造成的违约，固定为 NO_SHOW。
+
+### m1.maintenance_sources（个人预约收到的维修状态）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `source_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `room_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `source_version` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (source_version>0)` | — |
+| `active` | `boolean` | 是 | 否 | 否 | 否 | — | — | — |
+| `receipt` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `fingerprint` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `source_id`：发来维修状态的维修工单编号。
+- `room_id`：对应的教室编号。
+- `source_version`：来源业务的版本号，用来拒绝迟到的旧请求。
+- `active`：这条资源状态是否仍然生效。
+- `receipt`：保存资源服务已核实的维修限制状态。
+- `fingerprint`：保存操作参数的摘要，重试时检查参数是否一致。
+- `updated_at`：这条记录最近一次修改的时间。
+
+### m1.maintenance_operations（个人预约维修事件去重）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `operation_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `fingerprint` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `response` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `operation_id`：本次操作的编号；重试时仍使用同一个编号。
+- `fingerprint`：保存操作参数的摘要，重试时检查参数是否一致。
+- `response`：保存这次维修事件的处理结果，重复请求直接返回。
+- `created_at`：这条记录创建的时间。
+
+## 4 整间教室申请与审批
+
+### m2.classroom_requests（整间教室申请）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `applicant_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `room_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
 | `starts_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
-| `ends_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | CHECK：ends_at > starts_at | — |
-| `purpose` | `text` | 是 | 否 | 否 | 否 | — | — | — |
-| `attendee_count` | `integer` | 是 | 否 | 否 | 否 | — | CHECK：大于 0 | — |
-| `status` | `varchar(24)` | 是 | 否 | 否 | 否 | 'PENDING' | CHECK：PENDING、APPROVED、REJECTED、CANCELLED、EXPIRED、CONFLICT | — |
+| `ends_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | `CHECK (ends_at > starts_at)` | — |
+| `purpose` | `text` | 是 | 否 | 否 | 否 | — | `CHECK (length(btrim(purpose)) > 0)` | — |
+| `attendee_count` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (attendee_count > 0)` | — |
+| `status` | `varchar(24)` | 是 | 否 | 否 | 否 | `'PENDING'` | `CHECK (status IN ('PENDING','RESOURCE_PENDING','APPROVED','REJECTED','CANCELLED','EXPIRED','CONFLICT'))` | — |
 | `expires_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
-| `version` | `integer` | 是 | 否 | 否 | 否 | 1 | CHECK：大于 0 | — |
+| `version` | `integer` | 是 | 否 | 否 | 否 | `1` | `CHECK (version > 0)` | — |
+| `flow_version` | `varchar(120)` | 是 | 否 | 否 | 否 | — | `CHECK (length(btrim(flow_version)) > 0)` | — |
+| `resource_state` | `varchar(24)` | 是 | 否 | 否 | 否 | `'UNCONFIRMED'` | — | — |
+| `resource_version` | `integer` | 是 | 否 | 否 | 否 | `0` | `CHECK (resource_version>=0)` | — |
+| `resource_abnormal` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+| `cancel_reason` | `varchar(32)` | 否 | 否 | 否 | 否 | — | — | — |
+| `cancelled_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `applicant_id`：保存申请人 ID，通过身份服务验证资格和权限
-- `room_id`：保存申请教室 ID，通过资源服务验证
-- `starts_at`：申请使用整室的开始时间
-- `ends_at`：申请结束时间
-- `purpose`：说明用途，供管理员审批
-- `attendee_count`：预计参与人数，不得超过教室容量
-- `status`：保存申请、通过、驳回、撤销、超时和冲突结果
-- `expires_at`：到期未完成则自动撤销，并确保来源占用被解除
-- `version`：防止审批、撤销和超时任务并发覆盖，并传给资源服务去重
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `applicant_id`：提交整室申请的账号编号。
+- `room_id`：对应的教室编号。
+- `starts_at`：预约开始的时间。
+- `ends_at`：预约结束的时间。
+- `purpose`：申请这间教室的用途。
+- `attendee_count`：预计参加的人数。
+- `status`：记录当前进行到哪一步。
+- `expires_at`：按提交时审批时限保存的到期时间，后续修改配置不会重算。
+- `version`：当前数据版本，修改时用来检查是否已被其他操作更新。
+- `flow_version`：提交申请时采用的审批配置版本，后续改配置不重排已有申请。
+- `resource_state`：记录资源是否已经确认占用、正在释放或已经释放。
+- `resource_version`：发给资源服务的版本号，防止迟到请求恢复已取消的占用。
+- `resource_abnormal`：标记申请的教室是否受维修影响，供页面提示异常。
+- `cancel_reason`：取消或系统终结这笔业务的原因。
+- `cancelled_at`：这笔业务被取消或终结的时间。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| INDEX | (applicant_id, created_at DESC)；(status, expires_at) |
-| 应用校验 | 申请人同时满足角色权限和 can_apply_room；禁止自审；申请范围满足教室开放和院系条件 |
-| 应用校验 | 按配置的管理员顺序生成至少两级 approval_tasks。所有节点通过且资源占用确认成功后才写 APPROVED |
-| 应用校验 | 待审批不硬占座位；驳回、撤销、超时按来源 ID 幂等释放。正在同步的动作由 service_tasks 展示和恢复 |
+| 索引 | `CREATE INDEX classroom_requests_applicant_created ON m2.classroom_requests (applicant_id, created_at DESC)` |
+| 索引 | `CREATE INDEX classroom_requests_status_expiry ON m2.classroom_requests (status, expires_at)` |
 
-### m2.approval_tasks
+### m2.approval_tasks（逐级审批任务）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `request_id` | `uuid` | 是 | 否 | 是 | 组合 U1、组合 U2 | — | — | m2.classroom_requests.id |
-| `step_no` | `smallint` | 是 | 否 | 否 | 组合 U1 | — | CHECK：大于 0 | — |
-| `approver_id` | `uuid` | 是 | 否 | 否 | 组合 U2 | — | — | 逻辑引用：iam.users.id |
-| `status` | `varchar(16)` | 是 | 否 | 否 | 否 | 'WAITING' | CHECK：WAITING、PENDING、APPROVED、REJECTED、EXPIRED、CANCELLED | — |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `request_id` | `uuid` | 是 | 否 | 是 | 组合 U1；组合 U2；组合 U3 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `m2.classroom_requests.id` |
+| `step_no` | `smallint` | 是 | 否 | 否 | 组合 U1 | — | `CHECK (step_no > 0)` | — |
+| `approver_id` | `uuid` | 是 | 否 | 否 | 组合 U2 | — | — | — |
+| `status` | `varchar(16)` | 是 | 否 | 否 | 否 | `'WAITING'` | `CHECK (status IN ('WAITING','PENDING','APPROVED','REJECTED','EXPIRED','CANCELLED'))` | — |
 | `due_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
 | `acted_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `decided_by` | `uuid` | 否 | 否 | 否 | 组合 U3 | — | — | — |
 | `comment` | `text` | 否 | 否 | 否 | 否 | — | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `request_id`：关联具体整教室申请
-- `step_no`：标明一级、二级等审批顺序
-- `approver_id`：创建申请时固定本级审批人，不维护通用流程模板
-- `status`：区分尚未轮到、待处理、通过、驳回、超时或取消
-- `due_at`：本节点激活后的截止时间
-- `acted_at`：实际作出审批决定的时间
-- `comment`：保存通过意见或驳回原因
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `request_id`：对应的整室申请编号。
+- `step_no`：这是第几步审批。
+- `approver_id`：这一步指定的审批人账号编号。
+- `status`：记录当前进行到哪一步。
+- `due_at`：这一步审批的到期时间，尚未轮到时可以为空。
+- `acted_at`：审批人实际处理这一步的时间。
+- `decided_by`：实际作出决定的账号编号，保留可信登录人的身份。
+- `comment`：审批意见，驳回时需要写明理由。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (request_id, step_no) |
-| U2 | UNIQUE (request_id, approver_id) |
-| CHECK | status = PENDING 时 due_at 非空；APPROVED/REJECTED 时 acted_at 非空；REJECTED 时 comment 非空 |
-| INDEX | (approver_id, status, due_at) |
-| 应用校验 | 仅指定审批人可处理当前节点；申请人与各级审批人互不相同；状态条件更新防重复审批 |
-| 应用校验 | 审批管理员顺序与超时参数保存于 system_settings；任务实例保存人员与期限，不随之后改配置而改变 |
-| FOREIGN KEY | 所有实际外键 ON DELETE RESTRICT、ON UPDATE RESTRICT；有历史引用的账号和主数据采用停用 |
+| U1 | `UNIQUE (request_id, step_no)` |
+| U2 | `UNIQUE (request_id, approver_id)` |
+| U3 | `UNIQUE (request_id, decided_by)` |
+| CHECK | `CHECK (status <> 'PENDING' OR due_at IS NOT NULL)` |
+| CHECK | `CHECK (status NOT IN ('APPROVED','REJECTED') OR (acted_at IS NOT NULL AND decided_by IS NOT NULL))` |
+| CHECK | `CHECK (status <> 'REJECTED' OR (comment IS NOT NULL AND length(btrim(comment)) > 0))` |
+| 索引 | `CREATE INDEX approval_tasks_actor_status_due ON m2.approval_tasks (approver_id, status, due_at)` |
 
-## 6 报修派单验收与评价
-
-### m3.repair_orders
+### m2.configuration（审批人配置）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `reporter_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | 逻辑引用：iam.users.id |
-| `room_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | 逻辑引用：resource.rooms.id |
-| `seat_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | 逻辑引用：resource.seats.id |
-| `description` | `text` | 是 | 否 | 否 | 否 | — | — | — |
-| `technician_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | 逻辑引用：iam.users.id |
-| `status` | `varchar(24)` | 是 | 否 | 否 | 否 | 'SUBMITTED' | CHECK：SUBMITTED、ASSIGNED、IN_PROGRESS、PENDING_ACCEPTANCE、COMPLETED、CANCELLED | — |
-| `due_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
-| `escalation_level` | `smallint` | 是 | 否 | 否 | 否 | 0 | CHECK：大于等于 0 | — |
+| `singleton` | `boolean` | 是 | 是 | 否 | 是 | `true` | `CHECK (singleton)` | — |
+| `version` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (version>0)` | — |
+| `approver_ids` | `uuid[]` | 是 | 否 | 否 | 否 | — | `CHECK (cardinality(approver_ids)>=2)` | — |
+
+**字段作用**
+
+- `singleton`：固定为 true，使审批配置表最多保留一行。
+- `version`：当前审批人配置的版本号。
+- `approver_ids`：按审批顺序保存审批人的账号编号。
+
+### m2.request_operations（整室申请操作去重）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `operation_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `actor_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `fingerprint` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `request_id` | `uuid` | 是 | 否 | 是 | 否 | — | `ON DELETE NO ACTION`；`ON UPDATE NO ACTION` | `m2.classroom_requests.id` |
+| `kind` | `varchar(16)` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `operation_id`：本次操作的编号；重试时仍使用同一个编号。
+- `actor_id`：执行这次操作的账号编号。
+- `fingerprint`：保存操作参数的摘要，重试时检查参数是否一致。
+- `request_id`：对应的整室申请编号。
+- `kind`：这条记录需要处理的任务类型。
+
+### m2.request_history（整室申请处理记录）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `request_id` | `uuid` | 是 | 否 | 是 | 否 | — | `ON DELETE NO ACTION`；`ON UPDATE NO ACTION` | `m2.classroom_requests.id` |
+| `actor_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
+| `status` | `varchar(24)` | 是 | 否 | 否 | 否 | — | — | — |
+| `reason` | `text` | 否 | 否 | 否 | 否 | — | — | — |
+| `occurred_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `request_version` | `integer` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `id`：这条记录的编号。
+- `request_id`：对应的整室申请编号。
+- `actor_id`：执行这次操作的账号编号。
+- `status`：这条处理记录发生后，申请单的状态。
+- `reason`：记录超时、开始时间已到、取消等处理原因。
+- `occurred_at`：业务实际发生的时间。
+- `request_version`：记录这一步发生时的申请单版本。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| 索引 | `CREATE INDEX approval_history_order ON m2.request_history(request_id,occurred_at,id)` |
+
+### m2.outbox（整室申请持久待办）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `request_id` | `uuid` | 否 | 否 | 是 | 否 | — | `ON DELETE NO ACTION`；`ON UPDATE NO ACTION` | `m2.classroom_requests.id` |
+| `kind` | `varchar(16)` | 是 | 否 | 否 | 否 | — | — | — |
+| `payload` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `prepared` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+| `state` | `varchar(16)` | 是 | 否 | 否 | 否 | `'PENDING'` | `CHECK (state IN('PENDING','DONE','ERROR'))` | — |
+| `attempts` | `integer` | 是 | 否 | 否 | 否 | `0` | — | — |
+| `next_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `last_error` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `id`：这条记录的编号。
+- `request_id`：对应的整室申请编号。
+- `kind`：区分确认占用、释放教室、发送通知和发送审计等待办。
+- `payload`：保存待发送的内容，失败后仍按同一份内容重试。
+- `prepared`：是否已固定通知内容和收件邮箱，避免重试时改变消息。
+- `state`：这条待办目前的处理进度。
+- `attempts`：已经尝试处理的次数。
+- `next_at`：下一次允许领取这条待办的时间。
+- `last_error`：最近一次处理失败的原因代码。
+- `created_at`：这条记录创建的时间。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| 索引 | `CREATE INDEX approval_outbox_due ON m2.outbox(state,next_at)` |
+
+### m2.maintenance_sources（整室申请收到的维修状态）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `source_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `room_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `source_version` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (source_version>0)` | — |
+| `active` | `boolean` | 是 | 否 | 否 | 否 | — | — | — |
+| `effective_raw` | `text` | 是 | 否 | 否 | 否 | — | — | — |
+| `fingerprint` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `source_id`：发来维修状态的维修工单编号。
+- `room_id`：对应的教室编号。
+- `source_version`：来源业务的版本号，用来拒绝迟到的旧请求。
+- `active`：这条资源状态是否仍然生效。
+- `effective_raw`：保存资源服务返回的生效时间原文，避免小数秒精度变化影响重复判断。
+- `fingerprint`：保存操作参数的摘要，重试时检查参数是否一致。
+
+### m2.maintenance_operations（整室申请维修事件去重）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `operation_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `fingerprint` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `receipt` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `operation_id`：本次操作的编号；重试时仍使用同一个编号。
+- `fingerprint`：保存操作参数的摘要，重试时检查参数是否一致。
+- `receipt`：保存这次维修事件的处理结果，重复请求直接返回。
+
+## 5 报修与维修
+
+### m3.repair_orders（维修工单）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `reporter_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `room_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `seat_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
+| `description` | `text` | 是 | 否 | 否 | 否 | — | `CHECK (btrim(description)<>'')` | — |
+| `technician_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
+| `status` | `varchar(24)` | 是 | 否 | 否 | 否 | `'SUBMITTED'` | — | — |
+| `due_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `escalation_level` | `smallint` | 是 | 否 | 否 | 否 | `0` | `CHECK (escalation_level>=0)` | — |
 | `repair_report` | `text` | 否 | 否 | 否 | 否 | — | — | — |
-| `accepted_by` | `uuid` | 否 | 否 | 否 | 否 | — | — | 逻辑引用：iam.users.id |
+| `accepted_by` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
 | `accepted_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
 | `acceptance_comment` | `text` | 否 | 否 | 否 | 否 | — | — | — |
-| `rating` | `smallint` | 否 | 否 | 否 | 否 | — | CHECK：1 至 5 | — |
+| `rating` | `smallint` | 否 | 否 | 否 | 否 | — | `CHECK (rating BETWEEN 1 AND 5)` | — |
 | `evaluation` | `text` | 否 | 否 | 否 | 否 | — | — | — |
 | `evaluated_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
-| `version` | `integer` | 是 | 否 | 否 | 否 | 1 | CHECK：大于 0 | — |
+| `version` | `integer` | 是 | 否 | 否 | 否 | `1` | `CHECK (version>0)` | — |
+| `managed` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+| `assigned_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `sla_minutes` | `integer` | 否 | 否 | 否 | 否 | — | `CHECK (sla_minutes>0)` | — |
+| `desired_version` | `integer` | 是 | 否 | 否 | 否 | `0` | `CHECK (desired_version>=0)` | — |
+| `applied_version` | `integer` | 是 | 否 | 否 | 否 | `0` | `CHECK (applied_version>=0)` | — |
+| `desired_active` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+| `applied_active` | `boolean` | 是 | 否 | 否 | 否 | `false` | — | — |
+| `restore_terminal` | `varchar(24)` | 否 | 否 | 否 | 否 | — | — | — |
+| `resource_error` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `cancel_reason` | `text` | 否 | 否 | 否 | 否 | — | — | — |
+| `cancel_reviewed_by` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
+| `cancel_reviewed_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `safety_inspected_by` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
+| `safety_inspected_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `reporter_id`：保存报修人，供本人查询、通知、验收和评价
-- `room_id`：保存故障教室，作为整室维修下架范围
-- `seat_id`：故障涉及具体座位时填写
-- `description`：故障现象和位置说明，第一版采用文字报修
-- `technician_id`：当前负责的维护人员，管理员派单时填写
-- `status`：记录从报修到派单、维修、待验收、完成或取消的阶段
-- `due_at`：当前处理期限，供定时任务检查超时
-- `escalation_level`：记录超时升级次数或层级，避免同级升级重复触发
-- `repair_report`：保存最近一轮维修结果；历史过程写 repair_events
-- `accepted_by`：最后通过验收的报修人或管理员
-- `accepted_at`：验收通过的时间；驳回记录保存在处理历史
-- `acceptance_comment`：保存最后一次验收意见
-- `rating`：报修人对本次服务的 1 至 5 分评分
-- `evaluation`：报修人的文字评价
-- `evaluated_at`：保存报修人提交评价的时间
-- `version`：控制派单、维修与验收并发，作为跨模块写回的来源版本
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `reporter_id`：提交报修的账号编号。
+- `room_id`：对应的教室编号。
+- `seat_id`：对应的座位编号。
+- `description`：报修人填写的故障情况。
+- `technician_id`：当前负责维修的账号编号。
+- `status`：记录当前进行到哪一步。
+- `due_at`：首次派单时按当时维修时限算出的截止时间，未派单时可以为空。
+- `escalation_level`：工单目前已升级到的级别。
+- `repair_report`：维修人员填写的维修结果。
+- `accepted_by`：作出独立验收决定的账号编号。
+- `accepted_at`：验收通过的时间。
+- `acceptance_comment`：验收人填写的意见。
+- `rating`：报修人填写的评分，范围为 1 到 5。
+- `evaluation`：报修人填写的评价内容。
+- `evaluated_at`：报修人完成评价的时间。
+- `version`：当前数据版本，修改时用来检查是否已被其他操作更新。
+- `managed`：是否由当前维修流程处理，保留的旧记录可以为 false。
+- `assigned_at`：首次派给维修人员的时间。
+- `sla_minutes`：派单时采用的维修时限，单位为分钟。
+- `desired_version`：希望资源服务落实的限制版本。
+- `applied_version`：资源服务已经确认落实的限制版本。
+- `desired_active`：希望资源服务是否限制这间教室接受预约。
+- `applied_active`：资源服务已经确认这间教室的限制是否生效。
+- `restore_terminal`：解除资源限制后，工单应变成的最终状态。
+- `resource_error`：资源限制或恢复最近一次失败的原因代码。
+- `cancel_reason`：取消或系统终结这笔业务的原因。
+- `cancel_reviewed_by`：审核维修取消申请的账号编号。
+- `cancel_reviewed_at`：完成取消审核的时间。
+- `safety_inspected_by`：取消维修后执行独立安全验收的账号编号。
+- `safety_inspected_at`：取消维修后安全验收通过的时间。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| INDEX | (technician_id, status, due_at)；(room_id, status)；(status, due_at) |
-| CHECK | IN_PROGRESS/PENDING_ACCEPTANCE/COMPLETED 时 technician_id 非空；COMPLETED 时 accepted_by、accepted_at 非空 |
-| CHECK | accepted_by 非空时不得等于 technician_id；rating 或 evaluation 非空时必须为 COMPLETED 且 evaluated_at 非空 |
-| 应用校验 | 指定座位属于指定教室；维护人员仅操作自己任务；报修人或管理员验收，报修人评价 |
-| 应用校验 | 下架成功后才对外写 IN_PROGRESS；验收通过并解除本工单限制后才写 COMPLETED。等待同步期间保留原状态并显示待处理动作 |
-| 应用校验 | 验收失败回 IN_PROGRESS 并保留限制；每次维修、验收与升级均写 repair_events，不另建多轮验收表 |
+| CHECK | `CHECK(accepted_by IS NULL OR accepted_by IS DISTINCT FROM technician_id)` |
+| CHECK | `CONSTRAINT repair_status_v2 CHECK(status IN ('SUBMITTED','ASSIGNED','RESTRICTION_PENDING','IN_PROGRESS','PENDING_ACCEPTANCE','RESTORATION_PENDING','CANCEL_REVIEW_PENDING','CANCEL_SAFETY_PENDING','COMPLETED','CANCELLED'))` |
+| CHECK | `CONSTRAINT repair_technician_v2 CHECK(status NOT IN ('IN_PROGRESS','PENDING_ACCEPTANCE','COMPLETED') OR technician_id IS NOT NULL)` |
+| CHECK | `CONSTRAINT repair_completed_v2 CHECK(status<>'COMPLETED' OR (accepted_by IS NOT NULL AND accepted_at IS NOT NULL))` |
+| CHECK | `CONSTRAINT repair_evaluation_v2 CHECK((rating IS NULL AND evaluation IS NULL AND evaluated_at IS NULL) OR (status='COMPLETED' AND rating IS NOT NULL AND evaluation IS NOT NULL AND length(evaluation)<=500 AND evaluated_at IS NOT NULL))` |
+| 索引 | `CREATE INDEX repair_technician_status_due ON m3.repair_orders(technician_id,status,due_at)` |
+| 索引 | `CREATE INDEX repair_room_status ON m3.repair_orders(room_id,status)` |
+| 索引 | `CREATE INDEX repair_status_due ON m3.repair_orders(status,due_at)` |
+| 触发器 | `CREATE TRIGGER repair_evaluation_immutable BEFORE UPDATE ON m3.repair_orders FOR EACH ROW EXECUTE FUNCTION m3.repair_preserve_evaluation()` |
 
-### m3.repair_events
+`repair_evaluation_immutable`：一旦 `evaluated_at` 非空，后续更新不得改动 `rating`、`evaluation`、`evaluated_at`。
+
+### m3.repair_events（维修处理记录）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `order_id` | `uuid` | 是 | 否 | 是 | 否 | — | — | m3.repair_orders.id |
-| `actor_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | 逻辑引用：iam.users.id |
-| `event_type` | `varchar(32)` | 是 | 否 | 否 | 否 | — | CHECK：SUBMIT、ASSIGN、REASSIGN、START、FINISH、ACCEPT、REJECT、ESCALATE、CANCEL | — |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `order_id` | `uuid` | 是 | 否 | 是 | 否 | — | `ON DELETE RESTRICT`；`ON UPDATE RESTRICT` | `m3.repair_orders.id` |
+| `actor_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
+| `event_type` | `varchar(32)` | 是 | 否 | 否 | 否 | — | — | — |
 | `from_status` | `varchar(24)` | 否 | 否 | 否 | 否 | — | — | — |
 | `to_status` | `varchar(24)` | 是 | 否 | 否 | 否 | — | — | — |
-| `assigned_to` | `uuid` | 否 | 否 | 否 | 否 | — | — | 逻辑引用：iam.users.id |
+| `assigned_to` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
 | `note` | `text` | 否 | 否 | 否 | 否 | — | — | — |
+| `order_version` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (order_version>0)` | — |
+| `rating` | `smallint` | 否 | 否 | 否 | 否 | — | `CHECK (rating BETWEEN 1 AND 5)` | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `order_id`：关联所属工单
-- `actor_id`：执行动作的人；系统超时升级可为空
-- `event_type`：区分上报、派单、转派、开工、完工、验收、升级和取消
-- `from_status`：本次动作前的工单状态
-- `to_status`：本次动作后的工单状态
-- `assigned_to`：派单或转派时记录新维修人，保留责任变更
-- `note`：保存每轮维修结果、验收意见和升级原因
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：建档时写入；维修处理记录建好后禁止修改。
+- `order_id`：对应的维修工单编号。
+- `actor_id`：执行这次操作的账号编号。
+- `event_type`：这条维修记录说明发生了什么操作。
+- `from_status`：本次操作前的工单状态。
+- `to_status`：本次操作后的工单状态。
+- `assigned_to`：本次派单或改派指定的维修人员账号编号。
+- `note`：本次操作填写的说明。
+- `order_version`：这条记录对应的工单版本。
+- `rating`：报修人填写的评分，范围为 1 到 5。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| INDEX | (order_id, created_at) |
-| 应用校验 | 只追加，不覆盖旧历史；可从历史展示多次返工和验收，不建立通用附件或审批流程平台 |
-| FOREIGN KEY | 所有实际外键 ON DELETE RESTRICT、ON UPDATE RESTRICT；有历史引用的账号和主数据采用停用 |
+| CHECK | `CONSTRAINT repair_events_type_v2 CHECK(event_type IN ('SUBMIT','ASSIGN','REASSIGN','START','FINISH','ACCEPT','REJECT','ESCALATE','CANCEL','EVALUATE','CANCEL_REQUEST','CANCEL_REVIEW','CANCEL_INSPECT','RESOURCE_ACK'))` |
+| 索引 | `CREATE INDEX repair_event_timeline ON m3.repair_events(order_id,created_at,id)` |
+| 触发器 | `CREATE TRIGGER repair_event_append_only BEFORE UPDATE OR DELETE ON m3.repair_events FOR EACH ROW EXECUTE FUNCTION m3.repair_preserve_event()` |
 
-## 7 通知与审计
+`repair_event_append_only`：禁止 UPDATE 和 DELETE，只允许追加处理记录。
 
-### support.notifications
+### m3.repair_commands（维修操作去重）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `recipient_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | 逻辑引用：iam.users.id |
-| `channel` | `varchar(16)` | 是 | 否 | 否 | 否 | — | CHECK：IN_APP、EMAIL | — |
+| `operation_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `actor_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `order_id` | `uuid` | 是 | 否 | 是 | 否 | — | `ON DELETE NO ACTION`；`ON UPDATE NO ACTION` | `m3.repair_orders.id` |
+| `action` | `varchar(40)` | 是 | 否 | 否 | 否 | — | — | — |
+| `fingerprint` | `text` | 是 | 否 | 否 | 否 | — | — | — |
+| `response` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+
+**字段作用**
+
+- `operation_id`：本次操作的编号；重试时仍使用同一个编号。
+- `actor_id`：执行这次操作的账号编号。
+- `order_id`：对应的维修工单编号。
+- `action`：这次执行的操作名称。
+- `fingerprint`：保存操作参数的摘要，重试时检查参数是否一致。
+- `response`：保存这次处理返回的结果，重复请求可以据此返回。
+- `created_at`：这条记录创建的时间。
+
+### m3.repair_tasks（维修持久待办）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `order_id` | `uuid` | 否 | 否 | 是 | 否 | — | `ON DELETE NO ACTION`；`ON UPDATE NO ACTION` | `m3.repair_orders.id` |
+| `kind` | `varchar(32)` | 是 | 否 | 否 | 否 | — | — | — |
+| `payload` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
+| `state` | `varchar(12)` | 是 | 否 | 否 | 否 | `'PENDING'` | `CHECK (state IN ('PENDING','LEASED','DONE'))` | — |
+| `next_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+| `lease_until` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `last_error` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `attempts` | `integer` | 是 | 否 | 否 | 否 | `0` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+
+**字段作用**
+
+- `id`：这条记录的编号。
+- `order_id`：对应的维修工单；不属于某张工单的拒绝操作审计可以为空。
+- `kind`：区分审计、通知、查找收件人、修改资源限制和广播维修状态等待办。
+- `payload`：保存待发送的内容，失败后仍按同一份内容重试。
+- `state`：这条待办目前的处理进度。
+- `next_at`：下一次允许领取这条待办的时间。
+- `lease_until`：本次领取待办的有效时间，超时后允许重新领取。
+- `last_error`：最近一次处理失败的原因代码。
+- `attempts`：已经尝试处理的次数。
+- `created_at`：这条记录创建的时间。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| CHECK | `CONSTRAINT repair_task_kind_v3 CHECK(kind IN ('AUDIT','NOTICE','CANDIDATES','RESOURCE','M1','M2'))` |
+| CHECK | `CONSTRAINT repair_task_source_v3 CHECK(order_id IS NOT NULL OR kind='AUDIT')` |
+| 索引 | `CREATE INDEX repair_tasks_due ON m3.repair_tasks(state,next_at,lease_until)` |
+
+### m3.repair_escalations（维修超时升级记录）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `order_id` | `uuid` | 是 | 组合 PK | 是 | 组合 PK | — | `ON DELETE NO ACTION`；`ON UPDATE NO ACTION` | `m3.repair_orders.id` |
+| `level` | `smallint` | 是 | 组合 PK | 否 | 组合 PK | — | `CHECK (level=1)` | — |
+| `occurred_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
+
+**字段作用**
+
+- `order_id`：对应的维修工单编号。
+- `level`：本次超时升级的级别，当前只允许 1。
+- `occurred_at`：业务实际发生的时间。
+
+| 约束或索引 | 定义 |
+| --- | --- |
+| 组合主键 | `PRIMARY KEY(order_id,level)` |
+
+## 6 通知与操作审计
+
+### support.notifications（站内与邮件通知）
+
+| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `recipient_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
+| `channel` | `varchar(16)` | 是 | 否 | 否 | 组合 U1 | — | `CHECK (channel IN ('IN_APP','EMAIL'))` | — |
 | `event_key` | `varchar(255)` | 是 | 否 | 否 | 是 | — | — | — |
-| `source_module` | `varchar(16)` | 是 | 否 | 否 | 否 | — | CHECK：M1、M2、M3、D | — |
-| `source_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | 逻辑引用：m1.seat_reservations / m2.classroom_requests / m3.repair_orders / 公共事件 |
+| `event_id` | `uuid` | 是 | 否 | 否 | 组合 U1 | — | — | — |
+| `payload_hash` | `char(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `source_module` | `varchar(16)` | 是 | 否 | 否 | 否 | — | `CHECK (source_module IN ('M1','M2','M3','D'))` | — |
+| `source_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | — |
 | `title` | `varchar(255)` | 是 | 否 | 否 | 否 | — | — | — |
 | `body` | `text` | 是 | 否 | 否 | 否 | — | — | — |
+| `title_en` | `varchar(255)` | 是 | 否 | 否 | 否 | — | — | — |
+| `body_en` | `text` | 是 | 否 | 否 | 否 | — | — | — |
+| `email_address` | `varchar(254)` | 否 | 否 | 否 | 否 | — | — | — |
 | `scheduled_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
-| `status` | `varchar(16)` | 是 | 否 | 否 | 否 | 'PENDING' | CHECK：PENDING、SENT、FAILED、CANCELLED | — |
-| `retry_count` | `integer` | 是 | 否 | 否 | 否 | 0 | CHECK：大于等于 0 | — |
+| `status` | `varchar(16)` | 是 | 否 | 否 | 否 | `'PENDING'` | — | — |
+| `retry_count` | `integer` | 是 | 否 | 否 | 否 | `0` | `CHECK (retry_count >= 0)` | — |
 | `next_retry_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
 | `sent_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
 | `read_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `last_error_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `delivery_started_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `recipient_id`：通知接收用户
-- `channel`：决定发送站内消息还是邮件
-- `event_key`：稳定标识业务事件、接收人和渠道，防重复投递
-- `source_module`：标明来自 M1、M2、M3 或公共层
-- `source_id`：保存来源业务 ID，供校验提醒是否仍有效
-- `title`：通知标题或邮件主题
-- `body`：通知正文
-- `scheduled_at`：应发送或允许重试投递的计划时间
-- `status`：标识待发、成功、失败或取消
-- `retry_count`：已重试次数，用于限制重试
-- `next_retry_at`：失败后下次允许重试的时间
-- `sent_at`：实际成功投递时间
-- `read_at`：站内通知被阅读的时间
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
+- `recipient_id`：接收通知的账号编号。
+- `channel`：通知通过站内消息还是邮件发送。
+- `event_key`：由事件编号和发送通道组成，保证每个通道只建立一条记录。
+- `event_id`：同一条通知事件的编号，用来避免重复发送。
+- `payload_hash`：通知或事件内容的摘要，防止同一编号对应不同内容。
+- `source_module`：来源业务类型，用来判断来源编号应怎样解释。
+- `source_id`：这条通知对应的预约、整室申请、维修单或公共对象编号。
+- `title`：中文通知标题。
+- `body`：中文通知正文。
+- `title_en`：英文通知标题。
+- `body_en`：英文通知正文。
+- `email_address`：发送这条通知时已经确认的收件邮箱。
+- `scheduled_at`：计划发送这条消息的时间。
+- `status`：记录当前进行到哪一步。
+- `retry_count`：已经尝试发送邮件的次数。
+- `next_retry_at`：下一次允许尝试处理的时间。
+- `sent_at`：确认发送成功的时间。
+- `read_at`：用户第一次读这条站内通知的时间。
+- `last_error_code`：最近一次处理失败的原因代码。
+- `delivery_started_at`：开始本次邮件投递的时间，用来识别投递结果不确定的情况。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (event_key) |
-| CHECK | channel != IN_APP 时 read_at 为空；status = SENT 时 sent_at 非空 |
-| INDEX | (status, scheduled_at, next_retry_at)；(recipient_id, created_at DESC) |
-| 应用校验 | 业务模块决定提醒时机与是否有效；投递重试复用 event_key，邮件凭据只放运行环境 |
+| U1 | `UNIQUE(event_id,channel)` |
+| CHECK | `CHECK ((channel='IN_APP' AND status IN ('PENDING','SENT','CANCELLED')) OR (channel='EMAIL' AND status IN ('PENDING','SENT','FAILED','CANCELLED','UNKNOWN','NOT_CONFIGURED')))` |
+| CHECK | `CHECK (channel='IN_APP' OR read_at IS NULL)` |
+| CHECK | `CHECK (status<>'SENT' OR sent_at IS NOT NULL)` |
+| CHECK | `CHECK (status<>'UNKNOWN' OR next_retry_at IS NULL)` |
+| CHECK | `CHECK (length(trim(title))>0 AND length(trim(body)) BETWEEN 1 AND 4000 AND length(trim(title_en))>0 AND length(trim(body_en)) BETWEEN 1 AND 4000)` |
+| 索引 | `CREATE INDEX notifications_delivery ON support.notifications(status,scheduled_at,next_retry_at) WHERE channel='EMAIL'` |
+| 索引 | `CREATE INDEX notifications_recipient ON support.notifications(recipient_id,created_at DESC,id DESC) WHERE channel='IN_APP'` |
 
-### support.audit_logs
+### support.audit_logs（操作审计）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
+| `id` | `uuid` | 是 | 是 | 否 | 是 | `gen_random_uuid()` | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
 | `event_key` | `varchar(255)` | 是 | 否 | 否 | 是 | — | — | — |
-| `source_service` | `varchar(32)` | 是 | 否 | 否 | 否 | — | — | — |
-| `actor_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | 逻辑引用：iam.users.id |
+| `payload_hash` | `char(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `source_service` | `varchar(32)` | 是 | 否 | 否 | 否 | — | `CHECK (source_service IN ('resource-service','workflow-service'))` | — |
+| `actor_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
 | `action` | `varchar(128)` | 是 | 否 | 否 | 否 | — | — | — |
-| `source_module` | `varchar(16)` | 是 | 否 | 否 | 否 | — | CHECK：M1、M2、M3、D、EXTERNAL | — |
-| `source_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | 逻辑引用：按 source_module 与 action 解释 |
+| `source_module` | `varchar(16)` | 是 | 否 | 否 | 否 | — | `CHECK (source_module IN ('M1','M2','M3','D','EXTERNAL'))` | — |
+| `source_id` | `uuid` | 否 | 否 | 否 | 否 | — | — | — |
 | `before_data` | `jsonb` | 否 | 否 | 否 | 否 | — | — | — |
 | `after_data` | `jsonb` | 否 | 否 | 否 | 否 | — | — | — |
 | `success` | `boolean` | 是 | 否 | 否 | 否 | — | — | — |
@@ -609,230 +1180,66 @@ V1 迁移不修改；V2 增加本地密码约束，保留全部旧账号、身�
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `event_key`：来源服务生成的稳定事件键，防止重复写审计
-- `source_service`：记录产生操作的后端服务
-- `actor_id`：记录操作者；系统任务可为空
-- `action`：标识修改权限、预约、审批、下架或恢复等具体动作
-- `source_module`：记录 M1、M2、M3 或公共操作的写入来源
-- `source_id`：记录来源业务或资源 ID，与来源模块一起追溯
-- `before_data`：变化前的脱敏摘要；资源动作包含教室、座位与时间范围
-- `after_data`：变化后的脱敏摘要，支持状态写回验收
-- `success`：标记操作是否成功
-- `occurred_at`：保存来源服务中的实际发生时间
-- `trace_id`：串联网络请求、后台任务和日志
+- `id`：这条记录的编号。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：建档时写入；审计记录建好后禁止修改。
+- `event_key`：来源服务提供的事件标识，用来避免同一审计事件重复写入。
+- `payload_hash`：通知或事件内容的摘要，防止同一编号对应不同内容。
+- `source_service`：发出审计事件的后端服务名称。
+- `actor_id`：执行这次操作的账号编号。
+- `action`：这次执行的操作名称。
+- `source_module`：来源业务类型，用来判断来源编号应怎样解释。
+- `source_id`：被审计的业务对象编号；不涉及固定对象的操作可以为空。
+- `before_data`：保存允许记录的修改前字段，不复制整份请求。
+- `after_data`：保存允许记录的修改后字段，不复制整份请求。
+- `success`：这次业务操作是否成功。
+- `occurred_at`：业务实际发生的时间。
+- `trace_id`：把一次请求涉及的操作记录串在一起，方便查询。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (event_key) |
-| INDEX | (source_module, source_id)；(actor_id, occurred_at DESC)；(trace_id) |
-| 应用校验 | 只追加；不记录密码、令牌或签到码明文；来源服务通过本地 service_tasks 可靠投递 |
+| 索引 | `CREATE INDEX audit_trace ON support.audit_logs(trace_id,occurred_at DESC,id DESC)` |
+| 索引 | `CREATE INDEX audit_source ON support.audit_logs(source_module,source_id)` |
+| 索引 | `CREATE INDEX audit_actor ON support.audit_logs(actor_id,occurred_at DESC)` |
+| 触发器 | `CREATE TRIGGER audit_append_only BEFORE UPDATE OR DELETE ON support.audit_logs FOR EACH ROW EXECUTE FUNCTION support.reject_audit_mutation()` |
 
-## 8 跨服务任务
+`audit_append_only`：禁止 UPDATE 和 DELETE，只允许追加审计记录。
 
-### resource_meta.service_tasks
+### support.verification_email_receipts（验证邮件发送回执）
 
 | 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `task_key` | `varchar(255)` | 是 | 否 | 否 | 是 | — | — | — |
-| `task_type` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
-| `source_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | 逻辑引用：本服务业务记录 |
-| `payload` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
-| `status` | `varchar(16)` | 是 | 否 | 否 | 否 | 'PENDING' | CHECK：PENDING、PROCESSING、DONE、FAILED | — |
-| `attempt_count` | `integer` | 是 | 否 | 否 | 否 | 0 | CHECK：大于等于 0 | — |
-| `next_run_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `locked_until` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
-| `last_error` | `text` | 否 | 否 | 否 | 否 | — | — | — |
+| `operation_id` | `uuid` | 是 | 是 | 否 | 是 | — | — | — |
+| `payload_hash` | `char(64)` | 是 | 否 | 否 | 否 | — | — | — |
+| `status` | `varchar(24)` | 是 | 否 | 否 | 否 | — | `CHECK (status IN ('ACCEPTED','FAILED','NOT_CONFIGURED','UNKNOWN'))` | — |
+| `attempts` | `integer` | 是 | 否 | 否 | 否 | — | `CHECK (attempts>=0)` | — |
+| `retryable` | `boolean` | 是 | 否 | 否 | 否 | — | — | — |
+| `next_retry_at` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
+| `error_code` | `varchar(64)` | 否 | 否 | 否 | 否 | — | — | — |
+| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
+| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | `now()` | — | — |
 
 **字段作用**
 
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `task_key`：使用业务 ID、版本和动作生成稳定任务键
-- `task_type`：选择占用、释放、维修下架、恢复、发送通知或审计等公开接口动作
-- `source_id`：定位本服务的业务记录，便于查询未完成操作
-- `payload`：保存目标接口所需参数和来源版本；接口地址与密钥在配置中
-- `status`：记录待处理、处理中、完成或需人工处理的失败
-- `attempt_count`：累计调用次数，用于有限重试
-- `next_run_at`：下次允许处理的时间
-- `locked_until`：任务处理中租约到期时间，中断后可恢复
-- `last_error`：保存最近一次失败的脱敏摘要
+- `operation_id`：与账号服务里同一次邮箱验证操作对应的编号。
+- `payload_hash`：本次验证邮件内容的摘要，用来拒绝同一操作号的不同参数。
+- `status`：验证邮件的发送结果，不保存收件人、令牌、链接和正文。
+- `attempts`：已经尝试处理的次数。
+- `retryable`：是否允许再次尝试发送。
+- `next_retry_at`：下一次允许尝试处理的时间。
+- `error_code`：最近一次发送失败的原因代码。
+- `created_at`：这条记录创建的时间。
+- `updated_at`：这条记录最近一次修改的时间。
 
-| 约束类型 | 定义 |
+| 约束或索引 | 定义 |
 | --- | --- |
-| U1 | UNIQUE (task_key) |
-| CHECK | status = PROCESSING 时 locked_until 非空 |
-| INDEX | (status, next_run_at)；(source_id, status) |
-| 应用校验 | 业务变更与待调用任务同一事务提交；超时任务可回收，失败可重试和对账。同一业务的互斥动作串行处理 |
-| 应用校验 | 接收方依业务 ID、来源版本和唯一键幂等；同 ID 不同参数拒绝。无独立幂等框架或事件总线 |
+| CHECK | `CHECK(status NOT IN ('ACCEPTED','UNKNOWN') OR (NOT retryable AND next_retry_at IS NULL))` |
 
-### workflow_meta.service_tasks
+## 7 表之间的关系
 
-| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `task_key` | `varchar(255)` | 是 | 否 | 否 | 是 | — | — | — |
-| `task_type` | `varchar(64)` | 是 | 否 | 否 | 否 | — | — | — |
-| `source_id` | `uuid` | 是 | 否 | 否 | 否 | — | — | 逻辑引用：本服务业务记录 |
-| `payload` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
-| `status` | `varchar(16)` | 是 | 否 | 否 | 否 | 'PENDING' | CHECK：PENDING、PROCESSING、DONE、FAILED | — |
-| `attempt_count` | `integer` | 是 | 否 | 否 | 否 | 0 | CHECK：大于等于 0 | — |
-| `next_run_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `locked_until` | `timestamptz` | 否 | 否 | 否 | 否 | — | — | — |
-| `last_error` | `text` | 否 | 否 | 否 | 否 | — | — | — |
+### 7.1 数据库实际外键
 
-**字段作用**
-
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `task_key`：使用业务 ID、版本和动作生成稳定任务键
-- `task_type`：选择占用、释放、维修下架、恢复、发送通知或审计等公开接口动作
-- `source_id`：定位本服务的业务记录，便于查询未完成操作
-- `payload`：保存目标接口所需参数和来源版本；接口地址与密钥在配置中
-- `status`：记录待处理、处理中、完成或需人工处理的失败
-- `attempt_count`：累计调用次数，用于有限重试
-- `next_run_at`：下次允许处理的时间
-- `locked_until`：任务处理中租约到期时间，中断后可恢复
-- `last_error`：保存最近一次失败的脱敏摘要
-
-| 约束类型 | 定义 |
-| --- | --- |
-| U1 | UNIQUE (task_key) |
-| CHECK | status = PROCESSING 时 locked_until 非空 |
-| INDEX | (status, next_run_at)；(source_id, status) |
-| 应用校验 | 业务变更与待调用任务同一事务提交；超时任务可回收，失败可重试和对账。同一业务的互斥动作串行处理 |
-| 应用校验 | 接收方依业务 ID、来源版本和唯一键幂等；同 ID 不同参数拒绝。无独立幂等框架或事件总线 |
-
-## 9 复旦查询缓存
-
-### integration.room_schedules
-
-| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | `uuid` | 是 | 是 | 否 | 是 | gen_random_uuid() | — | — |
-| `created_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `updated_at` | `timestamptz` | 是 | 否 | 否 | 否 | now() | — | — |
-| `room_id` | `uuid` | 是 | 否 | 是 | 组合 U1 | — | — | resource.rooms.id |
-| `schedule_date` | `date` | 是 | 否 | 否 | 组合 U1 | — | — | — |
-| `busy_periods` | `jsonb` | 是 | 否 | 否 | 否 | — | — | — |
-| `fetched_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | — | — |
-| `expires_at` | `timestamptz` | 是 | 否 | 否 | 否 | — | CHECK：expires_at > fetched_at | — |
-
-**字段作用**
-
-- `id`：唯一标识本表记录；业务创建重试复用同一业务 UUID
-- `created_at`：记录这一行首次创建的时间
-- `updated_at`：记录最近修改时间，由应用更新；历史日志只追加
-- `room_id`：关联已登记且配置了外部编号的房间
-- `schedule_date`：明确这份完整观测覆盖哪一天，避免误认为覆盖其他日期
-- `busy_periods`：保存当天实际占用时间段数组；空数组表示该日查询结果为空闲
-- `fetched_at`：保存最近一次完整、成功获取该日数据的时间
-- `expires_at`：规定该日缓存的有效期
-
-| 约束类型 | 定义 |
-| --- | --- |
-| U1 | UNIQUE (room_id, schedule_date) |
-| 应用校验 | 仅完整且成功的结果替换对应日期；时间段数组按固定契约验证。失败保留旧数据，过期显示未知而非空闲 |
-| 应用校验 | 配置外部编号且开放实际预约的教室，相关日期数据应新鲜并无冲突；查询接口、网络和刷新参数在部署配置中，不建立多源平台 |
-| 应用校验 | 此项承接用户希望接入复旦查询的需求；不代表获得学校预约写入权，未获管理授权的房间不开放预约 |
-| FOREIGN KEY | 所有实际外键 ON DELETE RESTRICT、ON UPDATE RESTRICT；有历史引用的账号和主数据采用停用 |
-
-## 10 迁移工具历史表
-
-### resource_meta.flyway_schema_history
-
-| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `installed_rank` | `integer` | 是 | 是 | 否 | 是 | — | 工具自动维护 | — |
-| `version` | `varchar` | 否 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `description` | `varchar` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `type` | `varchar` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `script` | `varchar` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `checksum` | `integer` | 否 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `installed_by` | `varchar` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `installed_on` | `timestamp` | 是 | 否 | 否 | 否 | CURRENT_TIMESTAMP | 工具自动维护 | — |
-| `execution_time` | `integer` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `success` | `boolean` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-
-**字段作用**
-
-- `installed_rank`：迁移执行顺序，也是历史表主键
-- `version`：版本化迁移的版本号；可重复迁移可为空
-- `description`：本次迁移的名称或说明
-- `type`：迁移类型，如 SQL 或 Java
-- `script`：执行的迁移文件或类名
-- `checksum`：检查已经执行的迁移内容是否被修改
-- `installed_by`：执行迁移的数据库账号
-- `installed_on`：迁移实际安装时间
-- `execution_time`：执行耗时，单位毫秒
-- `success`：该次迁移是否成功
-
-### workflow_meta.flyway_schema_history
-
-| 字段 | 类型 | 非空 | 主键 | 外键 | 唯一 | 默认值 | 其他约束 | 引用目标 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `installed_rank` | `integer` | 是 | 是 | 否 | 是 | — | 工具自动维护 | — |
-| `version` | `varchar` | 否 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `description` | `varchar` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `type` | `varchar` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `script` | `varchar` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `checksum` | `integer` | 否 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `installed_by` | `varchar` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `installed_on` | `timestamp` | 是 | 否 | 否 | 否 | CURRENT_TIMESTAMP | 工具自动维护 | — |
-| `execution_time` | `integer` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-| `success` | `boolean` | 是 | 否 | 否 | 否 | — | 工具自动维护 | — |
-
-**字段作用**
-
-- `installed_rank`：迁移执行顺序，也是历史表主键
-- `version`：版本化迁移的版本号；可重复迁移可为空
-- `description`：本次迁移的名称或说明
-- `type`：迁移类型，如 SQL 或 Java
-- `script`：执行的迁移文件或类名
-- `checksum`：检查已经执行的迁移内容是否被修改
-- `installed_by`：执行迁移的数据库账号
-- `installed_on`：迁移实际安装时间
-- `execution_time`：执行耗时，单位毫秒
-- `success`：该次迁移是否成功
-
-## 11 任务书功能对应
-
-| 要求 | 数据承载 | 验证重点 |
-| --- | --- | --- |
-| D 身份权限 | users、roles、permissions、role_permissions | 三种默认角色；仍可增加新角色和权限组合，第一版单账号单角色 |
-| D 空间座位 | rooms、seats | 登记、停用、开放时间、插座标记、每日签到码 |
-| D 通知审计 | notifications、audit_logs | 邮件或站内通知、操作审计、来源追踪 |
-| M1 院系专用自习室 | users.department_code、rooms.department_code | 教室编码为空时全校开放；否则匹配经核实的学生院系资格。不建组织表 |
-| M1 条件搜索 | rooms、seats、seat_allocations、room_restrictions | 按位置、时间、插座、资格和有效占用筛选 |
-| M1 小时预约 | seat_reservations、system_settings | 整点小时，默认最多 4 小时，可配置 |
-| M1 签到 | rooms.checkin_code / checkin_code_date、seat_reservations.checked_in_at | 每日教室码，验证本人预约、所属教室及签到期限 |
-| M1 提醒和违约 | seat_reservations、notifications、service_tasks | 提前 15 分钟提醒，开始后 10 分钟提醒，15 分钟未签到取消并释放；NO_SHOW 即违约记录 |
-| M1 历史与复用 | seat_reservations | 查询历史，新建预约并重新验证资源 |
-| M1 运营统计 | seat_reservations、seat_allocations | 直接聚合预约、签到、失约与占用数据，不建统计平台 |
-| M2 权限门槛 | users.can_apply_room、角色权限 | 申请资格和操作权限同时满足 |
-| M2 多级审批 | classroom_requests、approval_tasks | 由配置生成至少两级、不同管理员的审批记录；禁止自审 |
-| M2 超时撤销 | expires_at、service_tasks、seat_allocations | 自动撤销并幂等释放本申请的占用 |
-| M3 报修和派单 | repair_orders、repair_events | 故障上报、派单、转派、维修过程及责任历史 |
-| M3 超时升级 | due_at、escalation_level、repair_events、notifications | 定时检查、升级、留痕和通知 |
-| M3 验收评价 | repair_orders 验收评价字段、repair_events | 通过后恢复，失败继续维修；多轮过程保留在历史中 |
-| 跨模块写回 | seat_allocations、room_restrictions、service_tasks | B 通过 HTTP 调用 A；整室占用、维修下架和恢复保持一致 |
-| 来源追溯 | source_module / source_type、source_id、audit_logs | 保留 M1、M2、M3 来源、业务 ID 与变更前后摘要 |
-| 工程要求 | Flyway 历史表、目录文档中的流水线和版本规则 | 迁移与幂等种子、版本控制、有效测试、自动测试部署、生产审批发布和回滚均保留 |
-| 复旦查询接入 | room_schedules、rooms.external_code | 承接用户希望的真实查询接入，只读缓存且有范围和时效，不自动获得校方预约权限 |
-| 附加业务 Agent | 公开业务 API | 后续按课程附加项实现时复用现有数据，不新增 Agent 业务表 |
-
-## 12 表关系图
-
-### 资源预约服务实际外键
+实线均为实际外键。没有连线的表仍然保留在图中；它们可能通过事件号、业务编号或 JSONB 内容进行关联。
 
 ```mermaid
 erDiagram
@@ -851,20 +1258,54 @@ erDiagram
         uuid id PK
         uuid role_id FK
     }
+    iam_system_settings {
+        smallint id PK
+    }
+    iam_system_settings_history {
+        uuid id PK
+        uuid actor_id FK
+    }
+    iam_email_verification_challenges {
+        uuid operation_id PK
+        uuid user_id FK
+    }
+    iam_audit_outbox {
+        uuid event_key PK
+    }
+    m1_seat_reservations {
+        uuid id PK
+    }
+    m1_reminder_tasks {
+        uuid event_id PK
+        uuid reservation_id FK
+    }
+    m1_reservation_commands {
+        uuid operation_id PK
+        uuid reservation_id FK
+    }
+    m1_reservation_outbox {
+        uuid id PK
+        uuid reservation_id FK
+    }
+    m1_reservation_reminders {
+        uuid reservation_id PK, FK
+        varchar_16 kind PK
+    }
+    m1_reservation_violations {
+        uuid reservation_id PK, FK
+    }
+    m1_maintenance_sources {
+        uuid source_id PK
+    }
+    m1_maintenance_operations {
+        uuid operation_id PK
+    }
     resource_rooms {
         uuid id PK
     }
     resource_seats {
         uuid id PK
         uuid room_id FK
-    }
-    resource_system_settings {
-        uuid id PK
-    }
-    m1_seat_reservations {
-        uuid id PK
-        uuid user_id FK
-        uuid seat_id FK
     }
     resource_seat_allocations {
         uuid id PK
@@ -875,35 +1316,37 @@ erDiagram
         uuid id PK
         uuid room_id FK
     }
-    resource_meta_service_tasks {
-        uuid id PK
-    }
-    integration_room_schedules {
-        uuid id PK
+    resource_resource_operations {
+        uuid operation_id PK
         uuid room_id FK
     }
-    iam_roles ||--o{ iam_role_permissions : "role_id"
-    iam_permissions ||--o{ iam_role_permissions : "permission_id"
-    iam_roles ||--o{ iam_users : "role_id"
-    resource_rooms ||--o{ resource_seats : "room_id"
-    iam_users ||--o{ m1_seat_reservations : "user_id"
-    resource_seats ||--o{ m1_seat_reservations : "seat_id"
-    resource_seats ||--o{ resource_seat_allocations : "seat_id"
-    iam_users |o--o{ resource_seat_allocations : "user_id"
-    resource_rooms ||--o{ resource_room_restrictions : "room_id"
-    resource_rooms ||--o{ integration_room_schedules : "room_id"
-```
-
-### 流程工单服务实际外键
-
-```mermaid
-erDiagram
     m2_classroom_requests {
         uuid id PK
     }
     m2_approval_tasks {
         uuid id PK
         uuid request_id FK
+    }
+    m2_configuration {
+        boolean singleton PK
+    }
+    m2_request_operations {
+        uuid operation_id PK
+        uuid request_id FK
+    }
+    m2_request_history {
+        uuid id PK
+        uuid request_id FK
+    }
+    m2_outbox {
+        uuid id PK
+        uuid request_id FK
+    }
+    m2_maintenance_sources {
+        uuid source_id PK
+    }
+    m2_maintenance_operations {
+        uuid operation_id PK
     }
     m3_repair_orders {
         uuid id PK
@@ -912,51 +1355,117 @@ erDiagram
         uuid id PK
         uuid order_id FK
     }
+    m3_repair_commands {
+        uuid operation_id PK
+        uuid order_id FK
+    }
+    m3_repair_tasks {
+        uuid id PK
+        uuid order_id FK
+    }
+    m3_repair_escalations {
+        uuid order_id PK, FK
+        smallint level PK
+    }
     support_notifications {
         uuid id PK
     }
     support_audit_logs {
         uuid id PK
     }
-    workflow_meta_service_tasks {
-        uuid id PK
+    support_verification_email_receipts {
+        uuid operation_id PK
     }
+    iam_roles ||--o{ iam_role_permissions : "role_id"
+    iam_permissions ||--o{ iam_role_permissions : "permission_id"
+    iam_roles ||--o{ iam_users : "role_id"
+    iam_users ||--o{ iam_system_settings_history : "actor_id"
+    iam_users ||--o{ iam_email_verification_challenges : "user_id"
+    m1_seat_reservations ||--o| m1_reminder_tasks : "reservation_id"
+    m1_seat_reservations ||--o{ m1_reservation_commands : "reservation_id"
+    m1_seat_reservations o|--o{ m1_reservation_outbox : "reservation_id"
+    m1_seat_reservations ||--o{ m1_reservation_reminders : "reservation_id"
+    m1_seat_reservations ||--o| m1_reservation_violations : "reservation_id"
+    resource_rooms ||--o{ resource_seats : "room_id"
+    resource_seats ||--o{ resource_seat_allocations : "seat_id"
+    iam_users o|--o{ resource_seat_allocations : "user_id"
+    resource_rooms ||--o{ resource_room_restrictions : "room_id"
+    resource_rooms o|--o{ resource_resource_operations : "room_id"
     m2_classroom_requests ||--o{ m2_approval_tasks : "request_id"
+    m2_classroom_requests ||--o{ m2_request_operations : "request_id"
+    m2_classroom_requests ||--o{ m2_request_history : "request_id"
+    m2_classroom_requests o|--o{ m2_outbox : "request_id"
     m3_repair_orders ||--o{ m3_repair_events : "order_id"
+    m3_repair_orders ||--o{ m3_repair_commands : "order_id"
+    m3_repair_orders o|--o{ m3_repair_tasks : "order_id"
+    m3_repair_orders ||--o| m3_repair_escalations : "order_id"
 ```
 
-### 逻辑引用关系
+### 7.2 代码中的 ID 关联
+
+虚线表示逻辑关联，不是数据库 FOREIGN KEY。关联是否可用由各业务服务通过公开接口校验。
+
+`source_module=D`、`source_type=ADMIN` 的来源编号还可能指向账号、角色、教室、座位或系统参数等公共对象，具体由操作类型决定，没有统一的数据库外键。各模块待办中的 `payload` 也保存通知或审计事件标识，不因此形成数据库外键。
 
 ```mermaid
 flowchart LR
-    m2_classroom_requests["m2.classroom_requests"]
-    iam_users["iam.users"]
-    resource_rooms["resource.rooms"]
-    m2_approval_tasks["m2.approval_tasks"]
-    m3_repair_orders["m3.repair_orders"]
-    resource_seats["resource.seats"]
-    m3_repair_events["m3.repair_events"]
-    support_notifications["support.notifications"]
-    support_audit_logs["support.audit_logs"]
-    resource_seat_allocations["resource.seat_allocations"]
-    m1_seat_reservations["m1.seat_reservations"]
-    resource_room_restrictions["resource.room_restrictions"]
-    m2_classroom_requests -.->|"applicant_id"| iam_users
-    m2_classroom_requests -.->|"room_id"| resource_rooms
-    m2_approval_tasks -.->|"approver_id"| iam_users
-    m3_repair_orders -.->|"reporter_id"| iam_users
-    m3_repair_orders -.->|"room_id"| resource_rooms
-    m3_repair_orders -.->|"seat_id"| resource_seats
-    m3_repair_orders -.->|"technician_id"| iam_users
-    m3_repair_orders -.->|"accepted_by"| iam_users
-    m3_repair_events -.->|"actor_id"| iam_users
-    m3_repair_events -.->|"assigned_to"| iam_users
-    support_notifications -.->|"recipient_id"| iam_users
-    support_audit_logs -.->|"actor_id"| iam_users
-    resource_seat_allocations -.->|"source_id M1"| m1_seat_reservations
-    resource_seat_allocations -.->|"source_id M2"| m2_classroom_requests
-    resource_room_restrictions -.->|"source_id M3"| m3_repair_orders
-    support_notifications -.->|"source_id M1"| m1_seat_reservations
-    support_notifications -.->|"source_id M2"| m2_classroom_requests
-    support_notifications -.->|"source_id M3"| m3_repair_orders
+    users["iam.users"]
+    roles["iam.roles"]
+    rooms["resource.rooms"]
+    seats["resource.seats"]
+    allocations["resource.seat_allocations"]
+    restrictions["resource.room_restrictions"]
+    operations["resource.resource_operations"]
+    reservations["m1.seat_reservations"]
+    reservationOther["m1.reservation_commands / reservation_violations"]
+    reservationMaintenance["m1.maintenance_sources"]
+    requests["m2.classroom_requests"]
+    approvalTasks["m2.approval_tasks"]
+    approvalConfig["m2.configuration"]
+    approvalActors["m2.request_operations / request_history"]
+    approvalMaintenance["m2.maintenance_sources"]
+    repairs["m3.repair_orders"]
+    repairActors["m3.repair_events / repair_commands"]
+    notifications["support.notifications"]
+    audit["support.audit_logs"]
+    identityOutbox["iam.audit_outbox"]
+    challenges["iam.email_verification_challenges"]
+    mailReceipts["support.verification_email_receipts"]
+    reservations -. "user_id" .-> users
+    reservations -. "room_id" .-> rooms
+    reservations -. "seat_id" .-> seats
+    reservationOther -. "actor_id / user_id" .-> users
+    requests -. "applicant_id" .-> users
+    requests -. "room_id" .-> rooms
+    approvalTasks -. "approver_id / decided_by" .-> users
+    approvalConfig -. "approver_ids 数组" .-> users
+    approvalActors -. "actor_id" .-> users
+    allocations -. "M1: source_id" .-> reservations
+    allocations -. "M2: source_id" .-> requests
+    restrictions -. "M3: source_id" .-> repairs
+    operations -. "M1: source_id" .-> reservations
+    operations -. "M2: source_id" .-> requests
+    operations -. "M3: source_id" .-> repairs
+    repairs -. "reporter_id / technician_id / accepted_by" .-> users
+    repairs -. "cancel_reviewed_by / safety_inspected_by" .-> users
+    repairs -. "room_id" .-> rooms
+    repairs -. "seat_id" .-> seats
+    repairActors -. "actor_id / assigned_to" .-> users
+    reservationMaintenance -. "source_id" .-> repairs
+    reservationMaintenance -. "room_id" .-> rooms
+    approvalMaintenance -. "source_id" .-> repairs
+    approvalMaintenance -. "room_id" .-> rooms
+    notifications -. "recipient_id" .-> users
+    notifications -. "M1: source_id" .-> reservations
+    notifications -. "M2: source_id" .-> requests
+    notifications -. "M3: source_id" .-> repairs
+    audit -. "actor_id" .-> users
+    audit -. "M1: source_id" .-> reservations
+    audit -. "M2: source_id" .-> requests
+    audit -. "M3: source_id" .-> repairs
+    identityOutbox -. "actor_id" .-> users
+    identityOutbox -. "账号操作的 source_id" .-> users
+    identityOutbox -. "角色操作的 source_id" .-> roles
+    identityOutbox -. "event_key 的字符串值" .-> audit
+    mailReceipts -. "operation_id" .-> challenges
 ```
