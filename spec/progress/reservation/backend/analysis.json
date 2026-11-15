@@ -4,7 +4,194 @@
   "layer": "backend",
   "requirements": [
     {
-      "id": "M1-06",
+      "id": "M1-01",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1,
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "按区域、日期、时段和插座筛选",
+        "只返回开放且符合资格、没有占用和维修限制的座位"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-01.S01",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "R101两个座位在09:00—10:00都可用，只有A01有插座。"
+          ],
+          "actions": [
+            "user1打开座位预约页面。",
+            "选择邯郸校区、2030年6月3日、09:00—10:00，勾选“需要插座”，点击“搜索”。"
+          ],
+          "expected": [
+            "列表只显示R101的A01，能看到教室、座位编号和插座标记。实际提交的查询条件与页面选择一致。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S026.SC01"
+          ],
+          "original_text": "# 搜索座位并按地点、时间和插座筛选\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s026sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在座位预约页面选择校区、日期、时段并勾选需要插座，搜索后只看到符合全部条件的座位。\n\n### 操作步骤与预期结果\n\n1. R101的A01和A02在09:00—10:00都空闲，只有A01有插座。\n2. user1打开座位预约页面，选择邯郸校区、2030年6月3日和09:00—10:00，勾选“需要插座”。\n3. 点击“搜索”，结果只显示R101的A01，并展示教室、座位编号和插座标记。\n4. 提交给后端的条件与页面选择一致。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC01）</summary>\n\n- 场景名称：选择时间和插座条件后，只显示符合条件的座位\n- 场景编号：S026.SC01\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n\n**精确条件**\n\n- R101两座仅A01有插座且T均可用\n\n**精确动作**\n\n- user1选择邯郸、2030-06-03、09:00—10:00、需要插座\n\n**结果与约束**\n\n- 列表只显示R101/A01；每项含教室、座位编号和插座标记，提交参数与筛选一致\n\n</details>\n\n<a id=\"s026sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户搜索时，系统不把无院系资格、已有占用或维修中的座位列为可预约，直接提交也不能绕过检查。\n\n### 操作步骤与预期结果\n\n1. user2无CS资格，R102限定CS，R101在查询时段已有占用或维修。\n2. user2打开座位预约页面，搜索该时段。\n3. 结果不显示上述不可预约项，后端资源接口也检查相同限制。\n4. 不能通过绕开页面直接下单取得不可用座位。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC02）</summary>\n\n- 场景名称：不把无资格或正在占用、维修的座位列为可预约\n- 场景编号：S026.SC02\n\n**对应的业务要求**\n\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- user2无CS资格，R102为CS限定；R101有占用或维修\n\n**精确动作**\n\n- user2以相同时段搜索\n\n**结果与约束**\n\n- 不返回上述不可预约项；筛选由资源公开接口判定，不能靠前端隐藏就放行下单\n\n</details>\n\n<a id=\"s026sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n搜索没有结果时提示没有空位；请求失败时提示错误和重试。页面不拿上次结果冒充本次可用座位。\n\n### 操作步骤与预期结果\n\n1. 用户打开座位搜索页面并提交查询。\n2. 接口正常返回空列表时，页面显示没有可用座位。\n3. 另一次查询遇到网络失败，页面显示必要错误和重试方式。\n4. 失败时不把上一轮结果当作这次可用结果。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC03）</summary>\n\n- 场景名称：没有空位和网络出错，要给出不同提示\n- 场景编号：S026.SC03\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- 资源接口分别返回空列表和网络失败\n\n**精确动作**\n\n- 执行两次独立搜索\n\n**结果与约束**\n\n- 空列表显示无可用座位；失败显示必要错误/重试；不回填上一轮结果冒充本次可用\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S026\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-01\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S024 查询座位时，一起检查预约、维修和使用资格](S024.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-01",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-01.S01#1",
+              "criterion": 1,
+              "basis": "按区域、日期、时段和插座筛选",
+              "kind": "api",
+              "expected": "列表只显示R101的A01，能看到教室、座位编号和插座标记。实际提交的查询条件与页面选择一致。",
+              "sample": "R101两个座位在09:00—10:00都可用，只有A01有插座。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m101Filters",
+                "com.campus.reservation.ReservationApiTest#m101Restrictions",
+                "com.campus.reservation.ReservationApiTest#m101UnavailableDifferentFromEmpty"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-01.S02",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "user2没有CS院系资格，R102限定CS；R101在查询时段已有占用或维修。"
+          ],
+          "actions": [
+            "user2打开座位预约页面，搜索同一时段。"
+          ],
+          "expected": [
+            "这些不可预约的座位不会出现在可预约结果中。后端资源接口也实际检查，不能只是前端隐藏后仍允许下单。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S026.SC02"
+          ],
+          "original_text": "# 搜索座位并按地点、时间和插座筛选\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s026sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在座位预约页面选择校区、日期、时段并勾选需要插座，搜索后只看到符合全部条件的座位。\n\n### 操作步骤与预期结果\n\n1. R101的A01和A02在09:00—10:00都空闲，只有A01有插座。\n2. user1打开座位预约页面，选择邯郸校区、2030年6月3日和09:00—10:00，勾选“需要插座”。\n3. 点击“搜索”，结果只显示R101的A01，并展示教室、座位编号和插座标记。\n4. 提交给后端的条件与页面选择一致。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC01）</summary>\n\n- 场景名称：选择时间和插座条件后，只显示符合条件的座位\n- 场景编号：S026.SC01\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n\n**精确条件**\n\n- R101两座仅A01有插座且T均可用\n\n**精确动作**\n\n- user1选择邯郸、2030-06-03、09:00—10:00、需要插座\n\n**结果与约束**\n\n- 列表只显示R101/A01；每项含教室、座位编号和插座标记，提交参数与筛选一致\n\n</details>\n\n<a id=\"s026sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户搜索时，系统不把无院系资格、已有占用或维修中的座位列为可预约，直接提交也不能绕过检查。\n\n### 操作步骤与预期结果\n\n1. user2无CS资格，R102限定CS，R101在查询时段已有占用或维修。\n2. user2打开座位预约页面，搜索该时段。\n3. 结果不显示上述不可预约项，后端资源接口也检查相同限制。\n4. 不能通过绕开页面直接下单取得不可用座位。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC02）</summary>\n\n- 场景名称：不把无资格或正在占用、维修的座位列为可预约\n- 场景编号：S026.SC02\n\n**对应的业务要求**\n\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- user2无CS资格，R102为CS限定；R101有占用或维修\n\n**精确动作**\n\n- user2以相同时段搜索\n\n**结果与约束**\n\n- 不返回上述不可预约项；筛选由资源公开接口判定，不能靠前端隐藏就放行下单\n\n</details>\n\n<a id=\"s026sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n搜索没有结果时提示没有空位；请求失败时提示错误和重试。页面不拿上次结果冒充本次可用座位。\n\n### 操作步骤与预期结果\n\n1. 用户打开座位搜索页面并提交查询。\n2. 接口正常返回空列表时，页面显示没有可用座位。\n3. 另一次查询遇到网络失败，页面显示必要错误和重试方式。\n4. 失败时不把上一轮结果当作这次可用结果。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC03）</summary>\n\n- 场景名称：没有空位和网络出错，要给出不同提示\n- 场景编号：S026.SC03\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- 资源接口分别返回空列表和网络失败\n\n**精确动作**\n\n- 执行两次独立搜索\n\n**结果与约束**\n\n- 空列表显示无可用座位；失败显示必要错误/重试；不回填上一轮结果冒充本次可用\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S026\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-01\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S024 查询座位时，一起检查预约、维修和使用资格](S024.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-01",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-01.S02#1",
+              "criterion": 2,
+              "basis": "只返回开放且符合资格、没有占用和维修限制的座位",
+              "kind": "api",
+              "expected": "这些不可预约的座位不会出现在可预约结果中。后端资源接口也实际检查，不能只是前端隐藏后仍允许下单。",
+              "sample": "user2没有CS院系资格，R102限定CS；R101在查询时段已有占用或维修。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m101Filters",
+                "com.campus.reservation.ReservationApiTest#m101Restrictions",
+                "com.campus.reservation.ReservationApiTest#m101UnavailableDifferentFromEmpty"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-01.S03",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "分别准备接口正常返回空结果，以及网络请求失败两种情况。"
+          ],
+          "actions": [
+            "分别执行一次搜索。"
+          ],
+          "expected": [
+            "空结果提示没有可用座位；请求失败提示必要的错误和重试方式。不能拿上次搜索结果冒充这次可用的座位。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S026.SC03"
+          ],
+          "original_text": "# 搜索座位并按地点、时间和插座筛选\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s026sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在座位预约页面选择校区、日期、时段并勾选需要插座，搜索后只看到符合全部条件的座位。\n\n### 操作步骤与预期结果\n\n1. R101的A01和A02在09:00—10:00都空闲，只有A01有插座。\n2. user1打开座位预约页面，选择邯郸校区、2030年6月3日和09:00—10:00，勾选“需要插座”。\n3. 点击“搜索”，结果只显示R101的A01，并展示教室、座位编号和插座标记。\n4. 提交给后端的条件与页面选择一致。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC01）</summary>\n\n- 场景名称：选择时间和插座条件后，只显示符合条件的座位\n- 场景编号：S026.SC01\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n\n**精确条件**\n\n- R101两座仅A01有插座且T均可用\n\n**精确动作**\n\n- user1选择邯郸、2030-06-03、09:00—10:00、需要插座\n\n**结果与约束**\n\n- 列表只显示R101/A01；每项含教室、座位编号和插座标记，提交参数与筛选一致\n\n</details>\n\n<a id=\"s026sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户搜索时，系统不把无院系资格、已有占用或维修中的座位列为可预约，直接提交也不能绕过检查。\n\n### 操作步骤与预期结果\n\n1. user2无CS资格，R102限定CS，R101在查询时段已有占用或维修。\n2. user2打开座位预约页面，搜索该时段。\n3. 结果不显示上述不可预约项，后端资源接口也检查相同限制。\n4. 不能通过绕开页面直接下单取得不可用座位。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC02）</summary>\n\n- 场景名称：不把无资格或正在占用、维修的座位列为可预约\n- 场景编号：S026.SC02\n\n**对应的业务要求**\n\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- user2无CS资格，R102为CS限定；R101有占用或维修\n\n**精确动作**\n\n- user2以相同时段搜索\n\n**结果与约束**\n\n- 不返回上述不可预约项；筛选由资源公开接口判定，不能靠前端隐藏就放行下单\n\n</details>\n\n<a id=\"s026sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n搜索没有结果时提示没有空位；请求失败时提示错误和重试。页面不拿上次结果冒充本次可用座位。\n\n### 操作步骤与预期结果\n\n1. 用户打开座位搜索页面并提交查询。\n2. 接口正常返回空列表时，页面显示没有可用座位。\n3. 另一次查询遇到网络失败，页面显示必要错误和重试方式。\n4. 失败时不把上一轮结果当作这次可用结果。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC03）</summary>\n\n- 场景名称：没有空位和网络出错，要给出不同提示\n- 场景编号：S026.SC03\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- 资源接口分别返回空列表和网络失败\n\n**精确动作**\n\n- 执行两次独立搜索\n\n**结果与约束**\n\n- 空列表显示无可用座位；失败显示必要错误/重试；不回填上一轮结果冒充本次可用\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S026\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-01\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S024 查询座位时，一起检查预约、维修和使用资格](S024.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-01",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-01.S03#1",
+              "criterion": 1,
+              "basis": "按区域、日期、时段和插座筛选",
+              "kind": "api",
+              "expected": "空结果提示没有可用座位；请求失败提示必要的错误和重试方式。不能拿上次搜索结果冒充这次可用的座位。",
+              "sample": "分别准备接口正常返回空结果，以及网络请求失败两种情况。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m101Filters",
+                "com.campus.reservation.ReservationApiTest#m101Restrictions",
+                "com.campus.reservation.ReservationApiTest#m101UnavailableDifferentFromEmpty"
+              ]
+            },
+            {
+              "id": "M1-01.S03#2",
+              "criterion": 2,
+              "basis": "只返回开放且符合资格、没有占用和维修限制的座位",
+              "kind": "api",
+              "expected": "空结果提示没有可用座位；请求失败提示必要的错误和重试方式。不能拿上次搜索结果冒充这次可用的座位。",
+              "sample": "分别准备接口正常返回空结果，以及网络请求失败两种情况。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m101Filters",
+                "com.campus.reservation.ReservationApiTest#m101Restrictions",
+                "com.campus.reservation.ReservationApiTest#m101UnavailableDifferentFromEmpty"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M1-02",
       "source": {
         "kind": "explicit",
         "pdf_pages": [
@@ -13,236 +200,1667 @@
         "note": "任务书明确要求"
       },
       "acceptance": [
-        "到开始后10分钟仍未签到时仅提醒一次",
-        "已签到或取消不发，重复调度保持幂等"
+        "起止整点，正时长，默认最多4小时",
+        "动态参数生效，禁止过去时段和超出开放时间",
+        "数据库并发测试验证同座位仅一人成功"
       ],
       "scenarios": [
         {
-          "id": "M1-06.S01",
+          "id": "M1-02.S01",
           "covers": [
             1
           ],
-          "original_text": "## 场景一\n\n### 场景概述\n\n预约开始10分钟仍未签到时，系统提醒用户签到；到点前不发送，提醒也不能提前说用户已经违约。\n\n### 操作步骤与预期结果\n\n1. 09:00开始的预约仍未签到。\n2. 09:09:59处理提醒任务，没有未签到提醒。\n3. 09:10:00再次处理，系统生成一份未签到提醒。\n4. 用户收到的文字说明仍未签到，不称已经违约。\n\n<details>\n<summary>场景编号与精确规则补充（S031.SC01）</summary>\n\n- 场景名称：到第10分钟才提醒，不提前说已违约\n- 场景编号：S031.SC01\n\n**对应的业务要求**\n\n- M1-06.AC1：到开始后10分钟仍没签到，提醒一次\n\n**精确条件**\n\n- 09:00预约仍BOOKED\n\n**精确动作**\n\n- 在09:09:59和09:10:00分别运行调度\n\n**结果与约束**\n\n- 前者无该提醒，后者恰有一次未签到提醒，正文不称已违约\n\n</details>",
-          "business_scene_refs": [
-            "S031.SC01"
-          ],
           "preconditions": [
-            "本模块隔离 PostgreSQL 真实预约前态；通知 HTTP fixture 仅证明契约条件"
+            "测试时间为08:00，最长预约4小时，教室08:00—22:00开放。"
           ],
           "actions": [
-            "使用可调整时钟执行持久化提醒调度；观察实际 HTTP 请求及本模块数据库"
+            "打开座位预约页面，分别提交09:00—13:00、09:30—10:30、09:00—14:00和10:00—09:00。"
           ],
           "expected": [
-            "到开始后10分钟仍未签到时仅提醒一次"
+            "座位空闲时只有第一种可以成功。不是整点、超过4小时或结束早于开始的请求都不能占用座位。"
           ],
           "depends_on": [],
+          "business_scene_refs": [
+            "S027.SC01"
+          ],
+          "original_text": "# 提交预约时检查整点、时长和实际占用结果\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s027sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户提交预约时，起止必须是整点，结束晚于开始，默认最多4小时；不符合的时段不能占座。\n\n### 操作步骤与预期结果\n\n1. 当前08:00，教室08:00—22:00开放，上限4小时，分别从空闲状态尝试以下请求。\n2. 用户提交09:00—13:00，其他条件符合时可成功。\n3. 用户分别提交09:30—10:30、09:00—14:00和10:00—09:00。\n4. 系统分别因非整点、超过4小时或时长不为正而拒绝，不产生占用。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC01）</summary>\n\n- 场景名称：预约必须从整点开始和结束，默认最多4小时\n- 场景编号：S027.SC01\n\n**对应的业务要求**\n\n- M1-02.AC1：开始结束均为整点，结束晚于开始，默认最多4小时\n\n**精确条件**\n\n- now=08:00，默认最长4小时，教室开放08:00—22:00\n\n**精确动作**\n\n- 依次提交09:00—13:00、09:30—10:30、09:00—14:00和10:00—09:00\n\n**结果与约束**\n\n- 仅第一项在无占用时可成立；非整点、5小时、非正时长均拒绝且不占资源\n\n</details>\n\n<a id=\"s027sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n预约不能从已过去的时间开始，不能超出关门时间，也不能超过管理员刚设置的新上限。旧页面信息不会放宽后端规则。\n\n### 操作步骤与预期结果\n\n1. 当前08:01，管理员已把最长时长改为2小时。\n2. 用户分别提交08:00开始、21:00—23:00和09:00—12:00的预约。\n3. 系统全部拒绝，不占用资源。\n4. 即使旧页面仍显示最多4小时，后端也按当前2小时上限检查。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC02）</summary>\n\n- 场景名称：已经过去、超过关门时间或超过新上限的预约不能提交\n- 场景编号：S027.SC02\n\n**对应的业务要求**\n\n- M1-02.AC2：新设置实际生效，不能预约过去或超出开放时间的时段\n\n**精确条件**\n\n- now=08:01，最长时长已改2小时\n\n**精确动作**\n\n- 分别提交08:00开始、21:00—23:00、09:00—12:00\n\n**结果与约束**\n\n- 全部拒绝；新参数用于新请求，不能因旧页面显示4小时放行\n\n</details>\n\n<a id=\"s027sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n两位用户同时预约同一座位，只有一人获得已确认记录，失败者不能留下成功预约。成功结果能与占用、通知和操作记录对应。\n\n### 操作步骤与预期结果\n\n1. user1和user2选择A01的同一时段。\n2. 两人同时提交，查看各自预约结果。\n3. 只有一人得到已确认预约，且对应一笔有效占用；另一人没有已确认记录。\n4. 成功预约的通知和操作事件可追踪到同一笔业务。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC03）</summary>\n\n- 场景名称：两个人同时点预约，不能都看到成功\n- 场景编号：S027.SC03\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- user1/user2同时申请A01的T\n\n**精确动作**\n\n- 并发通过真实预约接口创建\n\n**结果与约束**\n\n- 只有一个确认成功并对应一个有效占用；失败者不留已确认预约；成功记录/通知/审计各有可追踪事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S027\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02\n- 有关业务功能：[S006 管理员设置预约时长和各类时限](S006.md)、[S017 防止两个人订到同一座位，也防止一人同时占多个座位](S017.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
           "objects": [
             {
-              "kind": "task",
-              "key": "m1.reminder_tasks",
+              "kind": "api",
+              "key": "reservation-api:M1-02",
               "status": "missing",
-              "evidence": "reservation 包仅 README，无调度实现；S031 对应持久化提醒和公开通知 HTTP 契约"
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
             },
             {
               "kind": "table",
               "key": "m1.seat_reservations",
-              "status": "missing",
-              "evidence": "本模块尚无业务迁移，docs/02-database-design.md:252；本轮只构造前态，不声称预约创建完成"
-            },
-            {
-              "kind": "api",
-              "key": "POST /internal/notifications/events",
               "status": "existing",
-              "evidence": "contracts/openapi/modules/support/notifications.yaml；f 实现由协调人共同环境实测，本成员不访问 support 表"
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
             }
           ],
           "cells": [
             {
-              "id": "M1-06.S01#1",
+              "id": "M1-02.S01#1",
               "criterion": 1,
-              "basis": "到开始后10分钟仍未签到时仅提醒一次",
-              "kind": "contract",
-              "expected": "09:09:59 无 HTTP；09:10:00 恰一事件，正文不称违约",
-              "sample": "真实 PG RESERVED 09:00，测试时钟 +9:59/+10:00，真实本机 HTTP fixture",
-              "observation": "实际 HTTP 请求 eventId/sourceId/recipientId/双语正文及 m1.reminder_tasks/status；不访问 support 表",
-              "comparison": "精确时刻、身份、内容与事件唯一性；失败及重启前后关联事件ID",
+              "basis": "起止整点，正时长，默认最多4小时",
+              "kind": "api",
+              "expected": "座位空闲时只有第一种可以成功。不是整点、超过4小时或结束早于开始的请求都不能占用座位。",
+              "sample": "测试时间为08:00，最长预约4小时，教室08:00—22:00开放。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
               "test_ids": [
-                "com.campus.reservation.OverdueReminderIntegrationTest#tenMinuteBoundarySendsOnlyOnceAndBilingualNotViolation"
-              ]
-            },
-            {
-              "id": "M1-06.S01#2",
-              "criterion": 1,
-              "basis": "到开始后10分钟仍未签到时仅提醒一次",
-              "kind": "contract",
-              "expected": "截止后恢复不补发失效提醒",
-              "sample": "09:15 之后仍 RESERVED 的隔离前态",
-              "observation": "实际 HTTP 请求 eventId/sourceId/recipientId/双语正文及 m1.reminder_tasks/status；不访问 support 表",
-              "comparison": "精确时刻、身份、内容与事件唯一性；失败及重启前后关联事件ID",
-              "test_ids": [
-                "com.campus.reservation.OverdueReminderIntegrationTest#deadlineSuppressesStaleReminder"
-              ]
-            },
-            {
-              "id": "M1-06.S01#3",
-              "criterion": 1,
-              "basis": "到开始后10分钟仍未签到时仅提醒一次",
-              "kind": "db",
-              "expected": "本模块 PostgreSQL 约束有效，迁移重复执行保留前态",
-              "sample": "空隔离库 Flyway 两次迁移及非法行插入",
-              "observation": "实际 HTTP 请求 eventId/sourceId/recipientId/双语正文及 m1.reminder_tasks/status；不访问 support 表",
-              "comparison": "精确时刻、身份、内容与事件唯一性；失败及重启前后关联事件ID",
-              "test_ids": [
-                "com.campus.reservation.OverdueReminderIntegrationTest#databaseConstraintsAndMigrationReplay"
+                "com.campus.reservation.ReservationApiTest#m102Hours",
+                "com.campus.reservation.ReservationApiTest#m102DynamicAndOpening",
+                "com.campus.reservation.ReservationApiTest#m102Concurrent",
+                "com.campus.reservation.ReservationApiTest#m102Idempotency",
+                "com.campus.reservation.ReservationApiTest#m102UnknownConfirmationRecovery",
+                "com.campus.reservation.ReservationApiTest#m102DependencyFailure"
               ]
             }
           ]
         },
         {
-          "id": "M1-06.S02",
+          "id": "M1-02.S02",
           "covers": [
             2
           ],
-          "original_text": "## 场景二\n\n### 场景概述\n\n用户已经签到或取消预约，开始10分钟后的任务不会再发未签到提醒，也不改变已有状态。\n\n### 操作步骤与预期结果\n\n1. 两笔09:00预约中，一笔已签到，另一笔已取消。\n2. 到09:10后，系统重复执行未签到提醒处理。\n3. 两笔均没有新增未签到提醒，已签到和已取消状态保持原样。\n\n<details>\n<summary>场景编号与精确规则补充（S031.SC02）</summary>\n\n- 场景名称：已经签到或取消的预约，不再提醒未签到\n- 场景编号：S031.SC02\n\n**对应的业务要求**\n\n- M1-06.AC2：已签到或取消的不发，重复检查不重复生成\n\n**精确条件**\n\n- 两条预约分别CHECKED_IN和CANCELLED\n\n**精确动作**\n\n- 到09:10重复运行调度\n\n**结果与约束**\n\n- 均不产生未签到提醒；状态不改变\n\n</details>",
-          "business_scene_refs": [
-            "S031.SC02"
-          ],
           "preconditions": [
-            "本模块隔离 PostgreSQL 真实预约前态；通知 HTTP fixture 仅证明契约条件"
+            "测试时间为08:01，管理员已把最长时长改成2小时。"
           ],
           "actions": [
-            "使用可调整时钟执行持久化提醒调度；观察实际 HTTP 请求及本模块数据库"
+            "分别提交08:00开始、21:00—23:00和09:00—12:00的预约。"
           ],
           "expected": [
-            "已签到或取消不发，重复调度保持幂等"
+            "全部失败，并且不占用资源。即使旧页面还显示最多4小时，后端也按新的2小时检查。"
           ],
           "depends_on": [],
+          "business_scene_refs": [
+            "S027.SC02"
+          ],
+          "original_text": "# 提交预约时检查整点、时长和实际占用结果\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s027sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户提交预约时，起止必须是整点，结束晚于开始，默认最多4小时；不符合的时段不能占座。\n\n### 操作步骤与预期结果\n\n1. 当前08:00，教室08:00—22:00开放，上限4小时，分别从空闲状态尝试以下请求。\n2. 用户提交09:00—13:00，其他条件符合时可成功。\n3. 用户分别提交09:30—10:30、09:00—14:00和10:00—09:00。\n4. 系统分别因非整点、超过4小时或时长不为正而拒绝，不产生占用。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC01）</summary>\n\n- 场景名称：预约必须从整点开始和结束，默认最多4小时\n- 场景编号：S027.SC01\n\n**对应的业务要求**\n\n- M1-02.AC1：开始结束均为整点，结束晚于开始，默认最多4小时\n\n**精确条件**\n\n- now=08:00，默认最长4小时，教室开放08:00—22:00\n\n**精确动作**\n\n- 依次提交09:00—13:00、09:30—10:30、09:00—14:00和10:00—09:00\n\n**结果与约束**\n\n- 仅第一项在无占用时可成立；非整点、5小时、非正时长均拒绝且不占资源\n\n</details>\n\n<a id=\"s027sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n预约不能从已过去的时间开始，不能超出关门时间，也不能超过管理员刚设置的新上限。旧页面信息不会放宽后端规则。\n\n### 操作步骤与预期结果\n\n1. 当前08:01，管理员已把最长时长改为2小时。\n2. 用户分别提交08:00开始、21:00—23:00和09:00—12:00的预约。\n3. 系统全部拒绝，不占用资源。\n4. 即使旧页面仍显示最多4小时，后端也按当前2小时上限检查。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC02）</summary>\n\n- 场景名称：已经过去、超过关门时间或超过新上限的预约不能提交\n- 场景编号：S027.SC02\n\n**对应的业务要求**\n\n- M1-02.AC2：新设置实际生效，不能预约过去或超出开放时间的时段\n\n**精确条件**\n\n- now=08:01，最长时长已改2小时\n\n**精确动作**\n\n- 分别提交08:00开始、21:00—23:00、09:00—12:00\n\n**结果与约束**\n\n- 全部拒绝；新参数用于新请求，不能因旧页面显示4小时放行\n\n</details>\n\n<a id=\"s027sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n两位用户同时预约同一座位，只有一人获得已确认记录，失败者不能留下成功预约。成功结果能与占用、通知和操作记录对应。\n\n### 操作步骤与预期结果\n\n1. user1和user2选择A01的同一时段。\n2. 两人同时提交，查看各自预约结果。\n3. 只有一人得到已确认预约，且对应一笔有效占用；另一人没有已确认记录。\n4. 成功预约的通知和操作事件可追踪到同一笔业务。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC03）</summary>\n\n- 场景名称：两个人同时点预约，不能都看到成功\n- 场景编号：S027.SC03\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- user1/user2同时申请A01的T\n\n**精确动作**\n\n- 并发通过真实预约接口创建\n\n**结果与约束**\n\n- 只有一个确认成功并对应一个有效占用；失败者不留已确认预约；成功记录/通知/审计各有可追踪事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S027\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02\n- 有关业务功能：[S006 管理员设置预约时长和各类时限](S006.md)、[S017 防止两个人订到同一座位，也防止一人同时占多个座位](S017.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
           "objects": [
             {
-              "kind": "task",
-              "key": "m1.reminder_tasks",
+              "kind": "api",
+              "key": "reservation-api:M1-02",
               "status": "missing",
-              "evidence": "reservation 包仅 README，无调度实现；S031 对应持久化提醒和公开通知 HTTP 契约"
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
             },
             {
               "kind": "table",
               "key": "m1.seat_reservations",
-              "status": "missing",
-              "evidence": "本模块尚无业务迁移，docs/02-database-design.md:252；本轮只构造前态，不声称预约创建完成"
-            },
-            {
-              "kind": "api",
-              "key": "POST /internal/notifications/events",
               "status": "existing",
-              "evidence": "contracts/openapi/modules/support/notifications.yaml；f 实现由协调人共同环境实测，本成员不访问 support 表"
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
             }
           ],
           "cells": [
             {
-              "id": "M1-06.S02#1",
+              "id": "M1-02.S02#1",
               "criterion": 2,
-              "basis": "已签到或取消不发，重复调度保持幂等",
-              "kind": "contract",
-              "expected": "已签到或已取消均不发且原状态不变",
-              "sample": "CHECKED_IN 和 CANCELLED 本模块前态",
-              "observation": "实际 HTTP 请求 eventId/sourceId/recipientId/双语正文及 m1.reminder_tasks/status；不访问 support 表",
-              "comparison": "精确时刻、身份、内容与事件唯一性；失败及重启前后关联事件ID",
+              "basis": "动态参数生效，禁止过去时段和超出开放时间",
+              "kind": "api",
+              "expected": "全部失败，并且不占用资源。即使旧页面还显示最多4小时，后端也按新的2小时检查。",
+              "sample": "测试时间为08:01，管理员已把最长时长改成2小时。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
               "test_ids": [
-                "com.campus.reservation.OverdueReminderIntegrationTest#checkedInAndCancelledReservationsRemainUnchanged"
-              ]
-            },
-            {
-              "id": "M1-06.S02#2",
-              "criterion": 2,
-              "basis": "已签到或取消不发，重复调度保持幂等",
-              "kind": "contract",
-              "expected": "发送未确认后签到，使用取消接口保留取消重试",
-              "sample": "通知已接受但响应丢失、随后签到；取消HTTP先404再200",
-              "observation": "实际 HTTP 请求 eventId/sourceId/recipientId/双语正文及 m1.reminder_tasks/status；不访问 support 表",
-              "comparison": "精确时刻、身份、内容与事件唯一性；失败及重启前后关联事件ID",
-              "test_ids": [
-                "com.campus.reservation.OverdueReminderIntegrationTest#pendingRetryCancelledAfterCheckin"
+                "com.campus.reservation.ReservationApiTest#m102Hours",
+                "com.campus.reservation.ReservationApiTest#m102DynamicAndOpening",
+                "com.campus.reservation.ReservationApiTest#m102Concurrent",
+                "com.campus.reservation.ReservationApiTest#m102Idempotency",
+                "com.campus.reservation.ReservationApiTest#m102UnknownConfirmationRecovery",
+                "com.campus.reservation.ReservationApiTest#m102DependencyFailure"
               ]
             }
           ]
         },
         {
-          "id": "M1-06.S03",
+          "id": "M1-02.S03",
           "covers": [
-            2
-          ],
-          "original_text": "## 场景三\n\n### 场景概述\n\n提醒事件已被接收后，发送服务重启再重发同一事件，系统仍保留一份通知，并能追到对应预约。\n\n### 操作步骤与预期结果\n\n1. 09:10的提醒事件已被通知服务接收。\n2. 发送服务意外退出并恢复后，再次发送同一事件。\n3. 系统不增加第二份逻辑通知，提醒事件仍与原预约编号对应。\n\n<details>\n<summary>场景编号与精确规则补充（S031.SC03）</summary>\n\n- 场景名称：提醒服务重启后，也不会把同一件事多建一份通知\n- 场景编号：S031.SC03\n\n**对应的业务要求**\n\n- M1-06.AC2：已签到或取消的不发，重复检查不重复生成\n\n**精确条件**\n\n- 同一09:10事件已被收件服务接收\n\n**精确动作**\n\n- 模拟发送方崩溃重启后重试同一事件\n\n**结果与约束**\n\n- 仍为一个逻辑通知，事件ID和预约ID可关联\n\n</details>",
-          "business_scene_refs": [
-            "S031.SC03"
+            3
           ],
           "preconditions": [
-            "本模块隔离 PostgreSQL 真实预约前态；通知 HTTP fixture 仅证明契约条件"
+            "user1和user2准备在同一时段预约A01。"
           ],
           "actions": [
-            "使用可调整时钟执行持久化提醒调度；观察实际 HTTP 请求及本模块数据库"
+            "user1和user2同时提交A01的同一时段预约，查看结果。"
           ],
           "expected": [
-            "已签到或取消不发，重复调度保持幂等"
+            "只有一个人得到已确认的预约，且恰好对应一笔有效占用。另一人不能留下已确认记录。成功预约、通知和操作记录之间可以追踪对应关系。"
           ],
           "depends_on": [],
+          "business_scene_refs": [
+            "S027.SC03"
+          ],
+          "original_text": "# 提交预约时检查整点、时长和实际占用结果\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s027sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户提交预约时，起止必须是整点，结束晚于开始，默认最多4小时；不符合的时段不能占座。\n\n### 操作步骤与预期结果\n\n1. 当前08:00，教室08:00—22:00开放，上限4小时，分别从空闲状态尝试以下请求。\n2. 用户提交09:00—13:00，其他条件符合时可成功。\n3. 用户分别提交09:30—10:30、09:00—14:00和10:00—09:00。\n4. 系统分别因非整点、超过4小时或时长不为正而拒绝，不产生占用。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC01）</summary>\n\n- 场景名称：预约必须从整点开始和结束，默认最多4小时\n- 场景编号：S027.SC01\n\n**对应的业务要求**\n\n- M1-02.AC1：开始结束均为整点，结束晚于开始，默认最多4小时\n\n**精确条件**\n\n- now=08:00，默认最长4小时，教室开放08:00—22:00\n\n**精确动作**\n\n- 依次提交09:00—13:00、09:30—10:30、09:00—14:00和10:00—09:00\n\n**结果与约束**\n\n- 仅第一项在无占用时可成立；非整点、5小时、非正时长均拒绝且不占资源\n\n</details>\n\n<a id=\"s027sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n预约不能从已过去的时间开始，不能超出关门时间，也不能超过管理员刚设置的新上限。旧页面信息不会放宽后端规则。\n\n### 操作步骤与预期结果\n\n1. 当前08:01，管理员已把最长时长改为2小时。\n2. 用户分别提交08:00开始、21:00—23:00和09:00—12:00的预约。\n3. 系统全部拒绝，不占用资源。\n4. 即使旧页面仍显示最多4小时，后端也按当前2小时上限检查。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC02）</summary>\n\n- 场景名称：已经过去、超过关门时间或超过新上限的预约不能提交\n- 场景编号：S027.SC02\n\n**对应的业务要求**\n\n- M1-02.AC2：新设置实际生效，不能预约过去或超出开放时间的时段\n\n**精确条件**\n\n- now=08:01，最长时长已改2小时\n\n**精确动作**\n\n- 分别提交08:00开始、21:00—23:00、09:00—12:00\n\n**结果与约束**\n\n- 全部拒绝；新参数用于新请求，不能因旧页面显示4小时放行\n\n</details>\n\n<a id=\"s027sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n两位用户同时预约同一座位，只有一人获得已确认记录，失败者不能留下成功预约。成功结果能与占用、通知和操作记录对应。\n\n### 操作步骤与预期结果\n\n1. user1和user2选择A01的同一时段。\n2. 两人同时提交，查看各自预约结果。\n3. 只有一人得到已确认预约，且对应一笔有效占用；另一人没有已确认记录。\n4. 成功预约的通知和操作事件可追踪到同一笔业务。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC03）</summary>\n\n- 场景名称：两个人同时点预约，不能都看到成功\n- 场景编号：S027.SC03\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- user1/user2同时申请A01的T\n\n**精确动作**\n\n- 并发通过真实预约接口创建\n\n**结果与约束**\n\n- 只有一个确认成功并对应一个有效占用；失败者不留已确认预约；成功记录/通知/审计各有可追踪事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S027\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02\n- 有关业务功能：[S006 管理员设置预约时长和各类时限](S006.md)、[S017 防止两个人订到同一座位，也防止一人同时占多个座位](S017.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
           "objects": [
             {
-              "kind": "task",
-              "key": "m1.reminder_tasks",
+              "kind": "api",
+              "key": "reservation-api:M1-02",
               "status": "missing",
-              "evidence": "reservation 包仅 README，无调度实现；S031 对应持久化提醒和公开通知 HTTP 契约"
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
             },
             {
               "kind": "table",
               "key": "m1.seat_reservations",
-              "status": "missing",
-              "evidence": "本模块尚无业务迁移，docs/02-database-design.md:252；本轮只构造前态，不声称预约创建完成"
-            },
-            {
-              "kind": "api",
-              "key": "POST /internal/notifications/events",
               "status": "existing",
-              "evidence": "contracts/openapi/modules/support/notifications.yaml；f 实现由协调人共同环境实测，本成员不访问 support 表"
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
             }
           ],
           "cells": [
             {
-              "id": "M1-06.S03#1",
-              "criterion": 2,
-              "basis": "已签到或取消不发，重复调度保持幂等",
-              "kind": "contract",
-              "expected": "收到未确认后重启再发相同 eventId 和内容，单逻辑通知关联原预约",
-              "sample": "HTTP fixture 持久接收集合，第一次丢响应；新建发送服务实例",
-              "observation": "实际 HTTP 请求 eventId/sourceId/recipientId/双语正文及 m1.reminder_tasks/status；不访问 support 表",
-              "comparison": "精确时刻、身份、内容与事件唯一性；失败及重启前后关联事件ID",
+              "id": "M1-02.S03#1",
+              "criterion": 3,
+              "basis": "数据库并发测试验证同座位仅一人成功",
+              "kind": "api",
+              "expected": "只有一个人得到已确认的预约，且恰好对应一笔有效占用。另一人不能留下已确认记录。成功预约、通知和操作记录之间可以追踪对应关系。",
+              "sample": "user1和user2准备在同一时段预约A01。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
               "test_ids": [
-                "com.campus.reservation.OverdueReminderIntegrationTest#restartAfterLostAcknowledgementReusesDurableEvent"
+                "com.campus.reservation.ReservationApiTest#m102Hours",
+                "com.campus.reservation.ReservationApiTest#m102DynamicAndOpening",
+                "com.campus.reservation.ReservationApiTest#m102Concurrent",
+                "com.campus.reservation.ReservationApiTest#m102Idempotency",
+                "com.campus.reservation.ReservationApiTest#m102UnknownConfirmationRecovery",
+                "com.campus.reservation.ReservationApiTest#m102DependencyFailure"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-02.S04",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "预约请求已到达资源服务，但确认回复丢失，随后预约服务意外退出。"
+          ],
+          "actions": [
+            "系统恢复后，打开“我的预约”查看这次提交；系统按原业务编号核对结果。"
+          ],
+          "expected": [
+            "最后确认的是同一笔预约，或者明确报告冲突，不多出第二份占用。结果没查清前只显示处理中，不能先说成功。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S034.SC01"
+          ],
+          "original_text": "# 网络中断或服务重启后，把预约结果查清楚\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s034sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n预约请求已被资源服务处理但回复丢失，服务恢复后会核对同一笔业务，查清前显示处理中，不再多下一单。\n\n### 操作步骤与预期结果\n\n1. 预约请求已到资源服务，确认回复丢失，预约服务随后意外退出。\n2. 恢复后用户打开“我的预约”，系统按原业务编号核对。\n3. 未确认时只显示处理中；查清后显示同一笔确认预约或明确冲突。\n4. 系统不产生第二份座位占用。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC01）</summary>\n\n- 场景名称：座位已订下但确认丢失，重启后不会再订一次\n- 场景编号：S034.SC01\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- 资源已接受预约命令，预约域尚未收到确认\n\n**精确动作**\n\n- 杀死预约进程后重启并按同业务ID对账\n\n**结果与约束**\n\n- 恢复为同一确认预约或明确冲突；处理中不展示已落实；不产生第二份占用\n\n</details>\n\n<a id=\"s034sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n取消遇到网络异常后，系统继续原来的释放任务，页面能看到失败和重试情况，其他业务的占用或维修限制不受影响。\n\n### 操作步骤与预期结果\n\n1. 一笔预约正在取消释放，网络暂时异常，同教室还有整室占用或其他维修限制。\n2. 网络恢复后，用户查看取消进度，系统继续已保存的待办。\n3. 只释放这笔预约，页面显示真实失败、重试和处理结果。\n4. 不通过直接修改其他模块数据库修复，也不解除其他来源。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC02）</summary>\n\n- 场景名称：取消重试只释放自己的预约\n- 场景编号：S034.SC02\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- 预约待释放，同室存在M2或另一工单限制\n\n**精确动作**\n\n- 注入资源超时后恢复网络并重试\n\n**结果与约束**\n\n- 持久命令恢复执行且仅释放本预约；失败/重试在页面可见，不跨库直接修复\n\n</details>\n\n<a id=\"s034sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约已因签到超时取消后，先前占用的成功消息即使晚到，也不能让预约恢复成功，系统会补做本笔释放。\n\n### 操作步骤与预期结果\n\n1. 预约已经到截止并取消，原占用命令的成功确认此时才到。\n2. 系统核对结果，并重复处理该确认。\n3. 预约始终保持超时取消，必要时只补释放自己的占用。\n4. 不复活预约，不多记违约，也不多发取消通知。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC03）</summary>\n\n- 场景名称：已经因超时取消的预约，不会被迟到的成功消息恢复\n- 场景编号：S034.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 预约已在截止取消，但收到先前占用命令迟到成功响应\n\n**精确动作**\n\n- 执行对账及重复响应处理\n\n**结果与约束**\n\n- 保持截止取消，按同源补偿释放；不复活预约、不多记违约或多发取消事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S034\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02、M1-03、M1-07\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)、[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-02",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-02.S04#1",
+              "criterion": 3,
+              "basis": "数据库并发测试验证同座位仅一人成功",
+              "kind": "api",
+              "expected": "最后确认的是同一笔预约，或者明确报告冲突，不多出第二份占用。结果没查清前只显示处理中，不能先说成功。",
+              "sample": "预约请求已到达资源服务，但确认回复丢失，随后预约服务意外退出。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m102Hours",
+                "com.campus.reservation.ReservationApiTest#m102DynamicAndOpening",
+                "com.campus.reservation.ReservationApiTest#m102Concurrent",
+                "com.campus.reservation.ReservationApiTest#m102Idempotency",
+                "com.campus.reservation.ReservationApiTest#m102UnknownConfirmationRecovery",
+                "com.campus.reservation.ReservationApiTest#m102DependencyFailure"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M1-03",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          6
+        ],
+        "note": "由任务书约束推导，属于需验收的设计决策"
+      },
+      "acceptance": [
+        "仅本人或有权限管理员可取消",
+        "只释放本预约占用，重复取消不影响其他来源",
+        "不可取消状态给出明确错误"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-03.S01",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "user1有一笔09:00开始、还没签到的预约，当前08:30。"
+          ],
+          "actions": [
+            "打开“我的预约”，找到该笔记录，点击“取消预约”。",
+            "再查询这个时段的资源状态。"
+          ],
+          "expected": [
+            "预约显示已取消，只释放这笔预约自己的占用；其他预约、整室申请或维修限制不受影响。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S028.SC01"
+          ],
+          "original_text": "# 取消自己的预约，或由管理员说明理由后取消\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s028sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在预约开始前取消自己的未签到预约，系统显示已取消并释放这笔占用，不影响其他业务。\n\n### 操作步骤与预期结果\n\n1. user1有09:00开始、尚未签到的预约，当前08:30。\n2. 用户打开“我的预约”，找到记录并点击“取消预约”。\n3. 记录显示已取消，查询资源时只释放本预约占用，其他预约、整室占用和维修限制保持不变。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC01）</summary>\n\n- 场景名称：开始前可以取消自己的预约\n- 场景编号：S028.SC01\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- user1有09:00开始BOOKED预约，now=08:30\n\n**精确动作**\n\n- user1取消并在资源接口查T\n\n**结果与约束**\n\n- 预约CANCELLED且只释放本人该预约占用；其他来源不受影响\n\n</details>\n\n<a id=\"s028sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户不能取消别人的预约，也不能按普通用户规则取消已签到或已开始的预约；管理员需要独立权限并填写理由。\n\n### 操作步骤与预期结果\n\n1. user2尝试取消user1的预约，系统拒绝并说明无权操作。\n2. 分别对已签到和已到09:00开始时刻的预约，由user1尝试取消，系统均拒绝并说明原因。\n3. 管理员执行取消时，系统仍检查取消权限和非空理由，其他账号不能绕过。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC02）</summary>\n\n- 场景名称：不能取消他人的预约，也不能按普通用户规则取消已开始的预约\n- 场景编号：S028.SC02\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- user2不是预约人；user1预约已签到或now>=09:00\n\n**精确动作**\n\n- 分别由user2取消、user1取消已开始预约\n\n**结果与约束**\n\n- 均拒绝并说明原因；管理员需取消权限及非空理由，未授权者不能绕过\n\n</details>\n\n<a id=\"s028sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n取消请求已到后端但确认丢失时，页面先显示取消处理中，查清后显示取消结果；重试不重复释放座位。\n\n### 操作步骤与预期结果\n\n1. 用户发出取消请求，资源服务已经收到，但确认在网络中丢失。\n2. 用户打开预约记录，确认前看到取消处理中。\n3. 系统重试同一次操作，确认后页面显示同一取消结果。\n4. 重试不多次释放，也不解除别的预约或维修限制。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC03）</summary>\n\n- 场景名称：取消遇到网络问题时，先显示处理中，不重复释放\n- 场景编号：S028.SC03\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- 取消命令第一次到达资源接口但响应丢失\n\n**精确动作**\n\n- 以同一业务命令重试并查询预约\n\n**结果与约束**\n\n- 不多次释放或释放别的来源；未确认前显示取消处理中，确认后为同一取消结果\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S028\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P03](../policies.md#p03)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-03",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-03.S01#1",
+              "criterion": 1,
+              "basis": "仅本人或有权限管理员可取消",
+              "kind": "api",
+              "expected": "预约显示已取消，只释放这笔预约自己的占用；其他预约、整室申请或维修限制不受影响。",
+              "sample": "user1有一笔09:00开始、还没签到的预约，当前08:30。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.; own denied audit actorId equals authenticated caller and traceId equals X-Request-Id, with no mail/code/cookie in summary.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m103OwnerAndIdempotency",
+                "com.campus.reservation.ReservationApiTest#m103NonownerAndAdmin",
+                "com.campus.reservation.ReservationApiTest#m103InvalidState",
+                "com.campus.reservation.ReservationApiTest#m103ReleasePreservesOtherSource",
+                "com.campus.reservation.ReservationApiTest#m103ReleaseRetry",
+                "com.campus.reservation.ReservationSecurityAuditTest#authenticatedDenialKeepsActorAndRequestTrace"
               ]
             },
             {
-              "id": "M1-06.S03#2",
+              "id": "M1-03.S01#2",
               "criterion": 2,
-              "basis": "已签到或取消不发，重复调度保持幂等",
-              "kind": "contract",
-              "expected": "失败保留任务，恢复后同事件重试一次成功",
-              "sample": "HTTP fixture 先503后201，推进可调时钟",
-              "observation": "实际 HTTP 请求 eventId/sourceId/recipientId/双语正文及 m1.reminder_tasks/status；不访问 support 表",
-              "comparison": "精确时刻、身份、内容与事件唯一性；失败及重启前后关联事件ID",
+              "basis": "只释放本预约占用，重复取消不影响其他来源",
+              "kind": "api",
+              "expected": "预约显示已取消，只释放这笔预约自己的占用；其他预约、整室申请或维修限制不受影响。",
+              "sample": "user1有一笔09:00开始、还没签到的预约，当前08:30。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
               "test_ids": [
-                "com.campus.reservation.OverdueReminderIntegrationTest#networkFailureKeepsDurableTaskAndRetry"
+                "com.campus.reservation.ReservationApiTest#m103OwnerAndIdempotency",
+                "com.campus.reservation.ReservationApiTest#m103NonownerAndAdmin",
+                "com.campus.reservation.ReservationApiTest#m103InvalidState",
+                "com.campus.reservation.ReservationApiTest#m103ReleasePreservesOtherSource",
+                "com.campus.reservation.ReservationApiTest#m103ReleaseRetry"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-03.S02",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "user2不是预约人；另外分别准备user1已签到，以及已到09:00的预约。"
+          ],
+          "actions": [
+            "user2尝试取消user1的预约。",
+            "user1尝试取消已签到或已经开始的预约。"
+          ],
+          "expected": [
+            "这些请求都被拒绝并说明原因。管理员另需取消权限并填写理由，其他人不能绕过限制。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S028.SC02"
+          ],
+          "original_text": "# 取消自己的预约，或由管理员说明理由后取消\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s028sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在预约开始前取消自己的未签到预约，系统显示已取消并释放这笔占用，不影响其他业务。\n\n### 操作步骤与预期结果\n\n1. user1有09:00开始、尚未签到的预约，当前08:30。\n2. 用户打开“我的预约”，找到记录并点击“取消预约”。\n3. 记录显示已取消，查询资源时只释放本预约占用，其他预约、整室占用和维修限制保持不变。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC01）</summary>\n\n- 场景名称：开始前可以取消自己的预约\n- 场景编号：S028.SC01\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- user1有09:00开始BOOKED预约，now=08:30\n\n**精确动作**\n\n- user1取消并在资源接口查T\n\n**结果与约束**\n\n- 预约CANCELLED且只释放本人该预约占用；其他来源不受影响\n\n</details>\n\n<a id=\"s028sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户不能取消别人的预约，也不能按普通用户规则取消已签到或已开始的预约；管理员需要独立权限并填写理由。\n\n### 操作步骤与预期结果\n\n1. user2尝试取消user1的预约，系统拒绝并说明无权操作。\n2. 分别对已签到和已到09:00开始时刻的预约，由user1尝试取消，系统均拒绝并说明原因。\n3. 管理员执行取消时，系统仍检查取消权限和非空理由，其他账号不能绕过。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC02）</summary>\n\n- 场景名称：不能取消他人的预约，也不能按普通用户规则取消已开始的预约\n- 场景编号：S028.SC02\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- user2不是预约人；user1预约已签到或now>=09:00\n\n**精确动作**\n\n- 分别由user2取消、user1取消已开始预约\n\n**结果与约束**\n\n- 均拒绝并说明原因；管理员需取消权限及非空理由，未授权者不能绕过\n\n</details>\n\n<a id=\"s028sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n取消请求已到后端但确认丢失时，页面先显示取消处理中，查清后显示取消结果；重试不重复释放座位。\n\n### 操作步骤与预期结果\n\n1. 用户发出取消请求，资源服务已经收到，但确认在网络中丢失。\n2. 用户打开预约记录，确认前看到取消处理中。\n3. 系统重试同一次操作，确认后页面显示同一取消结果。\n4. 重试不多次释放，也不解除别的预约或维修限制。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC03）</summary>\n\n- 场景名称：取消遇到网络问题时，先显示处理中，不重复释放\n- 场景编号：S028.SC03\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- 取消命令第一次到达资源接口但响应丢失\n\n**精确动作**\n\n- 以同一业务命令重试并查询预约\n\n**结果与约束**\n\n- 不多次释放或释放别的来源；未确认前显示取消处理中，确认后为同一取消结果\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S028\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P03](../policies.md#p03)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-03",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-03.S02#1",
+              "criterion": 1,
+              "basis": "仅本人或有权限管理员可取消",
+              "kind": "api",
+              "expected": "这些请求都被拒绝并说明原因。管理员另需取消权限并填写理由，其他人不能绕过限制。",
+              "sample": "user2不是预约人；另外分别准备user1已签到，以及已到09:00的预约。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.; own denied audit actorId equals authenticated caller and traceId equals X-Request-Id, with no mail/code/cookie in summary.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m103OwnerAndIdempotency",
+                "com.campus.reservation.ReservationApiTest#m103NonownerAndAdmin",
+                "com.campus.reservation.ReservationApiTest#m103InvalidState",
+                "com.campus.reservation.ReservationApiTest#m103ReleasePreservesOtherSource",
+                "com.campus.reservation.ReservationApiTest#m103ReleaseRetry",
+                "com.campus.reservation.ReservationSecurityAuditTest#authenticatedDenialKeepsActorAndRequestTrace"
               ]
             },
             {
-              "id": "M1-06.S03#3",
-              "criterion": 2,
-              "basis": "已签到或取消不发，重复调度保持幂等",
-              "kind": "contract",
-              "expected": "两个调度器并发不重复建立逻辑事件",
-              "sample": "两个独立调度器实例共享本模块 PG，真实 HTTP fixture",
-              "observation": "实际 HTTP 请求 eventId/sourceId/recipientId/双语正文及 m1.reminder_tasks/status；不访问 support 表",
-              "comparison": "精确时刻、身份、内容与事件唯一性；失败及重启前后关联事件ID",
+              "id": "M1-03.S02#2",
+              "criterion": 3,
+              "basis": "不可取消状态给出明确错误",
+              "kind": "api",
+              "expected": "这些请求都被拒绝并说明原因。管理员另需取消权限并填写理由，其他人不能绕过限制。",
+              "sample": "user2不是预约人；另外分别准备user1已签到，以及已到09:00的预约。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
               "test_ids": [
-                "com.campus.reservation.OverdueReminderIntegrationTest#concurrentSchedulersOnlyDeliverOnce"
+                "com.campus.reservation.ReservationApiTest#m103OwnerAndIdempotency",
+                "com.campus.reservation.ReservationApiTest#m103NonownerAndAdmin",
+                "com.campus.reservation.ReservationApiTest#m103InvalidState",
+                "com.campus.reservation.ReservationApiTest#m103ReleasePreservesOtherSource",
+                "com.campus.reservation.ReservationApiTest#m103ReleaseRetry",
+                "com.campus.reservation.ReservationEndBoundaryTest#adminCannotCancelEndedBeforeSchedulerSettles"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-03.S03",
+          "covers": [
+            2,
+            3
+          ],
+          "preconditions": [
+            "取消请求已到达资源服务，但确认结果在网络中丢失。"
+          ],
+          "actions": [
+            "重试同一次取消，并打开该预约查看状态。"
+          ],
+          "expected": [
+            "确认之前显示取消处理中；确认后显示同一取消结果。重试不会多次释放，也不会解除其他业务的占用。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S028.SC03"
+          ],
+          "original_text": "# 取消自己的预约，或由管理员说明理由后取消\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s028sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在预约开始前取消自己的未签到预约，系统显示已取消并释放这笔占用，不影响其他业务。\n\n### 操作步骤与预期结果\n\n1. user1有09:00开始、尚未签到的预约，当前08:30。\n2. 用户打开“我的预约”，找到记录并点击“取消预约”。\n3. 记录显示已取消，查询资源时只释放本预约占用，其他预约、整室占用和维修限制保持不变。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC01）</summary>\n\n- 场景名称：开始前可以取消自己的预约\n- 场景编号：S028.SC01\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- user1有09:00开始BOOKED预约，now=08:30\n\n**精确动作**\n\n- user1取消并在资源接口查T\n\n**结果与约束**\n\n- 预约CANCELLED且只释放本人该预约占用；其他来源不受影响\n\n</details>\n\n<a id=\"s028sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户不能取消别人的预约，也不能按普通用户规则取消已签到或已开始的预约；管理员需要独立权限并填写理由。\n\n### 操作步骤与预期结果\n\n1. user2尝试取消user1的预约，系统拒绝并说明无权操作。\n2. 分别对已签到和已到09:00开始时刻的预约，由user1尝试取消，系统均拒绝并说明原因。\n3. 管理员执行取消时，系统仍检查取消权限和非空理由，其他账号不能绕过。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC02）</summary>\n\n- 场景名称：不能取消他人的预约，也不能按普通用户规则取消已开始的预约\n- 场景编号：S028.SC02\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- user2不是预约人；user1预约已签到或now>=09:00\n\n**精确动作**\n\n- 分别由user2取消、user1取消已开始预约\n\n**结果与约束**\n\n- 均拒绝并说明原因；管理员需取消权限及非空理由，未授权者不能绕过\n\n</details>\n\n<a id=\"s028sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n取消请求已到后端但确认丢失时，页面先显示取消处理中，查清后显示取消结果；重试不重复释放座位。\n\n### 操作步骤与预期结果\n\n1. 用户发出取消请求，资源服务已经收到，但确认在网络中丢失。\n2. 用户打开预约记录，确认前看到取消处理中。\n3. 系统重试同一次操作，确认后页面显示同一取消结果。\n4. 重试不多次释放，也不解除别的预约或维修限制。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC03）</summary>\n\n- 场景名称：取消遇到网络问题时，先显示处理中，不重复释放\n- 场景编号：S028.SC03\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- 取消命令第一次到达资源接口但响应丢失\n\n**精确动作**\n\n- 以同一业务命令重试并查询预约\n\n**结果与约束**\n\n- 不多次释放或释放别的来源；未确认前显示取消处理中，确认后为同一取消结果\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S028\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P03](../policies.md#p03)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-03",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-03.S03#1",
+              "criterion": 2,
+              "basis": "只释放本预约占用，重复取消不影响其他来源",
+              "kind": "api",
+              "expected": "确认之前显示取消处理中；确认后显示同一取消结果。重试不会多次释放，也不会解除其他业务的占用。",
+              "sample": "取消请求已到达资源服务，但确认结果在网络中丢失。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m103OwnerAndIdempotency",
+                "com.campus.reservation.ReservationApiTest#m103NonownerAndAdmin",
+                "com.campus.reservation.ReservationApiTest#m103InvalidState",
+                "com.campus.reservation.ReservationApiTest#m103ReleasePreservesOtherSource",
+                "com.campus.reservation.ReservationApiTest#m103ReleaseRetry"
+              ]
+            },
+            {
+              "id": "M1-03.S03#2",
+              "criterion": 3,
+              "basis": "不可取消状态给出明确错误",
+              "kind": "api",
+              "expected": "确认之前显示取消处理中；确认后显示同一取消结果。重试不会多次释放，也不会解除其他业务的占用。",
+              "sample": "取消请求已到达资源服务，但确认结果在网络中丢失。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m103OwnerAndIdempotency",
+                "com.campus.reservation.ReservationApiTest#m103NonownerAndAdmin",
+                "com.campus.reservation.ReservationApiTest#m103InvalidState",
+                "com.campus.reservation.ReservationApiTest#m103ReleasePreservesOtherSource",
+                "com.campus.reservation.ReservationApiTest#m103ReleaseRetry"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-03.S04",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "一笔预约正在取消释放，网络暂时异常；同教室还有整室占用或其他维修限制。"
+          ],
+          "actions": [
+            "网络恢复后，再查看取消进度，等待系统继续处理原操作。"
+          ],
+          "expected": [
+            "系统从已保存的待办继续，只释放本预约。页面能看到失败和重试状态；不能直接连接别的模块数据库手工修业务数据。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S034.SC02"
+          ],
+          "original_text": "# 网络中断或服务重启后，把预约结果查清楚\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s034sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n预约请求已被资源服务处理但回复丢失，服务恢复后会核对同一笔业务，查清前显示处理中，不再多下一单。\n\n### 操作步骤与预期结果\n\n1. 预约请求已到资源服务，确认回复丢失，预约服务随后意外退出。\n2. 恢复后用户打开“我的预约”，系统按原业务编号核对。\n3. 未确认时只显示处理中；查清后显示同一笔确认预约或明确冲突。\n4. 系统不产生第二份座位占用。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC01）</summary>\n\n- 场景名称：座位已订下但确认丢失，重启后不会再订一次\n- 场景编号：S034.SC01\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- 资源已接受预约命令，预约域尚未收到确认\n\n**精确动作**\n\n- 杀死预约进程后重启并按同业务ID对账\n\n**结果与约束**\n\n- 恢复为同一确认预约或明确冲突；处理中不展示已落实；不产生第二份占用\n\n</details>\n\n<a id=\"s034sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n取消遇到网络异常后，系统继续原来的释放任务，页面能看到失败和重试情况，其他业务的占用或维修限制不受影响。\n\n### 操作步骤与预期结果\n\n1. 一笔预约正在取消释放，网络暂时异常，同教室还有整室占用或其他维修限制。\n2. 网络恢复后，用户查看取消进度，系统继续已保存的待办。\n3. 只释放这笔预约，页面显示真实失败、重试和处理结果。\n4. 不通过直接修改其他模块数据库修复，也不解除其他来源。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC02）</summary>\n\n- 场景名称：取消重试只释放自己的预约\n- 场景编号：S034.SC02\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- 预约待释放，同室存在M2或另一工单限制\n\n**精确动作**\n\n- 注入资源超时后恢复网络并重试\n\n**结果与约束**\n\n- 持久命令恢复执行且仅释放本预约；失败/重试在页面可见，不跨库直接修复\n\n</details>\n\n<a id=\"s034sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约已因签到超时取消后，先前占用的成功消息即使晚到，也不能让预约恢复成功，系统会补做本笔释放。\n\n### 操作步骤与预期结果\n\n1. 预约已经到截止并取消，原占用命令的成功确认此时才到。\n2. 系统核对结果，并重复处理该确认。\n3. 预约始终保持超时取消，必要时只补释放自己的占用。\n4. 不复活预约，不多记违约，也不多发取消通知。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC03）</summary>\n\n- 场景名称：已经因超时取消的预约，不会被迟到的成功消息恢复\n- 场景编号：S034.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 预约已在截止取消，但收到先前占用命令迟到成功响应\n\n**精确动作**\n\n- 执行对账及重复响应处理\n\n**结果与约束**\n\n- 保持截止取消，按同源补偿释放；不复活预约、不多记违约或多发取消事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S034\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02、M1-03、M1-07\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)、[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-03",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-03.S04#1",
+              "criterion": 2,
+              "basis": "只释放本预约占用，重复取消不影响其他来源",
+              "kind": "api",
+              "expected": "系统从已保存的待办继续，只释放本预约。页面能看到失败和重试状态；不能直接连接别的模块数据库手工修业务数据。",
+              "sample": "一笔预约正在取消释放，网络暂时异常；同教室还有整室占用或其他维修限制。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m103OwnerAndIdempotency",
+                "com.campus.reservation.ReservationApiTest#m103NonownerAndAdmin",
+                "com.campus.reservation.ReservationApiTest#m103InvalidState",
+                "com.campus.reservation.ReservationApiTest#m103ReleasePreservesOtherSource",
+                "com.campus.reservation.ReservationApiTest#m103ReleaseRetry"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M1-04",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "本人在有效窗口用当前教室当日编码签到",
+        "错误教室、过期码、越权和重复签到受到检查",
+        "签到与超时取消并发只有一个状态终结"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-04.S01",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "user1预约了R101的A01，09:00开始；测试时间为09:00，当天R101签到码有效。"
+          ],
+          "actions": [
+            "打开“我的预约”，找到这笔预约，进入签到操作。",
+            "输入教室当天的签到码，点击“签到”。"
+          ],
+          "expected": [
+            "页面显示已签到，后端只保存一次签到和实际处理时间。之后不再把这笔预约当成未签到来提醒或记违约。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S029.SC01"
+          ],
+          "original_text": "# 在网页输入教室当天的签到码\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s029sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户打开“我的预约”，找到已到开始时间的预约，输入教室当天的签到码并提交。成功后页面显示已签到，不再对这笔预约发送未签到提醒或记录违约。\n\n### 操作步骤与预期结果\n\n1. user1预约了R101的A01，09:00开始，当前09:00，当天R101签到码有效。\n2. 用户打开“我的预约”，找到该预约并进入签到操作。\n3. 输入教室当天的签到码，点击“签到”。\n4. 页面显示已签到，系统只保存一次签到和服务器处理时间，之后不再把这笔预约当作未签到处理。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC01）</summary>\n\n- 场景名称：预约开始后，输入正确签到码完成签到\n- 场景编号：S029.SC01\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n\n**精确条件**\n\n- user1有R101/A01的09:00预约，now=09:00，当日R101码有效\n\n**精确动作**\n\n- 在Web输入编码并提交\n\n**结果与约束**\n\n- 预约只变为一次CHECKED_IN，记录服务器签到时刻；不再满足未签到提醒/违约条件\n\n</details>\n\n<a id=\"s029sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户提前签到、使用其他教室或昨天的编码，或替他人签到时，系统都拒绝，原预约仍待签到，错误操作不记违约。\n\n### 操作步骤与预期结果\n\n1. 每种情况均从user1的同一笔09:00待签到预约开始。\n2. 在08:59:59提交正确码，系统因尚未开始拒绝。\n3. 在09:00分别提交R102的码和昨天的码，系统均拒绝。\n4. 由user2尝试为该预约签到，系统拒绝；各次预约保持待签到，不替别人签到，也不新增违约。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC02）</summary>\n\n- 场景名称：提前签到、输错教室码或替别人签到都不成功\n- 场景编号：S029.SC02\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n\n**精确条件**\n\n- 同一BOOKED预约\n\n**精确动作**\n\n- 分别在08:59:59提交正确码、09:00提交R102码/昨日码、由user2签到\n\n**结果与约束**\n\n- 每项拒绝且预约保持BOOKED；不消费其他人的预约；错误不记违约\n\n</details>\n\n<a id=\"s029sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n用户在截止前已完成签到，之后重复点击或到期检查不会改成违约；直到截止时才首次签到则不允许。\n\n### 操作步骤与预期结果\n\n1. 一笔09:00预约已在09:14:59完成签到，随后到09:15。\n2. 用户再次点击签到，系统保留原签到记录；同一时刻的未签到检查不取消、不释放，也不记违约。\n3. 另在相同预约条件下，直到09:15才首次提交签到，系统提示已到截止并拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC03）</summary>\n\n- 场景名称：截止前签到成功后，不会再被截止任务判成违约\n- 场景编号：S029.SC03\n\n**对应的业务要求**\n\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n- M1-04.AC3：签到与到期取消同时处理，也只留下一个有效结果\n\n**精确条件**\n\n- 签到事务于09:14:59完成，随后时钟推进09:15\n\n**精确动作**\n\n- 重复签到并触发超时任务\n\n**结果与约束**\n\n- 保持同一签到记录，不转违约，不产生取消释放；相反若到09:15才尝试首次签到则拒绝\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S029\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-04\n- 有关业务功能：[S021 每天为每间教室显示当天签到码](S021.md)、[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P02](../policies.md#p02)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-04",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-04.S01#1",
+              "criterion": 1,
+              "basis": "本人在有效窗口用当前教室当日编码签到",
+              "kind": "api",
+              "expected": "页面显示已签到，后端只保存一次签到和实际处理时间。之后不再把这笔预约当成未签到来提醒或记违约。",
+              "sample": "user1预约了R101的A01，09:00开始；测试时间为09:00，当天R101签到码有效。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m104OwnCurrentCode",
+                "com.campus.reservation.ReservationApiTest#m104WrongCodeAndOwner",
+                "com.campus.reservation.ReservationApiTest#m104WindowAndRepeat",
+                "com.campus.reservation.ReservationApiTest#m104RaceDeadline",
+                "com.campus.reservation.ReservationEndBoundaryTest#endedReservationCannotCheckInAndPenaltyWaitsForSnapshot"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-04.S02",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "仍使用同一笔尚未签到的09:00预约，各种情况分别从相同初始数据测试。"
+          ],
+          "actions": [
+            "在08:59:59输入正确码并提交。",
+            "在09:00分别输入R102的码、昨天的码，再由user2尝试为这笔预约签到。"
+          ],
+          "expected": [
+            "每次都拒绝，预约仍为待签到。不替其他人完成签到，输错或操作被拒绝也不会因此新增违约。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S029.SC02"
+          ],
+          "original_text": "# 在网页输入教室当天的签到码\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s029sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户打开“我的预约”，找到已到开始时间的预约，输入教室当天的签到码并提交。成功后页面显示已签到，不再对这笔预约发送未签到提醒或记录违约。\n\n### 操作步骤与预期结果\n\n1. user1预约了R101的A01，09:00开始，当前09:00，当天R101签到码有效。\n2. 用户打开“我的预约”，找到该预约并进入签到操作。\n3. 输入教室当天的签到码，点击“签到”。\n4. 页面显示已签到，系统只保存一次签到和服务器处理时间，之后不再把这笔预约当作未签到处理。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC01）</summary>\n\n- 场景名称：预约开始后，输入正确签到码完成签到\n- 场景编号：S029.SC01\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n\n**精确条件**\n\n- user1有R101/A01的09:00预约，now=09:00，当日R101码有效\n\n**精确动作**\n\n- 在Web输入编码并提交\n\n**结果与约束**\n\n- 预约只变为一次CHECKED_IN，记录服务器签到时刻；不再满足未签到提醒/违约条件\n\n</details>\n\n<a id=\"s029sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户提前签到、使用其他教室或昨天的编码，或替他人签到时，系统都拒绝，原预约仍待签到，错误操作不记违约。\n\n### 操作步骤与预期结果\n\n1. 每种情况均从user1的同一笔09:00待签到预约开始。\n2. 在08:59:59提交正确码，系统因尚未开始拒绝。\n3. 在09:00分别提交R102的码和昨天的码，系统均拒绝。\n4. 由user2尝试为该预约签到，系统拒绝；各次预约保持待签到，不替别人签到，也不新增违约。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC02）</summary>\n\n- 场景名称：提前签到、输错教室码或替别人签到都不成功\n- 场景编号：S029.SC02\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n\n**精确条件**\n\n- 同一BOOKED预约\n\n**精确动作**\n\n- 分别在08:59:59提交正确码、09:00提交R102码/昨日码、由user2签到\n\n**结果与约束**\n\n- 每项拒绝且预约保持BOOKED；不消费其他人的预约；错误不记违约\n\n</details>\n\n<a id=\"s029sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n用户在截止前已完成签到，之后重复点击或到期检查不会改成违约；直到截止时才首次签到则不允许。\n\n### 操作步骤与预期结果\n\n1. 一笔09:00预约已在09:14:59完成签到，随后到09:15。\n2. 用户再次点击签到，系统保留原签到记录；同一时刻的未签到检查不取消、不释放，也不记违约。\n3. 另在相同预约条件下，直到09:15才首次提交签到，系统提示已到截止并拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC03）</summary>\n\n- 场景名称：截止前签到成功后，不会再被截止任务判成违约\n- 场景编号：S029.SC03\n\n**对应的业务要求**\n\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n- M1-04.AC3：签到与到期取消同时处理，也只留下一个有效结果\n\n**精确条件**\n\n- 签到事务于09:14:59完成，随后时钟推进09:15\n\n**精确动作**\n\n- 重复签到并触发超时任务\n\n**结果与约束**\n\n- 保持同一签到记录，不转违约，不产生取消释放；相反若到09:15才尝试首次签到则拒绝\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S029\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-04\n- 有关业务功能：[S021 每天为每间教室显示当天签到码](S021.md)、[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P02](../policies.md#p02)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-04",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-04.S02#1",
+              "criterion": 1,
+              "basis": "本人在有效窗口用当前教室当日编码签到",
+              "kind": "api",
+              "expected": "每次都拒绝，预约仍为待签到。不替其他人完成签到，输错或操作被拒绝也不会因此新增违约。",
+              "sample": "仍使用同一笔尚未签到的09:00预约，各种情况分别从相同初始数据测试。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m104OwnCurrentCode",
+                "com.campus.reservation.ReservationApiTest#m104WrongCodeAndOwner",
+                "com.campus.reservation.ReservationApiTest#m104WindowAndRepeat",
+                "com.campus.reservation.ReservationApiTest#m104RaceDeadline"
+              ]
+            },
+            {
+              "id": "M1-04.S02#2",
+              "criterion": 2,
+              "basis": "错误教室、过期码、越权和重复签到受到检查",
+              "kind": "api",
+              "expected": "每次都拒绝，预约仍为待签到。不替其他人完成签到，输错或操作被拒绝也不会因此新增违约。",
+              "sample": "仍使用同一笔尚未签到的09:00预约，各种情况分别从相同初始数据测试。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m104OwnCurrentCode",
+                "com.campus.reservation.ReservationApiTest#m104WrongCodeAndOwner",
+                "com.campus.reservation.ReservationApiTest#m104WindowAndRepeat",
+                "com.campus.reservation.ReservationApiTest#m104RaceDeadline"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-04.S03",
+          "covers": [
+            2,
+            3
+          ],
+          "preconditions": [
+            "这笔预约已在09:14:59完成签到，随后把测试时间调到09:15。"
+          ],
+          "actions": [
+            "再次点击签到，并运行未签到超时检查。",
+            "另做一次独立测试：直到09:15才第一次提交签到。"
+          ],
+          "expected": [
+            "已签到的那笔保持原签到记录，不违约、不取消，也不释放其占用。另一种情况已到截止，首次签到被拒绝。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S029.SC03"
+          ],
+          "original_text": "# 在网页输入教室当天的签到码\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s029sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户打开“我的预约”，找到已到开始时间的预约，输入教室当天的签到码并提交。成功后页面显示已签到，不再对这笔预约发送未签到提醒或记录违约。\n\n### 操作步骤与预期结果\n\n1. user1预约了R101的A01，09:00开始，当前09:00，当天R101签到码有效。\n2. 用户打开“我的预约”，找到该预约并进入签到操作。\n3. 输入教室当天的签到码，点击“签到”。\n4. 页面显示已签到，系统只保存一次签到和服务器处理时间，之后不再把这笔预约当作未签到处理。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC01）</summary>\n\n- 场景名称：预约开始后，输入正确签到码完成签到\n- 场景编号：S029.SC01\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n\n**精确条件**\n\n- user1有R101/A01的09:00预约，now=09:00，当日R101码有效\n\n**精确动作**\n\n- 在Web输入编码并提交\n\n**结果与约束**\n\n- 预约只变为一次CHECKED_IN，记录服务器签到时刻；不再满足未签到提醒/违约条件\n\n</details>\n\n<a id=\"s029sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户提前签到、使用其他教室或昨天的编码，或替他人签到时，系统都拒绝，原预约仍待签到，错误操作不记违约。\n\n### 操作步骤与预期结果\n\n1. 每种情况均从user1的同一笔09:00待签到预约开始。\n2. 在08:59:59提交正确码，系统因尚未开始拒绝。\n3. 在09:00分别提交R102的码和昨天的码，系统均拒绝。\n4. 由user2尝试为该预约签到，系统拒绝；各次预约保持待签到，不替别人签到，也不新增违约。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC02）</summary>\n\n- 场景名称：提前签到、输错教室码或替别人签到都不成功\n- 场景编号：S029.SC02\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n\n**精确条件**\n\n- 同一BOOKED预约\n\n**精确动作**\n\n- 分别在08:59:59提交正确码、09:00提交R102码/昨日码、由user2签到\n\n**结果与约束**\n\n- 每项拒绝且预约保持BOOKED；不消费其他人的预约；错误不记违约\n\n</details>\n\n<a id=\"s029sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n用户在截止前已完成签到，之后重复点击或到期检查不会改成违约；直到截止时才首次签到则不允许。\n\n### 操作步骤与预期结果\n\n1. 一笔09:00预约已在09:14:59完成签到，随后到09:15。\n2. 用户再次点击签到，系统保留原签到记录；同一时刻的未签到检查不取消、不释放，也不记违约。\n3. 另在相同预约条件下，直到09:15才首次提交签到，系统提示已到截止并拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC03）</summary>\n\n- 场景名称：截止前签到成功后，不会再被截止任务判成违约\n- 场景编号：S029.SC03\n\n**对应的业务要求**\n\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n- M1-04.AC3：签到与到期取消同时处理，也只留下一个有效结果\n\n**精确条件**\n\n- 签到事务于09:14:59完成，随后时钟推进09:15\n\n**精确动作**\n\n- 重复签到并触发超时任务\n\n**结果与约束**\n\n- 保持同一签到记录，不转违约，不产生取消释放；相反若到09:15才尝试首次签到则拒绝\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S029\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-04\n- 有关业务功能：[S021 每天为每间教室显示当天签到码](S021.md)、[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P02](../policies.md#p02)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-04",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-04.S03#1",
+              "criterion": 2,
+              "basis": "错误教室、过期码、越权和重复签到受到检查",
+              "kind": "api",
+              "expected": "已签到的那笔保持原签到记录，不违约、不取消，也不释放其占用。另一种情况已到截止，首次签到被拒绝。",
+              "sample": "这笔预约已在09:14:59完成签到，随后把测试时间调到09:15。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m104OwnCurrentCode",
+                "com.campus.reservation.ReservationApiTest#m104WrongCodeAndOwner",
+                "com.campus.reservation.ReservationApiTest#m104WindowAndRepeat",
+                "com.campus.reservation.ReservationApiTest#m104RaceDeadline"
+              ]
+            },
+            {
+              "id": "M1-04.S03#2",
+              "criterion": 3,
+              "basis": "签到与超时取消并发只有一个状态终结",
+              "kind": "api",
+              "expected": "已签到的那笔保持原签到记录，不违约、不取消，也不释放其占用。另一种情况已到截止，首次签到被拒绝。",
+              "sample": "这笔预约已在09:14:59完成签到，随后把测试时间调到09:15。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m104OwnCurrentCode",
+                "com.campus.reservation.ReservationApiTest#m104WrongCodeAndOwner",
+                "com.campus.reservation.ReservationApiTest#m104WindowAndRepeat",
+                "com.campus.reservation.ReservationApiTest#m104RaceDeadline"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M1-05",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "按预约开始时间减15分钟触发",
+        "取消记录不再提醒，任务重试不重复通知",
+        "真实邮件发送需邮件服务，测试使用可观察的测试邮件收件箱"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-05.S01",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "预约09:00开始，已配置测试邮件服务和收件邮箱。"
+          ],
+          "actions": [
+            "把测试时间设为08:44:59，运行提醒检查。",
+            "再调到08:45:00运行检查，打开测试邮箱查看。"
+          ],
+          "expected": [
+            "前一次没有提前提醒；后一次只生成一份提醒。测试邮箱里能看到教室、座位和时间，并能追查到对应业务事件。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S030.SC01"
+          ],
+          "original_text": "# 预约开始前15分钟发提醒\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s030sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n预约开始前15分钟，系统生成一份提前提醒。示例中09:00开始，08:45到点后，收件箱能看到包含教室、座位和时间的邮件。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始，已配置可观察的测试邮件服务和收件邮箱。\n2. 08:44:59运行提醒处理，没有提前提醒。\n3. 08:45:00再次处理，系统生成一份对应提前提醒。\n4. 打开测试收件箱，可看到教室、座位、时间，并能对应到原业务事件。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC01）</summary>\n\n- 场景名称：没到提醒时间不发，到点后能在测试邮箱看到\n- 场景编号：S030.SC01\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约09:00开始、收件邮箱已配置测试SMTP\n\n**精确动作**\n\n- 将时钟从08:44:59推进08:45:00并执行调度\n\n**结果与约束**\n\n- 前者无提醒；后者创建一次提前提醒，测试邮箱可见教室/座位/时间；业务事件ID可追踪\n\n</details>\n\n<a id=\"s030sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n预约已经取消就不再发提前提醒；已经生成过的同一提醒，即使反复处理也不多建一份通知。\n\n### 操作步骤与预期结果\n\n1. 一笔预约已取消，另一笔已触发过提前提醒。\n2. 系统对两笔预约重复执行提醒处理。\n3. 已取消的预约不发送，已处理事件不增加新的逻辑通知。\n4. 只有实际收件情况才能证明邮件到达，不能只凭日志说已送达。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC02）</summary>\n\n- 场景名称：已取消的不发，已经处理过的不重复生成\n- 场景编号：S030.SC02\n\n**对应的业务要求**\n\n- M1-05.AC2：已取消的不提醒，任务重试不多建通知\n\n**精确条件**\n\n- 一个预约已取消，另一个已触发提前提醒\n\n**精确动作**\n\n- 重复执行两个预约的调度\n\n**结果与约束**\n\n- 已取消不发；已触发事件不多建逻辑通知；不能只看日志就声称邮件送达\n\n</details>\n\n<a id=\"s030sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n离开始不足15分钟才创建预约，系统补一次提前提醒；邮件可能已发出但未确认时，投递详情如实显示待核实。\n\n### 操作步骤与预期结果\n\n1. 用户在08:50创建一笔09:00开始的预约。\n2. 系统执行到期处理，补生成一份提前提醒。\n3. 另一次邮件发送可能被外部接收但确认丢失，用户查看投递详情时看到待核实。\n4. 该次结果不能标为已发送，也不宣称外部邮件严格只会收到一次。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC03）</summary>\n\n- 场景名称：临近开始才预约要补提醒，邮件结果不明要如实显示\n- 场景编号：S030.SC03\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约于08:50创建且09:00开始；另一次SMTP确认丢失\n\n**精确动作**\n\n- 执行到期任务并查看投递详情\n\n**结果与约束**\n\n- 08:50补一次提前提醒；未知外部发送结果显示待核实而非SENT，不承诺SMTP恰好一次\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S030\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-05\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S078 实际发送邮件，失败可重试，结果不明就提示待核实](S078.md)、[S081 填写和验证通知邮箱，缺邮箱时给出明确提示](S081.md)。\n- 需要的外部业务条件：可用的邮件服务。\n- 相关业务规则：[P12](../policies.md#p12)、[P13](../policies.md#p13)、[P16](../policies.md#p16)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-05",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-05.S01#1",
+              "criterion": 1,
+              "basis": "按预约开始时间减15分钟触发",
+              "kind": "api",
+              "expected": "前一次没有提前提醒；后一次只生成一份提醒。测试邮箱里能看到教室、座位和时间，并能追查到对应业务事件。",
+              "sample": "预约09:00开始，已配置测试邮件服务和收件邮箱。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m105BoundaryAndMailbox",
+                "com.campus.reservation.ReservationApiTest#m105CancelAndRetry",
+                "com.campus.reservation.ReservationApiTest#m105LateCreationAndRecovery",
+                "com.campus.reservation.ReservationApiTest#m105VerifiedEmailOnly"
+              ]
+            },
+            {
+              "id": "M1-05.S01#2",
+              "criterion": 3,
+              "basis": "真实邮件发送需邮件服务，测试使用可观察的测试邮件收件箱",
+              "kind": "api",
+              "expected": "前一次没有提前提醒；后一次只生成一份提醒。测试邮箱里能看到教室、座位和时间，并能追查到对应业务事件。",
+              "sample": "预约09:00开始，已配置测试邮件服务和收件邮箱。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m105BoundaryAndMailbox",
+                "com.campus.reservation.ReservationApiTest#m105CancelAndRetry",
+                "com.campus.reservation.ReservationApiTest#m105LateCreationAndRecovery",
+                "com.campus.reservation.ReservationApiTest#m105VerifiedEmailOnly"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-05.S02",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "一笔预约已取消，另一笔已经触发过提前提醒。"
+          ],
+          "actions": [
+            "对这两笔预约重复运行提醒检查。"
+          ],
+          "expected": [
+            "已取消的不发送；已经触发过的不多建逻辑通知。要确认邮件送达还需实际收件证据，不能只凭日志。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S030.SC02"
+          ],
+          "original_text": "# 预约开始前15分钟发提醒\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s030sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n预约开始前15分钟，系统生成一份提前提醒。示例中09:00开始，08:45到点后，收件箱能看到包含教室、座位和时间的邮件。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始，已配置可观察的测试邮件服务和收件邮箱。\n2. 08:44:59运行提醒处理，没有提前提醒。\n3. 08:45:00再次处理，系统生成一份对应提前提醒。\n4. 打开测试收件箱，可看到教室、座位、时间，并能对应到原业务事件。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC01）</summary>\n\n- 场景名称：没到提醒时间不发，到点后能在测试邮箱看到\n- 场景编号：S030.SC01\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约09:00开始、收件邮箱已配置测试SMTP\n\n**精确动作**\n\n- 将时钟从08:44:59推进08:45:00并执行调度\n\n**结果与约束**\n\n- 前者无提醒；后者创建一次提前提醒，测试邮箱可见教室/座位/时间；业务事件ID可追踪\n\n</details>\n\n<a id=\"s030sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n预约已经取消就不再发提前提醒；已经生成过的同一提醒，即使反复处理也不多建一份通知。\n\n### 操作步骤与预期结果\n\n1. 一笔预约已取消，另一笔已触发过提前提醒。\n2. 系统对两笔预约重复执行提醒处理。\n3. 已取消的预约不发送，已处理事件不增加新的逻辑通知。\n4. 只有实际收件情况才能证明邮件到达，不能只凭日志说已送达。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC02）</summary>\n\n- 场景名称：已取消的不发，已经处理过的不重复生成\n- 场景编号：S030.SC02\n\n**对应的业务要求**\n\n- M1-05.AC2：已取消的不提醒，任务重试不多建通知\n\n**精确条件**\n\n- 一个预约已取消，另一个已触发提前提醒\n\n**精确动作**\n\n- 重复执行两个预约的调度\n\n**结果与约束**\n\n- 已取消不发；已触发事件不多建逻辑通知；不能只看日志就声称邮件送达\n\n</details>\n\n<a id=\"s030sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n离开始不足15分钟才创建预约，系统补一次提前提醒；邮件可能已发出但未确认时，投递详情如实显示待核实。\n\n### 操作步骤与预期结果\n\n1. 用户在08:50创建一笔09:00开始的预约。\n2. 系统执行到期处理，补生成一份提前提醒。\n3. 另一次邮件发送可能被外部接收但确认丢失，用户查看投递详情时看到待核实。\n4. 该次结果不能标为已发送，也不宣称外部邮件严格只会收到一次。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC03）</summary>\n\n- 场景名称：临近开始才预约要补提醒，邮件结果不明要如实显示\n- 场景编号：S030.SC03\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约于08:50创建且09:00开始；另一次SMTP确认丢失\n\n**精确动作**\n\n- 执行到期任务并查看投递详情\n\n**结果与约束**\n\n- 08:50补一次提前提醒；未知外部发送结果显示待核实而非SENT，不承诺SMTP恰好一次\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S030\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-05\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S078 实际发送邮件，失败可重试，结果不明就提示待核实](S078.md)、[S081 填写和验证通知邮箱，缺邮箱时给出明确提示](S081.md)。\n- 需要的外部业务条件：可用的邮件服务。\n- 相关业务规则：[P12](../policies.md#p12)、[P13](../policies.md#p13)、[P16](../policies.md#p16)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-05",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-05.S02#1",
+              "criterion": 2,
+              "basis": "取消记录不再提醒，任务重试不重复通知",
+              "kind": "api",
+              "expected": "已取消的不发送；已经触发过的不多建逻辑通知。要确认邮件送达还需实际收件证据，不能只凭日志。",
+              "sample": "一笔预约已取消，另一笔已经触发过提前提醒。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m105BoundaryAndMailbox",
+                "com.campus.reservation.ReservationApiTest#m105CancelAndRetry",
+                "com.campus.reservation.ReservationApiTest#m105LateCreationAndRecovery",
+                "com.campus.reservation.ReservationApiTest#m105VerifiedEmailOnly"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-05.S03",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "一笔09:00开始的预约在08:50才创建；另准备一次邮件可能发出但没有收到确认的情况。"
+          ],
+          "actions": [
+            "运行到期提醒任务，再查看投递详情。"
+          ],
+          "expected": [
+            "新预约在08:50补一份提前提醒。另一笔结果不明的邮件显示待核实，不能标已发送，也不能保证外部邮箱只收到一次。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S030.SC03"
+          ],
+          "original_text": "# 预约开始前15分钟发提醒\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s030sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n预约开始前15分钟，系统生成一份提前提醒。示例中09:00开始，08:45到点后，收件箱能看到包含教室、座位和时间的邮件。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始，已配置可观察的测试邮件服务和收件邮箱。\n2. 08:44:59运行提醒处理，没有提前提醒。\n3. 08:45:00再次处理，系统生成一份对应提前提醒。\n4. 打开测试收件箱，可看到教室、座位、时间，并能对应到原业务事件。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC01）</summary>\n\n- 场景名称：没到提醒时间不发，到点后能在测试邮箱看到\n- 场景编号：S030.SC01\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约09:00开始、收件邮箱已配置测试SMTP\n\n**精确动作**\n\n- 将时钟从08:44:59推进08:45:00并执行调度\n\n**结果与约束**\n\n- 前者无提醒；后者创建一次提前提醒，测试邮箱可见教室/座位/时间；业务事件ID可追踪\n\n</details>\n\n<a id=\"s030sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n预约已经取消就不再发提前提醒；已经生成过的同一提醒，即使反复处理也不多建一份通知。\n\n### 操作步骤与预期结果\n\n1. 一笔预约已取消，另一笔已触发过提前提醒。\n2. 系统对两笔预约重复执行提醒处理。\n3. 已取消的预约不发送，已处理事件不增加新的逻辑通知。\n4. 只有实际收件情况才能证明邮件到达，不能只凭日志说已送达。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC02）</summary>\n\n- 场景名称：已取消的不发，已经处理过的不重复生成\n- 场景编号：S030.SC02\n\n**对应的业务要求**\n\n- M1-05.AC2：已取消的不提醒，任务重试不多建通知\n\n**精确条件**\n\n- 一个预约已取消，另一个已触发提前提醒\n\n**精确动作**\n\n- 重复执行两个预约的调度\n\n**结果与约束**\n\n- 已取消不发；已触发事件不多建逻辑通知；不能只看日志就声称邮件送达\n\n</details>\n\n<a id=\"s030sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n离开始不足15分钟才创建预约，系统补一次提前提醒；邮件可能已发出但未确认时，投递详情如实显示待核实。\n\n### 操作步骤与预期结果\n\n1. 用户在08:50创建一笔09:00开始的预约。\n2. 系统执行到期处理，补生成一份提前提醒。\n3. 另一次邮件发送可能被外部接收但确认丢失，用户查看投递详情时看到待核实。\n4. 该次结果不能标为已发送，也不宣称外部邮件严格只会收到一次。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC03）</summary>\n\n- 场景名称：临近开始才预约要补提醒，邮件结果不明要如实显示\n- 场景编号：S030.SC03\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约于08:50创建且09:00开始；另一次SMTP确认丢失\n\n**精确动作**\n\n- 执行到期任务并查看投递详情\n\n**结果与约束**\n\n- 08:50补一次提前提醒；未知外部发送结果显示待核实而非SENT，不承诺SMTP恰好一次\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S030\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-05\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S078 实际发送邮件，失败可重试，结果不明就提示待核实](S078.md)、[S081 填写和验证通知邮箱，缺邮箱时给出明确提示](S081.md)。\n- 需要的外部业务条件：可用的邮件服务。\n- 相关业务规则：[P12](../policies.md#p12)、[P13](../policies.md#p13)、[P16](../policies.md#p16)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-05",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-05.S03#1",
+              "criterion": 1,
+              "basis": "按预约开始时间减15分钟触发",
+              "kind": "api",
+              "expected": "新预约在08:50补一份提前提醒。另一笔结果不明的邮件显示待核实，不能标已发送，也不能保证外部邮箱只收到一次。",
+              "sample": "一笔09:00开始的预约在08:50才创建；另准备一次邮件可能发出但没有收到确认的情况。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m105BoundaryAndMailbox",
+                "com.campus.reservation.ReservationApiTest#m105CancelAndRetry",
+                "com.campus.reservation.ReservationApiTest#m105LateCreationAndRecovery",
+                "com.campus.reservation.ReservationApiTest#m105VerifiedEmailOnly"
+              ]
+            },
+            {
+              "id": "M1-05.S03#2",
+              "criterion": 3,
+              "basis": "真实邮件发送需邮件服务，测试使用可观察的测试邮件收件箱",
+              "kind": "api",
+              "expected": "新预约在08:50补一份提前提醒。另一笔结果不明的邮件显示待核实，不能标已发送，也不能保证外部邮箱只收到一次。",
+              "sample": "一笔09:00开始的预约在08:50才创建；另准备一次邮件可能发出但没有收到确认的情况。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m105BoundaryAndMailbox",
+                "com.campus.reservation.ReservationApiTest#m105CancelAndRetry",
+                "com.campus.reservation.ReservationApiTest#m105LateCreationAndRecovery",
+                "com.campus.reservation.ReservationApiTest#m105VerifiedEmailOnly"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M1-07",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "未签到则取消、释放、通知并记录一次违约",
+        "重启后补偿到期任务，不能重复计违约",
+        "使用可控时钟测试10/15分钟边界"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-07.S01",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "09:00开始的预约仍未签到。"
+          ],
+          "actions": [
+            "分别在09:14:59和09:15:00运行未签到截止检查。"
+          ],
+          "expected": [
+            "前一次不取消；后一次取消预约、释放它自己的占用、发送取消提醒，并记录一次违约。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S032.SC01"
+          ],
+          "original_text": "# 开始15分钟仍未签到，自动取消并记录违约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s032sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n开始15分钟还没签到，系统自动取消预约、释放该笔座位占用并通知用户，只记录一次违约；截止前不提前取消。\n\n### 操作步骤与预期结果\n\n1. 09:00开始的预约一直未签到。\n2. 09:14:59执行截止检查，预约仍保留。\n3. 09:15:00再次执行，预约被取消，只释放它自己的占用。\n4. 系统发送取消提醒并记录一次违约。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC01）</summary>\n\n- 场景名称：到截止时间才取消，并释放这笔预约的座位\n- 场景编号：S032.SC01\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 09:00预约仍BOOKED\n\n**精确动作**\n\n- 在09:14:59与09:15:00驱动截止任务\n\n**结果与约束**\n\n- 前者不取消；后者取消、释放本人占用、投递取消提醒并记一次违约\n\n</details>\n\n<a id=\"s032sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n服务停机错过截止后，恢复时补处理未签到预约，只记一次违约和取消通知，不补发已经过时的提醒。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始且未签到，服务09:12停止、09:20恢复。\n2. 恢复后系统两次处理已到期任务。\n3. 最后只有一次违约和一份取消通知，不重复释放，也不释放其他预约。\n4. 已经过时的提前提醒和开始10分钟提醒都不再补发。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC02）</summary>\n\n- 场景名称：服务晚恢复，也只处理一次，不补发已经没意义的提醒\n- 场景编号：S032.SC02\n\n**对应的业务要求**\n\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 服务09:12停止，到09:20恢复，预约未签到\n\n**精确动作**\n\n- 补执行到期任务两次\n\n**结果与约束**\n\n- 最终一条违约与一次取消逻辑通知；不补发过时提前/+10提醒；其他预约不被释放\n\n</details>\n\n<a id=\"s032sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n截止任务遇到已经签到或已因维修结束的预约，不会把它们改成未签到取消，也不会新增违约。\n\n### 操作步骤与预期结果\n\n1. 一笔预约09:14:59已签到，另一笔已因系统维修结束。\n2. 09:15同时执行两笔预约的截止检查。\n3. 原签到和维修结果保持不变，两笔都不新增违约，不被旧的未签到判断覆盖。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC03）</summary>\n\n- 场景名称：已经签到或因维修被结束的预约，不算未签到违约\n- 场景编号：S032.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 一条预约已在09:14:59签到；另一条已由维修系统终结\n\n**精确动作**\n\n- 09:15同时提交截止检查\n\n**结果与约束**\n\n- 二者均不新增违约；版本条件保证不会把签到或系统终结覆写成未签到取消\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S032\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-07\n- 有关业务功能：[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P02](../policies.md#p02)、[P05](../policies.md#p05)、[P12](../policies.md#p12)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-07",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S01#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "kind": "api",
+              "expected": "前一次不取消；后一次取消预约、释放它自己的占用、发送取消提醒，并记录一次违约。",
+              "sample": "09:00开始的预约仍未签到。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            },
+            {
+              "id": "M1-07.S01#2",
+              "criterion": 3,
+              "basis": "使用可控时钟测试10/15分钟边界",
+              "kind": "api",
+              "expected": "前一次不取消；后一次取消预约、释放它自己的占用、发送取消提醒，并记录一次违约。",
+              "sample": "09:00开始的预约仍未签到。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-07.S02",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "服务在09:12停止，09:20才恢复；这笔预约一直没签到。"
+          ],
+          "actions": [
+            "恢复服务后，两次运行已到期任务的补处理。"
+          ],
+          "expected": [
+            "最后只有一次违约和一份取消通知。不再补发提前提醒或开始10分钟提醒，不释放其他预约的座位。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S032.SC02"
+          ],
+          "original_text": "# 开始15分钟仍未签到，自动取消并记录违约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s032sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n开始15分钟还没签到，系统自动取消预约、释放该笔座位占用并通知用户，只记录一次违约；截止前不提前取消。\n\n### 操作步骤与预期结果\n\n1. 09:00开始的预约一直未签到。\n2. 09:14:59执行截止检查，预约仍保留。\n3. 09:15:00再次执行，预约被取消，只释放它自己的占用。\n4. 系统发送取消提醒并记录一次违约。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC01）</summary>\n\n- 场景名称：到截止时间才取消，并释放这笔预约的座位\n- 场景编号：S032.SC01\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 09:00预约仍BOOKED\n\n**精确动作**\n\n- 在09:14:59与09:15:00驱动截止任务\n\n**结果与约束**\n\n- 前者不取消；后者取消、释放本人占用、投递取消提醒并记一次违约\n\n</details>\n\n<a id=\"s032sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n服务停机错过截止后，恢复时补处理未签到预约，只记一次违约和取消通知，不补发已经过时的提醒。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始且未签到，服务09:12停止、09:20恢复。\n2. 恢复后系统两次处理已到期任务。\n3. 最后只有一次违约和一份取消通知，不重复释放，也不释放其他预约。\n4. 已经过时的提前提醒和开始10分钟提醒都不再补发。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC02）</summary>\n\n- 场景名称：服务晚恢复，也只处理一次，不补发已经没意义的提醒\n- 场景编号：S032.SC02\n\n**对应的业务要求**\n\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 服务09:12停止，到09:20恢复，预约未签到\n\n**精确动作**\n\n- 补执行到期任务两次\n\n**结果与约束**\n\n- 最终一条违约与一次取消逻辑通知；不补发过时提前/+10提醒；其他预约不被释放\n\n</details>\n\n<a id=\"s032sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n截止任务遇到已经签到或已因维修结束的预约，不会把它们改成未签到取消，也不会新增违约。\n\n### 操作步骤与预期结果\n\n1. 一笔预约09:14:59已签到，另一笔已因系统维修结束。\n2. 09:15同时执行两笔预约的截止检查。\n3. 原签到和维修结果保持不变，两笔都不新增违约，不被旧的未签到判断覆盖。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC03）</summary>\n\n- 场景名称：已经签到或因维修被结束的预约，不算未签到违约\n- 场景编号：S032.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 一条预约已在09:14:59签到；另一条已由维修系统终结\n\n**精确动作**\n\n- 09:15同时提交截止检查\n\n**结果与约束**\n\n- 二者均不新增违约；版本条件保证不会把签到或系统终结覆写成未签到取消\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S032\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-07\n- 有关业务功能：[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P02](../policies.md#p02)、[P05](../policies.md#p05)、[P12](../policies.md#p12)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-07",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S02#1",
+              "criterion": 2,
+              "basis": "重启后补偿到期任务，不能重复计违约",
+              "kind": "api",
+              "expected": "最后只有一次违约和一份取消通知。不再补发提前提醒或开始10分钟提醒，不释放其他预约的座位。",
+              "sample": "服务在09:12停止，09:20才恢复；这笔预约一直没签到。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics",
+                "com.campus.reservation.ReservationEndBoundaryTest#endedReservationDoesNotSendAfterReminder",
+                "com.campus.reservation.ReservationEndBoundaryTest#legacyEndedReservationDoesNotSendAfterReminder"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-07.S03",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "一笔预约在09:14:59已签到；另一笔已因系统维修被结束。"
+          ],
+          "actions": [
+            "在09:15同时运行这两笔预约的截止检查。"
+          ],
+          "expected": [
+            "两笔都不新增违约。检查不能把较新的签到或维修处理结果覆盖成未签到取消。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S032.SC03"
+          ],
+          "original_text": "# 开始15分钟仍未签到，自动取消并记录违约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s032sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n开始15分钟还没签到，系统自动取消预约、释放该笔座位占用并通知用户，只记录一次违约；截止前不提前取消。\n\n### 操作步骤与预期结果\n\n1. 09:00开始的预约一直未签到。\n2. 09:14:59执行截止检查，预约仍保留。\n3. 09:15:00再次执行，预约被取消，只释放它自己的占用。\n4. 系统发送取消提醒并记录一次违约。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC01）</summary>\n\n- 场景名称：到截止时间才取消，并释放这笔预约的座位\n- 场景编号：S032.SC01\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 09:00预约仍BOOKED\n\n**精确动作**\n\n- 在09:14:59与09:15:00驱动截止任务\n\n**结果与约束**\n\n- 前者不取消；后者取消、释放本人占用、投递取消提醒并记一次违约\n\n</details>\n\n<a id=\"s032sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n服务停机错过截止后，恢复时补处理未签到预约，只记一次违约和取消通知，不补发已经过时的提醒。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始且未签到，服务09:12停止、09:20恢复。\n2. 恢复后系统两次处理已到期任务。\n3. 最后只有一次违约和一份取消通知，不重复释放，也不释放其他预约。\n4. 已经过时的提前提醒和开始10分钟提醒都不再补发。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC02）</summary>\n\n- 场景名称：服务晚恢复，也只处理一次，不补发已经没意义的提醒\n- 场景编号：S032.SC02\n\n**对应的业务要求**\n\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 服务09:12停止，到09:20恢复，预约未签到\n\n**精确动作**\n\n- 补执行到期任务两次\n\n**结果与约束**\n\n- 最终一条违约与一次取消逻辑通知；不补发过时提前/+10提醒；其他预约不被释放\n\n</details>\n\n<a id=\"s032sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n截止任务遇到已经签到或已因维修结束的预约，不会把它们改成未签到取消，也不会新增违约。\n\n### 操作步骤与预期结果\n\n1. 一笔预约09:14:59已签到，另一笔已因系统维修结束。\n2. 09:15同时执行两笔预约的截止检查。\n3. 原签到和维修结果保持不变，两笔都不新增违约，不被旧的未签到判断覆盖。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC03）</summary>\n\n- 场景名称：已经签到或因维修被结束的预约，不算未签到违约\n- 场景编号：S032.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 一条预约已在09:14:59签到；另一条已由维修系统终结\n\n**精确动作**\n\n- 09:15同时提交截止检查\n\n**结果与约束**\n\n- 二者均不新增违约；版本条件保证不会把签到或系统终结覆写成未签到取消\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S032\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-07\n- 有关业务功能：[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P02](../policies.md#p02)、[P05](../policies.md#p05)、[P12](../policies.md#p12)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-07",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S03#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "kind": "api",
+              "expected": "两笔都不新增违约。检查不能把较新的签到或维修处理结果覆盖成未签到取消。",
+              "sample": "一笔预约在09:14:59已签到；另一笔已因系统维修被结束。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            },
+            {
+              "id": "M1-07.S03#2",
+              "criterion": 3,
+              "basis": "使用可控时钟测试10/15分钟边界",
+              "kind": "api",
+              "expected": "两笔都不新增违约。检查不能把较新的签到或维修处理结果覆盖成未签到取消。",
+              "sample": "一笔预约在09:14:59已签到；另一笔已因系统维修被结束。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-07.S04",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "预约已到签到截止并被取消，但之前占用座位的成功确认现在才到。"
+          ],
+          "actions": [
+            "让系统核对结果，再重复处理这个迟到的确认。"
+          ],
+          "expected": [
+            "预约仍保持超时取消，并补做这笔预约自己的释放。不会重新变成功，也不多记违约或多发取消通知。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S034.SC03"
+          ],
+          "original_text": "# 网络中断或服务重启后，把预约结果查清楚\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s034sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n预约请求已被资源服务处理但回复丢失，服务恢复后会核对同一笔业务，查清前显示处理中，不再多下一单。\n\n### 操作步骤与预期结果\n\n1. 预约请求已到资源服务，确认回复丢失，预约服务随后意外退出。\n2. 恢复后用户打开“我的预约”，系统按原业务编号核对。\n3. 未确认时只显示处理中；查清后显示同一笔确认预约或明确冲突。\n4. 系统不产生第二份座位占用。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC01）</summary>\n\n- 场景名称：座位已订下但确认丢失，重启后不会再订一次\n- 场景编号：S034.SC01\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- 资源已接受预约命令，预约域尚未收到确认\n\n**精确动作**\n\n- 杀死预约进程后重启并按同业务ID对账\n\n**结果与约束**\n\n- 恢复为同一确认预约或明确冲突；处理中不展示已落实；不产生第二份占用\n\n</details>\n\n<a id=\"s034sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n取消遇到网络异常后，系统继续原来的释放任务，页面能看到失败和重试情况，其他业务的占用或维修限制不受影响。\n\n### 操作步骤与预期结果\n\n1. 一笔预约正在取消释放，网络暂时异常，同教室还有整室占用或其他维修限制。\n2. 网络恢复后，用户查看取消进度，系统继续已保存的待办。\n3. 只释放这笔预约，页面显示真实失败、重试和处理结果。\n4. 不通过直接修改其他模块数据库修复，也不解除其他来源。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC02）</summary>\n\n- 场景名称：取消重试只释放自己的预约\n- 场景编号：S034.SC02\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- 预约待释放，同室存在M2或另一工单限制\n\n**精确动作**\n\n- 注入资源超时后恢复网络并重试\n\n**结果与约束**\n\n- 持久命令恢复执行且仅释放本预约；失败/重试在页面可见，不跨库直接修复\n\n</details>\n\n<a id=\"s034sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约已因签到超时取消后，先前占用的成功消息即使晚到，也不能让预约恢复成功，系统会补做本笔释放。\n\n### 操作步骤与预期结果\n\n1. 预约已经到截止并取消，原占用命令的成功确认此时才到。\n2. 系统核对结果，并重复处理该确认。\n3. 预约始终保持超时取消，必要时只补释放自己的占用。\n4. 不复活预约，不多记违约，也不多发取消通知。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC03）</summary>\n\n- 场景名称：已经因超时取消的预约，不会被迟到的成功消息恢复\n- 场景编号：S034.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 预约已在截止取消，但收到先前占用命令迟到成功响应\n\n**精确动作**\n\n- 执行对账及重复响应处理\n\n**结果与约束**\n\n- 保持截止取消，按同源补偿释放；不复活预约、不多记违约或多发取消事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S034\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02、M1-03、M1-07\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)、[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-07",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S04#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "kind": "api",
+              "expected": "预约仍保持超时取消，并补做这笔预约自己的释放。不会重新变成功，也不多记违约或多发取消通知。",
+              "sample": "预约已到签到截止并被取消，但之前占用座位的成功确认现在才到。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            },
+            {
+              "id": "M1-07.S04#2",
+              "criterion": 2,
+              "basis": "重启后补偿到期任务，不能重复计违约",
+              "kind": "api",
+              "expected": "预约仍保持超时取消，并补做这笔预约自己的释放。不会重新变成功，也不多记违约或多发取消通知。",
+              "sample": "预约已到签到截止并被取消，但之前占用座位的成功确认现在才到。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-07.S05",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "R101有3笔尚未结束的预约：未来待签到、开始后未签到、已签到正在使用。"
+          ],
+          "actions": [
+            "处理经过服务身份认证的W1维修生效事件。"
+          ],
+          "expected": [
+            "这3笔都以系统维修原因结束并通知，不记违约。只处理R101，不误改其他教室。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S079.SC01"
+          ],
+          "original_text": "# 维修开始后，结束受影响的个人预约但不记违约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s079sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n教室维修生效后，系统结束其中未来、未签到和正在使用的个人预约，统一说明维修原因并通知，不记违约。\n\n### 操作步骤与预期结果\n\n1. R101有未来待签到、开始后未签到和已签到未结束3笔预约。\n2. 系统接收经服务身份认证的W1维修生效事件。\n3. 3笔均以系统维修原因结束并通知，不计违约。\n4. 只处理R101，不误改其他教室。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC01）</summary>\n\n- 场景名称：未来、未签到和正在使用的预约都按维修原因结束\n- 场景编号：S079.SC01\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n\n**精确条件**\n\n- R101有未来BOOKED、开始后未签到和已签到未结束三条预约\n\n**精确动作**\n\n- 处理经过服务认证的W1维修生效事件\n\n**结果与约束**\n\n- 三者均以SYSTEM_MAINTENANCE终结并通知，不计违约；仅处理R101，不误改其他教室\n\n</details>\n\n<a id=\"s079sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n教室开始维修时，已经结束或提前取消的预约历史不再重做取消、释放或通知，原状态和时间保持。\n\n### 操作步骤与预期结果\n\n1. R101还有已结束和已提前取消的预约。\n2. 系统处理同一维修生效事件。\n3. 查看两笔历史，状态和时间不变，不新增取消、释放或通知。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC02）</summary>\n\n- 场景名称：已经结束或取消的历史，不重新处理\n- 场景编号：S079.SC02\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n\n**精确条件**\n\n- R101另有已结束和已提前取消预约\n\n**精确动作**\n\n- 处理同一维修事件\n\n**结果与约束**\n\n- 两条历史保持原状态/时间；不重新记取消、释放或通知\n\n</details>\n\n<a id=\"s079sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n维修已处理并恢复后，旧维修消息重发不能结束恢复后新建的预约，也不重复通知或记违约。\n\n### 操作步骤与预期结果\n\n1. W1这版事件已处理，资源已恢复，随后用户新建预约。\n2. 旧维修事件再次到达，系统核对来源版本。\n3. 新预约不被终结，不重复通知或违约；资源恢复仍只按对应工单来源控制。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC03）</summary>\n\n- 场景名称：维修结束后，旧消息重发不能取消新预约\n- 场景编号：S079.SC03\n\n**对应的业务要求**\n\n- RES-05.AC3：重复消息和晚到的旧消息不能错误恢复座位\n\n**精确条件**\n\n- W1同版本事件已处理且已恢复，存在恢复后新预约\n\n**精确动作**\n\n- 重放旧维修事件并检查来源版本\n\n**结果与约束**\n\n- 旧事件不再终结新预约；不重复记通知或违约；资源恢复仍按工单来源控制\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S079\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M3-03、M1-07、RES-05\n- 有关业务功能：[S019 维修时停用整间教室，恢复时逐项检查原因](S019.md)、[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-07",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S05#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "kind": "api",
+              "expected": "这3笔都以系统维修原因结束并通知，不记违约。只处理R101，不误改其他教室。",
+              "sample": "R101有3笔尚未结束的预约：未来待签到、开始后未签到、已签到正在使用。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            },
+            {
+              "id": "M1-07.S05#2",
+              "criterion": 2,
+              "basis": "重启后补偿到期任务，不能重复计违约",
+              "kind": "api",
+              "expected": "这3笔都以系统维修原因结束并通知，不记违约。只处理R101，不误改其他教室。",
+              "sample": "R101有3笔尚未结束的预约：未来待签到、开始后未签到、已签到正在使用。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-07.S06",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "R101另有已结束和已提前取消的预约。"
+          ],
+          "actions": [
+            "处理相同维修事件，再看这两笔历史。"
+          ],
+          "expected": [
+            "原状态和时间不变，不重新取消，不新增释放或通知。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S079.SC02"
+          ],
+          "original_text": "# 维修开始后，结束受影响的个人预约但不记违约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s079sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n教室维修生效后，系统结束其中未来、未签到和正在使用的个人预约，统一说明维修原因并通知，不记违约。\n\n### 操作步骤与预期结果\n\n1. R101有未来待签到、开始后未签到和已签到未结束3笔预约。\n2. 系统接收经服务身份认证的W1维修生效事件。\n3. 3笔均以系统维修原因结束并通知，不计违约。\n4. 只处理R101，不误改其他教室。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC01）</summary>\n\n- 场景名称：未来、未签到和正在使用的预约都按维修原因结束\n- 场景编号：S079.SC01\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n\n**精确条件**\n\n- R101有未来BOOKED、开始后未签到和已签到未结束三条预约\n\n**精确动作**\n\n- 处理经过服务认证的W1维修生效事件\n\n**结果与约束**\n\n- 三者均以SYSTEM_MAINTENANCE终结并通知，不计违约；仅处理R101，不误改其他教室\n\n</details>\n\n<a id=\"s079sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n教室开始维修时，已经结束或提前取消的预约历史不再重做取消、释放或通知，原状态和时间保持。\n\n### 操作步骤与预期结果\n\n1. R101还有已结束和已提前取消的预约。\n2. 系统处理同一维修生效事件。\n3. 查看两笔历史，状态和时间不变，不新增取消、释放或通知。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC02）</summary>\n\n- 场景名称：已经结束或取消的历史，不重新处理\n- 场景编号：S079.SC02\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n\n**精确条件**\n\n- R101另有已结束和已提前取消预约\n\n**精确动作**\n\n- 处理同一维修事件\n\n**结果与约束**\n\n- 两条历史保持原状态/时间；不重新记取消、释放或通知\n\n</details>\n\n<a id=\"s079sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n维修已处理并恢复后，旧维修消息重发不能结束恢复后新建的预约，也不重复通知或记违约。\n\n### 操作步骤与预期结果\n\n1. W1这版事件已处理，资源已恢复，随后用户新建预约。\n2. 旧维修事件再次到达，系统核对来源版本。\n3. 新预约不被终结，不重复通知或违约；资源恢复仍只按对应工单来源控制。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC03）</summary>\n\n- 场景名称：维修结束后，旧消息重发不能取消新预约\n- 场景编号：S079.SC03\n\n**对应的业务要求**\n\n- RES-05.AC3：重复消息和晚到的旧消息不能错误恢复座位\n\n**精确条件**\n\n- W1同版本事件已处理且已恢复，存在恢复后新预约\n\n**精确动作**\n\n- 重放旧维修事件并检查来源版本\n\n**结果与约束**\n\n- 旧事件不再终结新预约；不重复记通知或违约；资源恢复仍按工单来源控制\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S079\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M3-03、M1-07、RES-05\n- 有关业务功能：[S019 维修时停用整间教室，恢复时逐项检查原因](S019.md)、[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-07",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S06#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "kind": "api",
+              "expected": "原状态和时间不变，不重新取消，不新增释放或通知。",
+              "sample": "R101另有已结束和已提前取消的预约。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-07.S07",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "W1这版维修事件已处理且已恢复；恢复之后已有新预约。"
+          ],
+          "actions": [
+            "重复发送旧维修事件，检查其来源版本和新预约。"
+          ],
+          "expected": [
+            "新预约不被旧消息结束，不重复记通知或违约。资源是否恢复仍按对应工单自己的来源控制。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S079.SC03"
+          ],
+          "original_text": "# 维修开始后，结束受影响的个人预约但不记违约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s079sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n教室维修生效后，系统结束其中未来、未签到和正在使用的个人预约，统一说明维修原因并通知，不记违约。\n\n### 操作步骤与预期结果\n\n1. R101有未来待签到、开始后未签到和已签到未结束3笔预约。\n2. 系统接收经服务身份认证的W1维修生效事件。\n3. 3笔均以系统维修原因结束并通知，不计违约。\n4. 只处理R101，不误改其他教室。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC01）</summary>\n\n- 场景名称：未来、未签到和正在使用的预约都按维修原因结束\n- 场景编号：S079.SC01\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n\n**精确条件**\n\n- R101有未来BOOKED、开始后未签到和已签到未结束三条预约\n\n**精确动作**\n\n- 处理经过服务认证的W1维修生效事件\n\n**结果与约束**\n\n- 三者均以SYSTEM_MAINTENANCE终结并通知，不计违约；仅处理R101，不误改其他教室\n\n</details>\n\n<a id=\"s079sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n教室开始维修时，已经结束或提前取消的预约历史不再重做取消、释放或通知，原状态和时间保持。\n\n### 操作步骤与预期结果\n\n1. R101还有已结束和已提前取消的预约。\n2. 系统处理同一维修生效事件。\n3. 查看两笔历史，状态和时间不变，不新增取消、释放或通知。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC02）</summary>\n\n- 场景名称：已经结束或取消的历史，不重新处理\n- 场景编号：S079.SC02\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n\n**精确条件**\n\n- R101另有已结束和已提前取消预约\n\n**精确动作**\n\n- 处理同一维修事件\n\n**结果与约束**\n\n- 两条历史保持原状态/时间；不重新记取消、释放或通知\n\n</details>\n\n<a id=\"s079sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n维修已处理并恢复后，旧维修消息重发不能结束恢复后新建的预约，也不重复通知或记违约。\n\n### 操作步骤与预期结果\n\n1. W1这版事件已处理，资源已恢复，随后用户新建预约。\n2. 旧维修事件再次到达，系统核对来源版本。\n3. 新预约不被终结，不重复通知或违约；资源恢复仍只按对应工单来源控制。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC03）</summary>\n\n- 场景名称：维修结束后，旧消息重发不能取消新预约\n- 场景编号：S079.SC03\n\n**对应的业务要求**\n\n- RES-05.AC3：重复消息和晚到的旧消息不能错误恢复座位\n\n**精确条件**\n\n- W1同版本事件已处理且已恢复，存在恢复后新预约\n\n**精确动作**\n\n- 重放旧维修事件并检查来源版本\n\n**结果与约束**\n\n- 旧事件不再终结新预约；不重复记通知或违约；资源恢复仍按工单来源控制\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S079\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M3-03、M1-07、RES-05\n- 有关业务功能：[S019 维修时停用整间教室，恢复时逐项检查原因](S019.md)、[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-07",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S07#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "kind": "api",
+              "expected": "新预约不被旧消息结束，不重复记通知或违约。资源是否恢复仍按对应工单自己的来源控制。",
+              "sample": "W1这版维修事件已处理且已恢复；恢复之后已有新预约。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            },
+            {
+              "id": "M1-07.S07#2",
+              "criterion": 2,
+              "basis": "重启后补偿到期任务，不能重复计违约",
+              "kind": "api",
+              "expected": "新预约不被旧消息结束，不重复记通知或违约。资源是否恢复仍按对应工单自己的来源控制。",
+              "sample": "W1这版维修事件已处理且已恢复；恢复之后已有新预约。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m107NoShowDeadline",
+                "com.campus.reservation.ReservationApiTest#m107PendingTimeoutLateAck",
+                "com.campus.reservation.ReservationApiTest#m107Restart",
+                "com.campus.reservation.ReservationApiTest#m107Maintenance",
+                "com.campus.reservation.ReservationApiTest#m107MaintenanceOrder",
+                "com.campus.reservation.ReservationApiTest#m107Statistics"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M1-08",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1,
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "只能查询本人历史，管理员另行授权",
+        "再次预约走当前全部规则，不能直接复制旧占用",
+        "分页和时区展示正确"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-08.S01",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "user1和user2各有多笔不同状态的预约。"
+          ],
+          "actions": [
+            "user1打开“我的预约历史”，连续翻页。",
+            "开发者再直接请求user2某笔预约的详情。"
+          ],
+          "expected": [
+            "列表只显示user1有权看的记录，别人的详情被拒绝。在同一份查询数据中，按开始时间和记录编号稳定排序，不重复或漏项。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S033.SC01"
+          ],
+          "original_text": "# 查看我的预约历史，并重新选择预约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s033sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户打开自己的预约历史，翻页时记录按固定顺序展示，不重复不漏项；直接请求他人的详情也会被拒绝。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有多笔不同状态预约。\n2. user1打开“我的预约历史”，列表只显示自己有权看的记录。\n3. 在同一份查询数据中连续翻页，记录按开始时间和编号排序，不重复或漏项。\n4. user1直接请求user2某笔详情时，系统拒绝，不泄露内容。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC01）</summary>\n\n- 场景名称：只能看到自己的历史，翻页不漏记录也不重复\n- 场景编号：S033.SC01\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- user1/user2各有多条不同状态预约\n\n**精确动作**\n\n- user1分页查询，另直接指定user2记录ID\n\n**结果与约束**\n\n- 只返回user1可见记录；越权详情拒绝；同一快照按开始时间与ID稳定排序，无重复漏项\n\n</details>\n\n<a id=\"s033sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n历史记录里的再次预约只帮忙填入资源和时长，提交时仍检查当前规则，不复活旧记录或复制旧占用。\n\n### 操作步骤与预期结果\n\n1. 过去A01曾预约成功，如今已停用，或最长时长已改为2小时。\n2. 用户在原3小时历史记录上点击“再次预约”，页面带入资源与时长。\n3. 用户提交，系统以新业务编号按当前规则判断并拒绝。\n4. 旧预约和旧占用不会复活，也不把过去的成功状态直接复制。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC02）</summary>\n\n- 场景名称：再次预约会重新检查当前规则\n- 场景编号：S033.SC02\n\n**对应的业务要求**\n\n- M1-08.AC2：再次预约重新检查当前规则，不复制旧占用\n\n**精确条件**\n\n- 历史A01曾预约成功，当前其已停用或最长时长改2\n\n**精确动作**\n\n- 点击再次预约并提交原3小时时段\n\n**结果与约束**\n\n- 仅预填资源与时长；创建新业务ID并按当前规则拒绝，不复活旧占用或复制旧成功状态\n\n</details>\n\n<a id=\"s033sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约历史按上海时间显示日期。用户没有记录时显示空列表，已有记录则能查看状态、签到和取消原因。\n\n### 操作步骤与预期结果\n\n1. 打开一笔其UTC时间对应上海次日的记录，日期及筛选均归到上海的正确日期。\n2. 查看记录，可见历史状态、签到信息和取消原因。\n3. 另一个没有历史的用户打开同一页面，看到0条记录，不显示编造的演示预约。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC03）</summary>\n\n- 场景名称：日期按上海时间显示，没有记录就显示空\n- 场景编号：S033.SC03\n\n**对应的业务要求**\n\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- 一个UTC时间对应上海次日；另一用户无历史\n\n**精确动作**\n\n- 查看日期筛选及空页面\n\n**结果与约束**\n\n- 按Asia/Shanghai归日，空结果为0条而非虚构样例；历史状态/签到/取消原因可见\n\n</details>\n\n<a id=\"s033sc04\"></a>\n\n## 场景四\n\n### 场景概述\n\n有预约管理读取权限的管理员，可以按教室、座位和时间查询运营明细；普通用户不能借管理列表查看他人预约。\n\n### 操作步骤与预期结果\n\n1. 两个普通用户各有预约，admin1有管理读取权限，user1没有。\n2. admin1打开管理列表，选择教室、座位和时间范围查询。\n3. 结果包含范围内预约时段、状态、签到、违约及必要的用户标识。\n4. user1尝试同样的管理查询，被拒绝，不返回他人记录。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC04）</summary>\n\n- 场景名称：有权限的管理员可以查看预约管理明细\n- 场景编号：S033.SC04\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n\n**精确条件**\n\n- admin1有预约管理读取权限，user1没有；两普通用户各有预约\n\n**精确动作**\n\n- 按教室、座位和时间范围查询管理列表\n\n**结果与约束**\n\n- 只有授权管理员返回范围内预约时段、状态、签到/违约和最小化用户标识；普通用户拒绝且不泄漏他人记录\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S033\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-08、SUP-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-08",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-08.S01#1",
+              "criterion": 1,
+              "basis": "只能查询本人历史，管理员另行授权",
+              "kind": "api",
+              "expected": "列表只显示user1有权看的记录，别人的详情被拒绝。在同一份查询数据中，按开始时间和记录编号稳定排序，不重复或漏项。",
+              "sample": "user1和user2各有多笔不同状态的预约。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m108OwnAdmin",
+                "com.campus.reservation.ReservationApiTest#m108Rebook",
+                "com.campus.reservation.ReservationApiTest#m108StablePagination",
+                "com.campus.reservation.ReservationApiTest#m108TimezoneAndEmpty"
+              ]
+            },
+            {
+              "id": "M1-08.S01#2",
+              "criterion": 3,
+              "basis": "分页和时区展示正确",
+              "kind": "api",
+              "expected": "列表只显示user1有权看的记录，别人的详情被拒绝。在同一份查询数据中，按开始时间和记录编号稳定排序，不重复或漏项。",
+              "sample": "user1和user2各有多笔不同状态的预约。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m108OwnAdmin",
+                "com.campus.reservation.ReservationApiTest#m108Rebook",
+                "com.campus.reservation.ReservationApiTest#m108StablePagination",
+                "com.campus.reservation.ReservationApiTest#m108TimezoneAndEmpty"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-08.S02",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "历史上A01曾预约成功；现在座位已停用，或最长预约时长已改成2小时。"
+          ],
+          "actions": [
+            "在一笔历史记录中点击“再次预约”，按原来的3小时时长提交。"
+          ],
+          "expected": [
+            "页面只帮忙填入资源和时长，不恢复旧预约。新的预约尝试有新的业务编号，按当前规则被拒绝，不复制过去的成功状态。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S033.SC02"
+          ],
+          "original_text": "# 查看我的预约历史，并重新选择预约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s033sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户打开自己的预约历史，翻页时记录按固定顺序展示，不重复不漏项；直接请求他人的详情也会被拒绝。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有多笔不同状态预约。\n2. user1打开“我的预约历史”，列表只显示自己有权看的记录。\n3. 在同一份查询数据中连续翻页，记录按开始时间和编号排序，不重复或漏项。\n4. user1直接请求user2某笔详情时，系统拒绝，不泄露内容。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC01）</summary>\n\n- 场景名称：只能看到自己的历史，翻页不漏记录也不重复\n- 场景编号：S033.SC01\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- user1/user2各有多条不同状态预约\n\n**精确动作**\n\n- user1分页查询，另直接指定user2记录ID\n\n**结果与约束**\n\n- 只返回user1可见记录；越权详情拒绝；同一快照按开始时间与ID稳定排序，无重复漏项\n\n</details>\n\n<a id=\"s033sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n历史记录里的再次预约只帮忙填入资源和时长，提交时仍检查当前规则，不复活旧记录或复制旧占用。\n\n### 操作步骤与预期结果\n\n1. 过去A01曾预约成功，如今已停用，或最长时长已改为2小时。\n2. 用户在原3小时历史记录上点击“再次预约”，页面带入资源与时长。\n3. 用户提交，系统以新业务编号按当前规则判断并拒绝。\n4. 旧预约和旧占用不会复活，也不把过去的成功状态直接复制。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC02）</summary>\n\n- 场景名称：再次预约会重新检查当前规则\n- 场景编号：S033.SC02\n\n**对应的业务要求**\n\n- M1-08.AC2：再次预约重新检查当前规则，不复制旧占用\n\n**精确条件**\n\n- 历史A01曾预约成功，当前其已停用或最长时长改2\n\n**精确动作**\n\n- 点击再次预约并提交原3小时时段\n\n**结果与约束**\n\n- 仅预填资源与时长；创建新业务ID并按当前规则拒绝，不复活旧占用或复制旧成功状态\n\n</details>\n\n<a id=\"s033sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约历史按上海时间显示日期。用户没有记录时显示空列表，已有记录则能查看状态、签到和取消原因。\n\n### 操作步骤与预期结果\n\n1. 打开一笔其UTC时间对应上海次日的记录，日期及筛选均归到上海的正确日期。\n2. 查看记录，可见历史状态、签到信息和取消原因。\n3. 另一个没有历史的用户打开同一页面，看到0条记录，不显示编造的演示预约。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC03）</summary>\n\n- 场景名称：日期按上海时间显示，没有记录就显示空\n- 场景编号：S033.SC03\n\n**对应的业务要求**\n\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- 一个UTC时间对应上海次日；另一用户无历史\n\n**精确动作**\n\n- 查看日期筛选及空页面\n\n**结果与约束**\n\n- 按Asia/Shanghai归日，空结果为0条而非虚构样例；历史状态/签到/取消原因可见\n\n</details>\n\n<a id=\"s033sc04\"></a>\n\n## 场景四\n\n### 场景概述\n\n有预约管理读取权限的管理员，可以按教室、座位和时间查询运营明细；普通用户不能借管理列表查看他人预约。\n\n### 操作步骤与预期结果\n\n1. 两个普通用户各有预约，admin1有管理读取权限，user1没有。\n2. admin1打开管理列表，选择教室、座位和时间范围查询。\n3. 结果包含范围内预约时段、状态、签到、违约及必要的用户标识。\n4. user1尝试同样的管理查询，被拒绝，不返回他人记录。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC04）</summary>\n\n- 场景名称：有权限的管理员可以查看预约管理明细\n- 场景编号：S033.SC04\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n\n**精确条件**\n\n- admin1有预约管理读取权限，user1没有；两普通用户各有预约\n\n**精确动作**\n\n- 按教室、座位和时间范围查询管理列表\n\n**结果与约束**\n\n- 只有授权管理员返回范围内预约时段、状态、签到/违约和最小化用户标识；普通用户拒绝且不泄漏他人记录\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S033\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-08、SUP-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-08",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-08.S02#1",
+              "criterion": 2,
+              "basis": "再次预约走当前全部规则，不能直接复制旧占用",
+              "kind": "api",
+              "expected": "页面只帮忙填入资源和时长，不恢复旧预约。新的预约尝试有新的业务编号，按当前规则被拒绝，不复制过去的成功状态。",
+              "sample": "历史上A01曾预约成功；现在座位已停用，或最长预约时长已改成2小时。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m108OwnAdmin",
+                "com.campus.reservation.ReservationApiTest#m108Rebook",
+                "com.campus.reservation.ReservationApiTest#m108StablePagination",
+                "com.campus.reservation.ReservationApiTest#m108TimezoneAndEmpty"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-08.S03",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "一笔保存的UTC时间对应上海的次日；另一个用户还没有历史。"
+          ],
+          "actions": [
+            "查看第一笔的日期归属和日期筛选。",
+            "再用无历史的用户打开历史页面。"
+          ],
+          "expected": [
+            "按上海时区归到正确日期，能查看历史状态、签到和取消原因；无记录时显示0条，不放编造的演示记录。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S033.SC03"
+          ],
+          "original_text": "# 查看我的预约历史，并重新选择预约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s033sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户打开自己的预约历史，翻页时记录按固定顺序展示，不重复不漏项；直接请求他人的详情也会被拒绝。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有多笔不同状态预约。\n2. user1打开“我的预约历史”，列表只显示自己有权看的记录。\n3. 在同一份查询数据中连续翻页，记录按开始时间和编号排序，不重复或漏项。\n4. user1直接请求user2某笔详情时，系统拒绝，不泄露内容。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC01）</summary>\n\n- 场景名称：只能看到自己的历史，翻页不漏记录也不重复\n- 场景编号：S033.SC01\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- user1/user2各有多条不同状态预约\n\n**精确动作**\n\n- user1分页查询，另直接指定user2记录ID\n\n**结果与约束**\n\n- 只返回user1可见记录；越权详情拒绝；同一快照按开始时间与ID稳定排序，无重复漏项\n\n</details>\n\n<a id=\"s033sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n历史记录里的再次预约只帮忙填入资源和时长，提交时仍检查当前规则，不复活旧记录或复制旧占用。\n\n### 操作步骤与预期结果\n\n1. 过去A01曾预约成功，如今已停用，或最长时长已改为2小时。\n2. 用户在原3小时历史记录上点击“再次预约”，页面带入资源与时长。\n3. 用户提交，系统以新业务编号按当前规则判断并拒绝。\n4. 旧预约和旧占用不会复活，也不把过去的成功状态直接复制。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC02）</summary>\n\n- 场景名称：再次预约会重新检查当前规则\n- 场景编号：S033.SC02\n\n**对应的业务要求**\n\n- M1-08.AC2：再次预约重新检查当前规则，不复制旧占用\n\n**精确条件**\n\n- 历史A01曾预约成功，当前其已停用或最长时长改2\n\n**精确动作**\n\n- 点击再次预约并提交原3小时时段\n\n**结果与约束**\n\n- 仅预填资源与时长；创建新业务ID并按当前规则拒绝，不复活旧占用或复制旧成功状态\n\n</details>\n\n<a id=\"s033sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约历史按上海时间显示日期。用户没有记录时显示空列表，已有记录则能查看状态、签到和取消原因。\n\n### 操作步骤与预期结果\n\n1. 打开一笔其UTC时间对应上海次日的记录，日期及筛选均归到上海的正确日期。\n2. 查看记录，可见历史状态、签到信息和取消原因。\n3. 另一个没有历史的用户打开同一页面，看到0条记录，不显示编造的演示预约。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC03）</summary>\n\n- 场景名称：日期按上海时间显示，没有记录就显示空\n- 场景编号：S033.SC03\n\n**对应的业务要求**\n\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- 一个UTC时间对应上海次日；另一用户无历史\n\n**精确动作**\n\n- 查看日期筛选及空页面\n\n**结果与约束**\n\n- 按Asia/Shanghai归日，空结果为0条而非虚构样例；历史状态/签到/取消原因可见\n\n</details>\n\n<a id=\"s033sc04\"></a>\n\n## 场景四\n\n### 场景概述\n\n有预约管理读取权限的管理员，可以按教室、座位和时间查询运营明细；普通用户不能借管理列表查看他人预约。\n\n### 操作步骤与预期结果\n\n1. 两个普通用户各有预约，admin1有管理读取权限，user1没有。\n2. admin1打开管理列表，选择教室、座位和时间范围查询。\n3. 结果包含范围内预约时段、状态、签到、违约及必要的用户标识。\n4. user1尝试同样的管理查询，被拒绝，不返回他人记录。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC04）</summary>\n\n- 场景名称：有权限的管理员可以查看预约管理明细\n- 场景编号：S033.SC04\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n\n**精确条件**\n\n- admin1有预约管理读取权限，user1没有；两普通用户各有预约\n\n**精确动作**\n\n- 按教室、座位和时间范围查询管理列表\n\n**结果与约束**\n\n- 只有授权管理员返回范围内预约时段、状态、签到/违约和最小化用户标识；普通用户拒绝且不泄漏他人记录\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S033\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-08、SUP-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-08",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-08.S03#1",
+              "criterion": 3,
+              "basis": "分页和时区展示正确",
+              "kind": "api",
+              "expected": "按上海时区归到正确日期，能查看历史状态、签到和取消原因；无记录时显示0条，不放编造的演示记录。",
+              "sample": "一笔保存的UTC时间对应上海的次日；另一个用户还没有历史。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m108OwnAdmin",
+                "com.campus.reservation.ReservationApiTest#m108Rebook",
+                "com.campus.reservation.ReservationApiTest#m108StablePagination",
+                "com.campus.reservation.ReservationApiTest#m108TimezoneAndEmpty"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M1-08.S04",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "admin1有读取预约管理信息的权限，user1没有；两个普通用户各有预约。"
+          ],
+          "actions": [
+            "分别尝试打开预约管理列表，按教室、座位和时间范围查询。"
+          ],
+          "expected": [
+            "只有授权管理员得到范围内的预约时段、状态、签到、违约和必要的用户标识。普通用户被拒绝，不泄露他人记录。"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S033.SC04"
+          ],
+          "original_text": "# 查看我的预约历史，并重新选择预约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s033sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户打开自己的预约历史，翻页时记录按固定顺序展示，不重复不漏项；直接请求他人的详情也会被拒绝。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有多笔不同状态预约。\n2. user1打开“我的预约历史”，列表只显示自己有权看的记录。\n3. 在同一份查询数据中连续翻页，记录按开始时间和编号排序，不重复或漏项。\n4. user1直接请求user2某笔详情时，系统拒绝，不泄露内容。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC01）</summary>\n\n- 场景名称：只能看到自己的历史，翻页不漏记录也不重复\n- 场景编号：S033.SC01\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- user1/user2各有多条不同状态预约\n\n**精确动作**\n\n- user1分页查询，另直接指定user2记录ID\n\n**结果与约束**\n\n- 只返回user1可见记录；越权详情拒绝；同一快照按开始时间与ID稳定排序，无重复漏项\n\n</details>\n\n<a id=\"s033sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n历史记录里的再次预约只帮忙填入资源和时长，提交时仍检查当前规则，不复活旧记录或复制旧占用。\n\n### 操作步骤与预期结果\n\n1. 过去A01曾预约成功，如今已停用，或最长时长已改为2小时。\n2. 用户在原3小时历史记录上点击“再次预约”，页面带入资源与时长。\n3. 用户提交，系统以新业务编号按当前规则判断并拒绝。\n4. 旧预约和旧占用不会复活，也不把过去的成功状态直接复制。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC02）</summary>\n\n- 场景名称：再次预约会重新检查当前规则\n- 场景编号：S033.SC02\n\n**对应的业务要求**\n\n- M1-08.AC2：再次预约重新检查当前规则，不复制旧占用\n\n**精确条件**\n\n- 历史A01曾预约成功，当前其已停用或最长时长改2\n\n**精确动作**\n\n- 点击再次预约并提交原3小时时段\n\n**结果与约束**\n\n- 仅预填资源与时长；创建新业务ID并按当前规则拒绝，不复活旧占用或复制旧成功状态\n\n</details>\n\n<a id=\"s033sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约历史按上海时间显示日期。用户没有记录时显示空列表，已有记录则能查看状态、签到和取消原因。\n\n### 操作步骤与预期结果\n\n1. 打开一笔其UTC时间对应上海次日的记录，日期及筛选均归到上海的正确日期。\n2. 查看记录，可见历史状态、签到信息和取消原因。\n3. 另一个没有历史的用户打开同一页面，看到0条记录，不显示编造的演示预约。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC03）</summary>\n\n- 场景名称：日期按上海时间显示，没有记录就显示空\n- 场景编号：S033.SC03\n\n**对应的业务要求**\n\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- 一个UTC时间对应上海次日；另一用户无历史\n\n**精确动作**\n\n- 查看日期筛选及空页面\n\n**结果与约束**\n\n- 按Asia/Shanghai归日，空结果为0条而非虚构样例；历史状态/签到/取消原因可见\n\n</details>\n\n<a id=\"s033sc04\"></a>\n\n## 场景四\n\n### 场景概述\n\n有预约管理读取权限的管理员，可以按教室、座位和时间查询运营明细；普通用户不能借管理列表查看他人预约。\n\n### 操作步骤与预期结果\n\n1. 两个普通用户各有预约，admin1有管理读取权限，user1没有。\n2. admin1打开管理列表，选择教室、座位和时间范围查询。\n3. 结果包含范围内预约时段、状态、签到、违约及必要的用户标识。\n4. user1尝试同样的管理查询，被拒绝，不返回他人记录。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC04）</summary>\n\n- 场景名称：有权限的管理员可以查看预约管理明细\n- 场景编号：S033.SC04\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n\n**精确条件**\n\n- admin1有预约管理读取权限，user1没有；两普通用户各有预约\n\n**精确动作**\n\n- 按教室、座位和时间范围查询管理列表\n\n**结果与约束**\n\n- 只有授权管理员返回范围内预约时段、状态、签到/违约和最小化用户标识；普通用户拒绝且不泄漏他人记录\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S033\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-08、SUP-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "reservation-api:M1-08",
+              "status": "missing",
+              "evidence": "No /api/reservations mapping in baseline reservation package; existing implementation only ReminderDispatcher."
+            },
+            {
+              "kind": "table",
+              "key": "m1.seat_reservations",
+              "status": "existing",
+              "evidence": "V1__seat_reminder_tasks.sql; original 8/8 database suite a8d8e692-db50-4dc8-ba5c-ba9c38257ff7."
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-08.S04#1",
+              "criterion": 1,
+              "basis": "只能查询本人历史，管理员另行授权",
+              "kind": "api",
+              "expected": "只有授权管理员得到范围内的预约时段、状态、签到、违约和必要的用户标识。普通用户被拒绝，不泄露他人记录。",
+              "sample": "admin1有读取预约管理信息的权限，user1没有；两个普通用户各有预约。 Actual registered users/resources, isolated PostgreSQL, controlled Asia/Shanghai clock; f HTTP fixture with real TCP SMTP inbox.",
+              "observation": "HTTP status and exact JSON source/owner/state/count/time; own m1 persistence; b public source receipt; stable logical notification payload and SMTP inbox.",
+              "comparison": "Compare exact state/IDs/boundaries/one logical operation and unchanged other source; never infer success from missing/error result.",
+              "test_ids": [
+                "com.campus.reservation.ReservationApiTest#m108OwnAdmin",
+                "com.campus.reservation.ReservationApiTest#m108Rebook",
+                "com.campus.reservation.ReservationApiTest#m108StablePagination",
+                "com.campus.reservation.ReservationApiTest#m108TimezoneAndEmpty"
               ]
             }
           ]
@@ -250,87 +1868,58 @@
       ]
     }
   ],
+  "issues": [
+    {
+      "id": "A_POOL_NESTED_READ",
+      "status": "integration_pending",
+      "evidence_run": "12c8d4d0-f701-48ea-b448-a939892f5ce7",
+      "observed": "Ungated complete regression 45/46; both concurrent booking calls returned503 after~1.58s with pool2. AccountEligibilityService lacks transaction around AccountRepository.find nested rowMapper permissions query. No M1 insert from the failed pair.",
+      "resolution": "Coordinator approved test-only serialization of real eligibility HTTP; root owns independent A fix and final ungated a+b+c verification. Do not enlarge pool/timeouts or clear accumulated PostgreSQL."
+    }
+  ],
+  "integration_dependencies": [
+    "a eligibility/settings/notification-email",
+    "b catalogue/availability/allocations/releases/source/checkin-code",
+    "f notification/audit via X-Service-Key; isolated HTTP fixture is not full c+f integration"
+  ],
   "source_snapshots": [
     {
       "path": "spec/requirements.json",
-      "sha256": "2d81f4d10992e69130b1bbb4201da8a913415466e563cc977831b1a87493cb4e",
-      "full_value": {
-        "id": "M1-06",
-        "module": "M03",
-        "title": "开始后10分钟未签到再次提醒",
-        "source": {
-          "kind": "explicit",
-          "pdf_pages": [
-            6
-          ],
-          "note": "任务书明确要求"
-        },
-        "acceptance": [
-          "到开始后10分钟仍未签到时仅提醒一次",
-          "已签到或取消不发，重复调度保持幂等"
-        ],
-        "layers": [
-          "backend"
-        ],
-        "baseline_status": {
-          "backend": "pending"
-        },
-        "external_dependencies": [],
-        "verification": {
-          "red": "新增行为测试，未实现时必须以目标断言失败",
-          "green": "实现后同一测试通过，相关回归通过",
-          "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
-        },
-        "evidence": [],
-        "execution_owner": "member",
-        "integration_dependencies": [
-          "RES-01",
-          "RES-02",
-          "RES-03",
-          "RES-04",
-          "RES-07",
-          "SUP-01",
-          "SUP-02"
-        ]
-      }
+      "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631"
     },
     {
-      "path": "spec/specs/S031.md",
-      "sha256": "6379c407c94db1feea18772150c98b48311cc23adc15e2f842911f0e5fd60d0a",
-      "full_text": "# 开始10分钟还没签到，再发一次提醒\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s031sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n预约开始10分钟仍未签到时，系统提醒用户签到；到点前不发送，提醒也不能提前说用户已经违约。\n\n### 操作步骤与预期结果\n\n1. 09:00开始的预约仍未签到。\n2. 09:09:59处理提醒任务，没有未签到提醒。\n3. 09:10:00再次处理，系统生成一份未签到提醒。\n4. 用户收到的文字说明仍未签到，不称已经违约。\n\n<details>\n<summary>场景编号与精确规则补充（S031.SC01）</summary>\n\n- 场景名称：到第10分钟才提醒，不提前说已违约\n- 场景编号：S031.SC01\n\n**对应的业务要求**\n\n- M1-06.AC1：到开始后10分钟仍没签到，提醒一次\n\n**精确条件**\n\n- 09:00预约仍BOOKED\n\n**精确动作**\n\n- 在09:09:59和09:10:00分别运行调度\n\n**结果与约束**\n\n- 前者无该提醒，后者恰有一次未签到提醒，正文不称已违约\n\n</details>\n\n<a id=\"s031sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户已经签到或取消预约，开始10分钟后的任务不会再发未签到提醒，也不改变已有状态。\n\n### 操作步骤与预期结果\n\n1. 两笔09:00预约中，一笔已签到，另一笔已取消。\n2. 到09:10后，系统重复执行未签到提醒处理。\n3. 两笔均没有新增未签到提醒，已签到和已取消状态保持原样。\n\n<details>\n<summary>场景编号与精确规则补充（S031.SC02）</summary>\n\n- 场景名称：已经签到或取消的预约，不再提醒未签到\n- 场景编号：S031.SC02\n\n**对应的业务要求**\n\n- M1-06.AC2：已签到或取消的不发，重复检查不重复生成\n\n**精确条件**\n\n- 两条预约分别CHECKED_IN和CANCELLED\n\n**精确动作**\n\n- 到09:10重复运行调度\n\n**结果与约束**\n\n- 均不产生未签到提醒；状态不改变\n\n</details>\n\n<a id=\"s031sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n提醒事件已被接收后，发送服务重启再重发同一事件，系统仍保留一份通知，并能追到对应预约。\n\n### 操作步骤与预期结果\n\n1. 09:10的提醒事件已被通知服务接收。\n2. 发送服务意外退出并恢复后，再次发送同一事件。\n3. 系统不增加第二份逻辑通知，提醒事件仍与原预约编号对应。\n\n<details>\n<summary>场景编号与精确规则补充（S031.SC03）</summary>\n\n- 场景名称：提醒服务重启后，也不会把同一件事多建一份通知\n- 场景编号：S031.SC03\n\n**对应的业务要求**\n\n- M1-06.AC2：已签到或取消的不发，重复检查不重复生成\n\n**精确条件**\n\n- 同一09:10事件已被收件服务接收\n\n**精确动作**\n\n- 模拟发送方崩溃重启后重试同一事件\n\n**结果与约束**\n\n- 仍为一个逻辑通知，事件ID和预约ID可关联\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S031\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-06\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S078 实际发送邮件，失败可重试，结果不明就提示待核实](S078.md)。\n- 相关业务规则：[P02](../policies.md#p02)、[P12](../policies.md#p12)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+      "path": "spec/spec-network.json",
+      "sha256": "89e0c4864fcbc207c5f117c7eb991deb3a4358dc715dd8ebf78f5710758f005b"
     },
     {
-      "path": "docs/workflow/round2-contracts.md",
-      "sha256": "1b7501a3e683f0301f4aa44b291c82bbf9aadf3a327803190d8e6afbd453ec6d",
-      "full_text": "# 本轮六人后端协作契约\n\n本轮分别处理 a：IAM-02、b：RES-07、c：M1-06、d：M2-02、e：M3-06、f：SUP-01 的完整后端验收。前端、未实现的上游业务和整体联调分别记录，不能把本轮后端通过写成全部业务完成。旧 pilot 的局部收据不作为正式需求收据。\n\n## 数据与边界\n\n身份四张表已实现，其余业务表尚未实现。各成员在本模块新增必要的真实持久化表：M02 使用 resource.rooms；M03 使用 m1.seat_reservations；M04 使用 m2.classroom_requests、m2.approval_tasks；M05 使用 m3.repair_orders、m3.repair_events；M06 使用 support.notifications。字段参照 docs/02-database-design.md，不能假定表已存在。调用其他模块必须走公开契约，不查询或写入其他模块的私有库。必要的外部 UUID 通过可信服务校验。\n\n本轮每模块只新增一个未发布版本的追加式迁移，不修改历史、不删除表或字段、不清理已有数据。新增数据字段、索引和约束需留有真实 PostgreSQL 验证。测试前态可在自己的隔离数据库构造，不据此宣称预约创建、申请提交或工单创建功能已经完成。\n\n## 身份与权限\n\n外部 API 沿用 Cookie、CSRF 和 IdentityPrincipal.permissions()。流程服务沿用 RemoteIdentityLookup 真实网络校验身份，不能从请求体接受用户 ID、角色或资格作为授权依据，也不按 SYSTEM_ADMIN 字符串替代权限判断。\n\n内部服务密钥沿用 AuthSettings.serviceKey() / CAMPUS_AUTH_SERVICE_KEY，通过 X-Service-Key 发送，使用 MessageDigest.isEqual 恒定时长比较，不进入日志或 Git。当前公共安全链只放行精确路径 /internal/auth/introspect。f 可在 notification 包定义更高优先级且只匹配通知内部路径的 SecurityFilterChain，单独处理服务密钥及这些路径的 CSRF；不得放开所有 /internal/**。/api/notifications/** 仍受 Cookie 和 CSRF 保护。\n\n| 成员 | 公开权限码 |\n| --- | --- |\n| a | identity:roles:read、identity:roles:write |\n| b | resource:rooms:read、resource:rooms:write、resource:checkin-codes:read |\n| c | reservation:read |\n| d | approval:read、approval:decide |\n| e | repair:history:read、repair:accept、repair:evaluate |\n| f | notification:read |\n\na 在自己的 iam 模块登记上述权限目录。普通用户只默认获得本人通知读取权限；管理操作权限按实际角色授予，维护人员不自动拥有管理员权限。其他成员不能修改 iam，可在隔离身份适配测试中构造有权限或无权限的可信响应；最终共同测试必须使用实际身份服务。角色调整仍须校验当前操作者，停用或撤权后下一次请求生效。\n\n## 通知契约\n\n以 [notifications.yaml](../../contracts/openapi/modules/support/notifications.yaml) 为唯一接口定义。\n\n| 接口 | 鉴权 | 预期 |\n| --- | --- | --- |\n| POST /internal/notifications/events | X-Service-Key | 首次 201，相同事件重试 200，同 ID 不同内容 409 |\n| POST /internal/notifications/events/{eventId}/cancel | X-Service-Key | 取消尚未发送的事件；已发送保持历史；重复调用幂等 |\n| GET /api/notifications | Cookie、notification:read | 只返回本人通知，支持分页和中英文 |\n| POST /api/notifications/{notificationId}/read | Cookie、notification:read、CSRF | 只可标记本人通知；重复操作幂等 |\n\n事件包含稳定 eventId、recipientId、sourceModule、sourceId、scheduledAt，以及中文 title/body、英文 titleEn/bodyEn，可选 emailAddress。事件 ID 必须持久保存，不能每次重试生成新值。时间传带时区的 ISO 时间点，数据库使用 timestamptz。\n\nc 在预约开始后十分钟仍未签到时才发送：09:09:59 不发送，09:10:00 可以发送；已签到或取消不发送。网络失败保留持久任务，同一事件重试不重复建立通知。c 不访问 support 表，也不引用 f 的 Java 内部类。\n\nM1-06 可以只发送站内提醒，省略 emailAddress。f 的邮件适配必须实际连接本轮独立的 Mailpit SMTP 收件箱，验证收件人、内容和失败状态。未配置 SMTP 不得宣称发送成功；服务器接收结果不确定时保留 UNKNOWN 状态，不盲目重发造成重复邮件。公网真实邮件提供商仍是外部部署条件。\n\n## 共同测试与交付\n\n每人独立 runner、数据库、缓存、工作树和访问码。测试和产品只在本人白名单目录内写入，不把共享宿主路径检查当作强制隔离。仅协调测试环境可运行多个服务和独立 Mailpit，通过真实 HTTP 验证 c 与 f 的通知链路。stub 只证明隔离测试，不能替代共同联调。\n\n六份补丁完成后先核验各自收据和边界，再在独立目录检查能否干净叠加。若有 Git 冲突立即停止交给人。使用真实 PostgreSQL 预演六分支先后迁移及旧应用启动，确认无破坏性变化后集中调用 submit；不把仓库所有者凭据交给成员容器。\n\nGitHub 推送、CI、华为体验站更新和缓冲站审核分别记录真实结果。统一体验站展示最近成功部署的分支快照，不自动包含另外五人的功能；最终还需独立集成分支。现有部署器只备份数据库并尝试应用回退，不能保证任意 schema 变更均可回退。本轮不依赖回退保护执行破坏性迁移，也不关闭自动更新开关。\n\nGitee 仍需真人审核与独立 CI，通过后按 72 小时周期发布功能分支或创建 MR。AI 不代替真人签署审核，不以推送 GitHub 成功代替 Gitee 成功。\n"
+      "path": "spec/policies.md",
+      "sha256": "3c3addad8d5d3f46e6f8fd6bd32bfc3721461e7ae2d5d63f62e329439f049801"
+    },
+    {
+      "path": "docs/workflow/round3-integration-decisions.md",
+      "sha256": "c385ea0ad83881ce8feb3594728bf81e1188f29eb9732e86d875c311fc4c4137"
     }
   ],
   "boundary": {
-    "pages": [],
-    "components": [],
-    "layer": "backend",
-    "observations": [
-      "本模块 reservation 只有 README；公开通知契约冻结；自己的隔离 runner 与 PostgreSQL 已恢复",
-      "后端纯调度不新增浏览器入口，预约创建和签到实现属于未选需求"
+    "service": "resource-service",
+    "baseline": "ceb9577614ca4a0e07282e237639dba9a204d592",
+    "observed": [
+      "M1-06 original PostgreSQL/HTTP suite passed 8/8 before product edits"
     ],
     "unverified": [
-      "真实 c+f HTTP 联调等待协调集成；真实上游预约创建和签到链路未实现，本轮自造本模块前态"
-    ]
+      "frontend deferred to a separate frontend workflow",
+      "production SMTP provider",
+      "full c+f integration coordinated after module collection"
+    ],
+    "qualification_concurrency": "Test-only serialization of actual GET /internal/identity/users/{id}/eligibility isolates confirmed frozen A nested-JDBC-read exhaustion with pool=2; all responses remain real. C-to-B allocations and PostgreSQL competition remain concurrent. No gate exists in product; ungated complete a+b+c validation is pending coordinator integration."
   },
-  "reference_sections": [
-    {
-      "path": "spec/specs/S031.md",
-      "section": "功能分类、业务依赖和共用说明",
-      "usage": "实现时参考"
-    }
-  ],
-  "issues": [
-    {
-      "id": "A01",
-      "type": "ATTRIBUTION",
-      "status": "已确认",
-      "description": "真实上游业务尚未实现；隔离测试可在自己的数据库构造预约前态并使用 HTTP fixture",
-      "resolution": "docs/workflow/round2-contracts.md 明确授权隔离前态，stub 仅证明隔离条件；真实联调交协调人"
-    }
-  ]
+  "statistics_extensions": {
+    "pendingEvaluationCount": "已到截止、曾确认、未被提前取消或系统终结、仍为RESERVED且尚无实际签到或违约结果；GET只读，不执行终结，不混入notDueCount。",
+    "excludedUnconfirmedCount": "已到截止但M1从未收到真实占用确认的记录，排除签到/违约结果队列。",
+    "supplementary_test": "com.campus.reservation.ReservationStatisticsPendingTest#dueConfirmedWithoutOutcomeIsExplicitlyPending"
+  },
+  "lifecycle_end_guard": {
+    "decision": "协调人确认：管理员取消/签到还须now<endsAt；到结束后不补前置或开始后提醒。保留原快照deadline，NO_SHOW/统计仍等原截止，不按endsAt提前处罚。",
+    "test_class": "com.campus.reservation.ReservationEndBoundaryTest"
+  }
 }
