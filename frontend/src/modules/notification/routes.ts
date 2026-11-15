@@ -1,5 +1,3 @@
-import { featurePage } from '@/shared/navigation/feature-page'
+import type { WorkspaceRoute } from '@/shared/navigation/types'
 
-export const notificationRoutes = [
-  featurePage({ path: 'notifications', name: 'notifications', titleKey: 'shell.navigation.notifications', permission: 'notification:read' }),
-]
+export const notificationRoutes: WorkspaceRoute[] = [{ path: 'notifications', name: 'notifications', component: () => import('./pages/NotificationsPage.vue'), meta: { titleKey: 'shell.navigation.notifications', permission: 'notification:read', navigation: true } }]
