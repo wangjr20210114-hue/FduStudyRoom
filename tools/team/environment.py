@@ -137,7 +137,8 @@ def sandbox(root,worktree,policy,member,ctx,start=False):
     if start:
         run(dc+['compose','-p',project,'-f',docker_path(compose),'up','-d','--wait'])
         # Populate isolated caches from the image before offline test execution.
-        run(dc+['compose','-p',project,'-f',docker_path(compose),'exec','-T','--user','0','runner','sh','-ec','cp -Rn /opt/warm/m2/. /cache/m2/; cp -Rn /opt/warm/frontend/node_modules/. /workspace/frontend/node_modules/; chmod -R a+rwX /cache/m2 /workspace/frontend/node_modules'])
+        helper=Path(__file__).with_name('cache.py').read_text(encoding='utf-8')
+        run(dc+['compose','-p',project,'-f',docker_path(compose),'exec','-T','--user','0','runner','python3','-','/opt/warm/m2','/cache/m2','/opt/warm/frontend/node_modules','/workspace/frontend/node_modules'],input=helper)
     print('Private sandbox prepared; only assigned paths writable, no Docker socket, no other member credentials, private DB/network/caches. '+str(compose))
 
 def background(args,cwd,env,log):

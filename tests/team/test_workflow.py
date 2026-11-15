@@ -95,6 +95,18 @@ class WorkflowTests(unittest.TestCase):
   engine=self.root/"tools/team/pilot.py";engine.parent.mkdir(parents=True,exist_ok=True);engine.write_text("pilot changed")
   with self.assertRaisesRegex(PolicyError,"WORKFLOW_SKILL_VERSION_CHANGED"):
    open_workflow(self.root,self.member,[self.q])
+ def test_cache_engine_addition_invalidates_workflow_fingerprint(self):
+  engine=self.root/"tools/team/cache.py";engine.parent.mkdir(parents=True,exist_ok=True);engine.write_text("cache helper added")
+  with self.assertRaisesRegex(PolicyError,"WORKFLOW_SKILL_VERSION_CHANGED"):
+   open_workflow(self.root,self.member,[self.q])
+ def test_cache_engine_change_invalidates_workflow_fingerprint(self):
+  engine=self.root/"tools/team/cache.py";engine.parent.mkdir(parents=True,exist_ok=True);engine.write_text("original cache helper")
+  member={**self.member,"id":"cache-member"}
+  state=open_workflow(self.root,member,[self.q])
+  self.assertEqual(state["id"],open_workflow(self.root,member,[self.q])["id"])
+  engine.write_text("changed cache helper")
+  with self.assertRaisesRegex(PolicyError,"WORKFLOW_SKILL_VERSION_CHANGED"):
+   open_workflow(self.root,member,[self.q])
  def test_skill_change_requires_explicit_upgrade(self):
   (self.root/"skills/campus-test/SKILL.md").write_text("changed fixture")
   with self.assertRaises(PolicyError):open_workflow(self.root,self.member,[self.q])

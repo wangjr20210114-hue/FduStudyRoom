@@ -53,6 +53,17 @@ jobs:
           npm ci
           npm test -- --maxWorkers=1
           npm run build
+      - name: Buffer frontend tests and build
+        working-directory: tools/buffer/frontend
+        run: |
+          npm test
+          npm run build
+          npm run test:browser
+      - uses: actions/upload-artifact@v4
+        with:
+          name: buffer-web-${{ github.sha }}
+          path: tools/buffer/frontend/dist
+          retention-days: 7
       - name: Backend tests and build
         working-directory: backend
         env:

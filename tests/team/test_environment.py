@@ -1,5 +1,7 @@
 """Behavioral regressions for the isolated member runner configuration."""
 import json
+import os
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -42,8 +44,6 @@ class SandboxEnvironmentTests(unittest.TestCase):
         runner = config["services"]["runner"]
         self.assertIn("-Dmaven.repo.local=/cache/m2/repository", runner["environment"].get("MAVEN_ARGS", ""),
                       "Maven must consume the cache warmed for this member instead of /root/.m2")
-        warm = next(call.args[0][-1] for call in commands if "--user" in call.args[0])
-        self.assertIn("cp -Rn /opt/warm/m2/. /cache/m2/", warm)
         self.assertTrue(any(volume.get("target") == "/cache/m2" and volume["type"] == "volume" for volume in runner["volumes"]))
 
     def test_private_workflow_files_are_hidden_from_member_container(self):
@@ -73,6 +73,36 @@ class SandboxEnvironmentTests(unittest.TestCase):
                 else:
                     self.assertTrue(config["networks"]["private"]["internal"])
                     self.assertNotIn("ports", config["services"]["postgres"])
+
+    @unittest.skipUnless(os.name == "posix", "The streamed helper executes inside the Linux runner")
+    def test_sandbox_streamed_helper_repairs_both_private_cache_trees(self):
+        _, _, commands = self.configuration(start=True)
+        warming = next(call for call in commands if "--user" in call.args[0])
+        self.assertEqual(["python3", "-", "/opt/warm/m2", "/cache/m2",
+                          "/opt/warm/frontend/node_modules", "/workspace/frontend/node_modules"],
+                         warming.args[0][-6:])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            maven, private_maven = root / "warm-m2", root / "private-m2"
+            node, private_node = root / "warm-node", root / "private-node"
+            for tree in (maven, private_maven, node, private_node):
+                tree.mkdir()
+            (maven / "parent.pom").write_bytes(b"trusted pom")
+            (private_maven / "parent.pom").write_bytes(b"")
+            (node / ".bin").mkdir()
+            (node / "package").mkdir()
+            executable = node / "package/cli"
+            executable.write_text("#!/bin/sh\nprintf 'streamed-bin-ready'\n", encoding="utf-8")
+            executable.chmod(0o755)
+            (node / ".bin/cli").symlink_to("../package/cli")
+            result = subprocess.run([sys.executable, "-", str(maven), str(private_maven),
+                                     str(node), str(private_node)], input=warming.kwargs["input"],
+                                    capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(b"trusted pom", (private_maven / "parent.pom").read_bytes())
+            command = subprocess.run([str(private_node / ".bin/cli")], capture_output=True,
+                                     text=True, check=True)
+            self.assertEqual("streamed-bin-ready", command.stdout)
 
 
 if __name__ == "__main__":

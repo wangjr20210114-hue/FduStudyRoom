@@ -30,6 +30,22 @@ function harness(scenario) {
     const submit = () => document.querySelector('form.login button').click()
     let result
     try {
+      const rememberedKey = 'fdu-buffer-access-code'
+      if (scenario === 'remember-resume') {
+        await wait(() => document.querySelector('header span')?.textContent === 'team-a', 'Opening the browser again must restore the member without typing a code')
+        document.querySelector('header button').click()
+        await wait(() => document.querySelector('form.login'), 'Sign out must return to login')
+        check(localStorage.getItem(rememberedKey) === null, 'Sign out must remove the remembered code')
+        check(document.querySelector('input[type="password"]').value === '', 'Sign out must clear the visible code')
+      } else if (scenario === 'remember-invalid') {
+        await wait(() => document.querySelector('[role="alert"]')?.textContent === '访问码无效', 'A revoked remembered code must return to login with an error')
+        check(localStorage.getItem(rememberedKey) === null, 'An invalid remembered code must be forgotten')
+        check(!document.querySelector('nav'), 'An invalid remembered code must not open the workspace')
+      } else if (scenario === 'remember-unavailable') {
+        await wait(() => document.querySelector('[role="alert"]'), 'An unavailable server must show an error')
+        check(localStorage.getItem(rememberedKey) === 'fixture-member-code', 'A temporary server error must not forget the fixed code')
+        check(!document.querySelector('nav'), 'An unavailable server must not invent an authenticated workspace')
+      } else {
       await wait(() => document.querySelector('form.login input[type="password"]'), 'Login form must render')
       const password = document.querySelector('form.login input[type="password"]')
       if (scenario === 'form') {
@@ -38,7 +54,7 @@ function harness(scenario) {
         check(password.required, 'Access code must remain required')
         submit(); await new Promise(r => setTimeout(r, 80))
         check(!!document.querySelector('form.login'), 'Blank access code must keep the login form open')
-      } else if (scenario === 'member' || scenario === 'coordinator') {
+      } else if (scenario === 'member' || scenario === 'coordinator' || scenario === 'remember-set') {
         const admin = scenario === 'coordinator'
         fill(password, admin ? 'fixture-coordinator-code' : 'fixture-member-code'); submit()
         const id = admin ? 'coordinator' : 'team-a'
@@ -47,9 +63,13 @@ function harness(scenario) {
         check(!document.querySelector('form.login'), 'Successful login must close the login form')
         if (admin) await wait(() => document.querySelector('.review-form'), 'Coordinator acceptance controls must render')
         check(!!document.querySelector('.review-form') === admin, 'Review controls must match the recognized member role')
+        if (scenario === 'remember-set') {
+          check(localStorage.getItem(rememberedKey) === 'fixture-member-code', 'Successful login must remember the fixed code')
+        } else {
         document.querySelector('header button').click()
         await wait(() => document.querySelector('form.login'), 'Sign out must reopen the login form')
         check(document.querySelector('input[type="password"]').value === '', 'Sign out must clear the access code')
+        }
       } else {
         const english = scenario === 'invalid-en'
         if (english) {
@@ -62,6 +82,7 @@ function harness(scenario) {
         await wait(() => document.querySelector('[role="alert"]')?.textContent === expected, 'Invalid code must show: ' + expected)
         check(!!document.querySelector('form.login'), 'Invalid code must keep the login form open')
         check(!document.querySelector('nav'), 'Invalid code must not open the workspace')
+      }
       }
       result = { ok: true, scenario, observations }
     } catch (error) { result = { ok: false, scenario, observations, error: error.message } }
@@ -80,6 +101,7 @@ before(async () => {
         const profile = profiles[token]
         requests.push({ path: url.pathname, token, referer: req.headers.referer ?? '' })
         res.setHeader('Content-Type', 'application/json')
+        if (req.headers.referer?.includes('scenario=remember-unavailable')) { res.writeHead(503); res.end(JSON.stringify({ code: 'TEMPORARILY_UNAVAILABLE' })); return }
         if (!profile) { res.writeHead(401); res.end(JSON.stringify({ code: 'AUTHENTICATION_REQUIRED' })); return }
         const payload = url.pathname === '/api/me' ? profile : url.pathname === '/api/status' ? resources : url.pathname === '/api/schedule' ? { enabled: false, next_due: '2099-01-01T00:00:00Z', last_run: null } : []
         res.end(JSON.stringify(payload)); return
@@ -87,7 +109,10 @@ before(async () => {
       if (url.pathname === '/') {
         const html = await readFile(join(dist, 'index.html'), 'utf8')
         res.setHeader('Content-Type', 'text/html; charset=utf-8')
-        res.end(html.replace('</body>', harness(url.searchParams.get('scenario')) + '</body>')); return
+        const scenario = url.searchParams.get('scenario')
+        const code = scenario === 'remember-invalid' ? 'fixture-invalid-code' : scenario === 'remember-unavailable' ? 'fixture-member-code' : null
+        const bootstrap = code ? `<script>localStorage.setItem('fdu-buffer-access-code', ${JSON.stringify(code)})</script>` : ''
+        res.end(html.replace('<head>', '<head>' + bootstrap).replace('</body>', harness(scenario) + '</body>')); return
       }
       if (!url.pathname.startsWith('/assets/') || url.pathname.includes('..')) { res.writeHead(404); res.end(); return }
       const file = resolve(dist, '.' + url.pathname)
@@ -104,6 +129,8 @@ for (const [scenario, title] of [
   ['coordinator', 'coordinator code identifies admin and preserves review controls'],
   ['invalid-zh', 'invalid access code stays on login with a Chinese error'],
   ['invalid-en', 'invalid access code stays on login with an English error'],
+  ['remember-invalid', 'revoked remembered code is cleared without opening the workspace'],
+  ['remember-unavailable', 'temporary server failure preserves a remembered code'],
 ]) {
   test(title, { timeout: 45000 }, async () => {
     const profile = await mkdtemp(join(tmpdir(), 'fdu-buffer-login-'))
@@ -122,3 +149,20 @@ for (const [scenario, title] of [
     }
   })
 }
+
+test('fixed code survives browser restart and sign out removes it', { timeout: 90000 }, async () => {
+  const profile = await mkdtemp(join(tmpdir(), 'fdu-buffer-login-'))
+  try {
+    for (const scenario of ['remember-set', 'remember-resume', 'form']) {
+      const { stdout, stderr } = await execute(browser, ['--headless=new', '--no-first-run', '--no-default-browser-check', '--user-data-dir=' + profile, '--virtual-time-budget=5000', '--dump-dom', origin + '/?scenario=' + scenario], { timeout: 35000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 })
+      const match = stdout.match(/<pre id="buffer-login-test-result">([^<]+)<\/pre>/)
+      assert.ok(match, 'Browser must complete remembered-login checks: ' + stderr.slice(-1000))
+      const result = JSON.parse(Buffer.from(match[1], 'base64').toString('utf8'))
+      assert.equal(result.ok, true, JSON.stringify(result))
+    }
+  } finally {
+    assert.equal(dirname(resolve(profile)), resolve(tmpdir()))
+    assert.ok(basename(profile).startsWith('fdu-buffer-login-'))
+    await rm(profile, { recursive: true, force: true, maxRetries: 4, retryDelay: 200 })
+  }
+})

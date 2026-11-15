@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ResourcePanel from './ResourcePanel.vue'
 const { t, locale, te }=useI18n()
-const token=ref(''), me=ref<{id:string;gitee?:string;admin:boolean}|null>(null)
+const accessCodeKey='fdu-buffer-access-code'
+function readAccessCode(){try{return localStorage.getItem(accessCodeKey)??''}catch{return ''}}
+function saveAccessCode(value:string){try{if(value)localStorage.setItem(accessCodeKey,value);else localStorage.removeItem(accessCodeKey)}catch{/* Browsers that block storage can still use this session. */}}
+const token=ref(readAccessCode()), me=ref<{id:string;gitee?:string;admin:boolean}|null>(null)
 const requirements=ref<any[]>([]), submissions=ref<any[]>([]), schedule=ref<any>(null)
 const tab=ref<'requirements'|'submissions'>('submissions'), busy=ref(false), error=ref(''), patch=ref('')
 const note=ref(''), confirmed=ref(false), status=ref<any>(null)
@@ -11,6 +14,7 @@ watch(locale,value=>{document.documentElement.lang=value;document.title=t('title
 function label(value:string){return te(value)?t(value):value}
 async function request(path:string,body?:unknown){
  const response=await fetch('/api'+path,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+token.value,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'})
+ if(response.status===401){clearSession();throw new Error('AUTHENTICATION_REQUIRED')}
  const data=await response.json();if(!response.ok)throw new Error(data.code??'error');return data
 }
 async function action(operation:()=>Promise<void>){busy.value=true;error.value='';try{await operation()}catch(failure){error.value=failure instanceof Error&&te(failure.message)?t(failure.message):t('error')}finally{busy.value=false}}
@@ -18,8 +22,10 @@ async function refresh(){
  [requirements.value,submissions.value,status.value]=await Promise.all([request('/requirements'),request('/submissions'),request('/status')])
  if(me.value?.admin)schedule.value=await request('/schedule')
 }
-async function login(){await action(async()=>{me.value=await request('/me');await refresh()})}
-function logout(){token.value='';me.value=null;requirements.value=[];submissions.value=[];schedule.value=null;status.value=null;patch.value='';error.value=''}
+async function login(){await action(async()=>{const presented=token.value.trim();token.value=presented;const member=await request('/me');token.value=presented;me.value=member;saveAccessCode(presented);await refresh()})}
+function clearSession(){token.value='';saveAccessCode('');me.value=null;requirements.value=[];submissions.value=[];schedule.value=null;status.value=null;patch.value='';note.value='';confirmed.value=false}
+function logout(){clearSession();error.value=''}
+onMounted(()=>{if(token.value)void login()})
 async function review(id:string,approved=true){await action(async()=>{await request('/submissions/'+id+'/review',{approved,note:note.value});confirmed.value=false;note.value='';await refresh()})}
 async function verify(id:string){await action(async()=>{await request('/submissions/'+id+'/verify',{});await refresh()})}
 async function showPatch(id:string){await action(async()=>{patch.value=(await request('/submissions/'+id+'/patch')).patch})}
