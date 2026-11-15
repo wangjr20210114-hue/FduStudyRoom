@@ -76,11 +76,23 @@ class ResourceAuditTest {
             String event="M02:"+db.queryForObject("SELECT operation_id FROM resource.resource_operations WHERE kind='ROOM' AND source_id=?",UUID.class,id);
             assertEquals(2,keys.stream().filter(event::equals).count());
             HttpClient user=HttpClient.newBuilder().cookieHandler(new CookieManager(null,CookiePolicy.ACCEPT_ALL)).build();
-            assertEquals(201,request(user,base,"/api/auth/register",Map.of("loginName","audit-user-"+UUID.randomUUID().toString().substring(0,7),"password",PASS)).statusCode());
-            assertEquals(403,request(user,base,"/api/resources/rooms",Map.of("password","DO_NOT_COPY_SECRET","code","denied")).statusCode());
+            var registration=request(user,base,"/api/auth/register",Map.of("loginName","audit-user-"+UUID.randomUUID().toString().substring(0,7),"password",PASS));
+            assertEquals(201,registration.statusCode());
+            var denied=request(user,base,"/api/resources/rooms",Map.of("password","DO_NOT_COPY_SECRET","code","denied"));
+            assertEquals(403,denied.statusCode());
             app.getBean(TestClock.class).now=app.getBean(TestClock.class).now.plusSeconds(31);
             dispatcher.getClass().getMethod("dispatch").invoke(dispatcher);
             assertTrue(bodies.stream().anyMatch(x->x.contains("RESOURCE_DENIED")));
+            var failure=JSON.readTree(bodies.stream().filter(x->x.contains("RESOURCE_DENIED")).reduce((a,b)->b).orElseThrow());
+            assertEquals(UUID.fromString(JSON.readTree(registration.body()).path("id").asText()).toString(),failure.path("actorId").asText(),"authenticated denial must preserve the real actor");
+            assertEquals(denied.headers().firstValue("X-Request-Id").orElseThrow(),failure.path("traceId").asText(),"denial audit must preserve the originating server trace");
+            int beforeDenials=db.queryForObject("SELECT count(*) FROM resource.resource_operations WHERE kind='DENIED'",Integer.class);
+            var serviceDenied=admin.send(HttpRequest.newBuilder(URI.create(base+"/internal/resources/rooms")).header("X-Service-Key","invalid-service-key").GET().build(),HttpResponse.BodyHandlers.ofString());
+            assertEquals(401,serviceDenied.statusCode());
+            assertEquals(beforeDenials+1,db.queryForObject("SELECT count(*) FROM resource.resource_operations WHERE kind='DENIED'",Integer.class),"security-chain rejection is durably audited even before controller authentication");
+            dispatcher.getClass().getMethod("dispatch").invoke(dispatcher);
+            String denialTrace=serviceDenied.headers().firstValue("X-Request-Id").orElseThrow();
+            assertTrue(bodies.stream().anyMatch(x->JSON.readTree(x).path("traceId").asText().equals(denialTrace)&&JSON.readTree(x).path("actorId").isNull()),"unauthenticated rejection keeps its server trace and an unknown actor");
             assertTrue(bodies.stream().noneMatch(x->x.contains("DO_NOT_COPY_SECRET")||x.contains(PASS)||x.contains("password")));
         }
         finally{

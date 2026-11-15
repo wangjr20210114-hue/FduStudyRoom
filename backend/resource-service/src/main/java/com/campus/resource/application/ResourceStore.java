@@ -105,10 +105,12 @@ import tools.jackson.databind.json.JsonMapper;
         return a.isEmpty()?null:a.getFirst();
     }
     public void event(UUID op,String module,UUID source,int version,String kind,UUID room,String fp,Map<String,Object>data,Instant at,boolean replay){
+        Object principal=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()==null?null:org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        event(op,module,source,version,kind,room,fp,data,at,replay,principal instanceof com.campus.common.security.IdentityPrincipal p?p.id():null);
+    }
+    public void event(UUID op,String module,UUID source,int version,String kind,UUID room,String fp,Map<String,Object>data,Instant at,boolean replay,UUID actor){
         db.update("INSERT INTO resource.resource_operations(operation_id,source_module,source_id,source_version,kind,room_id,fingerprint,snapshot,applied_at,replay) VALUES(?,?,?,?,?,?,?,?::jsonb,?,?)",op,module,source,version,kind,room,fp,JSON.writeValueAsString(data),OffsetDateTime.ofInstant(at,ZoneOffset.UTC),replay);
         if(!replay){
-            Object principal=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()==null?null:org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            UUID actor=principal instanceof com.campus.common.security.IdentityPrincipal p?p.id():null;
             var projection=map("roomId",room,"version",version,"enabled",bool(data,"active",bool(data,"enabled",false)),"status",data.containsKey("status")?text(data,"status"):"APPLIED");
             if(data.get("seatId")!=null)projection.put("seatId",data.get("seatId"));
             String trace=text(data,"requestTraceId");
