@@ -1,6 +1,17 @@
 package com.campus.identity.api;
 import org.junit.jupiter.api.Test;import java.util.*;import static org.assertj.core.api.Assertions.*;
 class AccountEligibilityHttpTest extends IdentityHttpFixture {
+ @Test void eligibilityUsesOneConnectionForAccountAndPermissions()throws Exception{
+  User u=user();var pool=app.getBean(javax.sql.DataSource.class).unwrap(com.zaxxer.hikari.HikariDataSource.class);
+  int previous=pool.getMaximumPoolSize();long timeout=pool.getConnectionTimeout();
+  pool.setMinimumIdle(0);pool.setMaximumPoolSize(1);pool.setConnectionTimeout(1000);pool.getHikariPoolMXBean().softEvictConnections();
+  try{
+   var response=internal("/internal/identity/users/"+u.id()+"/eligibility",SERVICE);
+   assertThat(response.statusCode()).as("qualification lookup must not borrow a nested second connection").isEqualTo(200);
+   assertThat(tree(response).get("userId").asText()).isEqualTo(u.id().toString());
+   assertThat(tree(response).get("permissions").isEmpty()).isFalse();
+  }finally{pool.setMaximumPoolSize(previous);pool.setConnectionTimeout(timeout);}
+ }
  @Test void adminGrantVersionRevokesOldSession()throws Exception{
   User u=user();var r=req(admin,"PATCH","/api/admin/users/"+u.id()+"/eligibility",map("departmentCode","CS","canApplyRoom",true,"expectedAuthVersion",1));
   assertThat(r.statusCode()).as("administrator grants verified eligibility").isEqualTo(204);
