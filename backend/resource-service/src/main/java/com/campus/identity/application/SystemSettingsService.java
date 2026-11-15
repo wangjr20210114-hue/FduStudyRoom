@@ -1,0 +1,19 @@
+package com.campus.identity.application;
+import com.campus.common.error.ApiException;import com.campus.identity.infrastructure.IdentityAuditOutbox;import java.time.*;import java.util.*;import org.springframework.beans.factory.annotation.Qualifier;import org.springframework.jdbc.core.JdbcTemplate;import org.springframework.security.core.context.SecurityContextHolder;import com.campus.common.security.IdentityPrincipal;import org.springframework.stereotype.Service;import org.springframework.transaction.annotation.Transactional;import tools.jackson.databind.json.JsonMapper;
+@Service
+public class SystemSettingsService {
+ private static final JsonMapper JSON=JsonMapper.builder().build();private static final UUID SOURCE=new UUID(0,1);private final JdbcTemplate jdbc;private final Clock clock;private final IdentityAuditOutbox audit;
+ public SystemSettingsService(JdbcTemplate jdbc,@Qualifier("identityClock") Clock clock,IdentityAuditOutbox audit){this.jdbc=jdbc;this.clock=clock;this.audit=audit;}
+ public record Settings(int version,int maxReservationHours,int beforeStartReminderMinutes,int afterStartReminderMinutes,int checkinDeadlineMinutes,int approvalTtlMinutes,int repairSlaMinutes){}
+ public Settings current(){return read(false);}
+ private Settings read(boolean lock){return jdbc.queryForObject("SELECT * FROM iam.system_settings WHERE id=1"+(lock?" FOR UPDATE":""),(r,n)->new Settings(r.getInt("version"),r.getInt("max_reservation_hours"),r.getInt("before_start_reminder_minutes"),r.getInt("after_start_reminder_minutes"),r.getInt("checkin_deadline_minutes"),r.getInt("approval_ttl_minutes"),r.getInt("repair_sla_minutes")));}
+ public record Update(int expectedVersion,int maxReservationHours,int beforeStartReminderMinutes,int afterStartReminderMinutes,int checkinDeadlineMinutes,int approvalTtlMinutes,int repairSlaMinutes){}
+ @Transactional public Settings update(Update value){
+  if(value.expectedVersion()<1||value.maxReservationHours()<1||value.beforeStartReminderMinutes()<1||value.afterStartReminderMinutes()<1||value.checkinDeadlineMinutes()<=value.afterStartReminderMinutes()||value.approvalTtlMinutes()<1||value.repairSlaMinutes()<1)throw new ApiException(400,"INVALID_SYSTEM_SETTINGS");
+  Settings before=read(true);if(before.version()!=value.expectedVersion())throw new ApiException(409,"VERSION_CONFLICT");int count=jdbc.update("UPDATE iam.system_settings SET version=version+1,max_reservation_hours=?,before_start_reminder_minutes=?,after_start_reminder_minutes=?,checkin_deadline_minutes=?,approval_ttl_minutes=?,repair_sla_minutes=? WHERE id=1 AND version=?",value.maxReservationHours(),value.beforeStartReminderMinutes(),value.afterStartReminderMinutes(),value.checkinDeadlineMinutes(),value.approvalTtlMinutes(),value.repairSlaMinutes(),value.expectedVersion());if(count!=1)throw new ApiException(409,"VERSION_CONFLICT");
+  Settings after=current();UUID actor=((IdentityPrincipal)SecurityContextHolder.getContext().getAuthentication().getPrincipal()).id();
+  jdbc.update("INSERT INTO iam.system_settings_history(actor_id,changed_at,version,before_data,after_data) VALUES(?,?,?,?::jsonb,?::jsonb)",actor,java.sql.Timestamp.from(clock.instant()),after.version(),JSON.writeValueAsString(before),JSON.writeValueAsString(after));audit.enqueue("SETTINGS_CHANGED",SOURCE,JSON.convertValue(before,Map.class),JSON.convertValue(after,Map.class));return after;
+ }
+ public record History(UUID id,UUID actorId,Instant changedAt,int version,Object before,Object after){}
+ public List<History> history(){return jdbc.query("SELECT * FROM iam.system_settings_history ORDER BY version DESC",(r,n)->new History(r.getObject("id",UUID.class),r.getObject("actor_id",UUID.class),r.getTimestamp("changed_at").toInstant(),r.getInt("version"),JSON.readTree(r.getString("before_data")),JSON.readTree(r.getString("after_data"))));}
+}

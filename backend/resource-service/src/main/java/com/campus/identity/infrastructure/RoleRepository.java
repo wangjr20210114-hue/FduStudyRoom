@@ -33,6 +33,10 @@ public class RoleRepository {
         lockRole(id);
         jdbc.update("UPDATE iam.roles SET enabled=?,updated_at=now() WHERE id=?",enabled,id);
     }
+    public RoleDetails lockedDetails(UUID id) {
+        lockRole(id);
+        return jdbc.queryForObject("SELECT id,code,name,enabled FROM iam.roles WHERE id=?",(rs,n)->new RoleDetails(id,rs.getString("code"),rs.getString("name"),rs.getBoolean("enabled"),Set.copyOf(jdbc.queryForList("SELECT p.code FROM iam.role_permissions rp JOIN iam.permissions p ON p.id=rp.permission_id WHERE rp.role_id=?",String.class,id))),id);
+    }
     private void lockRole(UUID id) {
         if(jdbc.queryForList("SELECT id FROM iam.roles WHERE id=? FOR UPDATE",UUID.class,id).isEmpty()) throw new ApiException(404,"ROLE_NOT_FOUND");
     }

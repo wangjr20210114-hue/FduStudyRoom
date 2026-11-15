@@ -22,13 +22,13 @@ class PasswordAuthenticationTest {
     @Test void publicRegistrationAlwaysUsesTheOrdinaryRole() {
         var account = new Account(UUID.randomUUID(),"new-user","new-user",null,UUID.randomUUID(),"USER",true,true,1,Set.of("identity:read"));
         when(accounts.create(eq("new-user"),anyString(),eq("USER"))).thenReturn(account);
-        new IdentityService(accounts,encoder).register(" NEW-USER ","test-password-123");
+        new IdentityService(accounts,encoder,org.mockito.Mockito.mock(com.campus.identity.infrastructure.IdentityAuditOutbox.class)).register(" NEW-USER ","test-password-123");
         var hash = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(accounts).create(eq("new-user"),hash.capture(),eq("USER"));
         assertThat(encoder.matches("test-password-123",hash.getValue())).isTrue();
     }
     @Test void unknownOrDisabledAccountsHaveTheSameFailure() {
-        var identities = new IdentityService(accounts,encoder);
+        var identities = new IdentityService(accounts,encoder,org.mockito.Mockito.mock(com.campus.identity.infrastructure.IdentityAuditOutbox.class));
         when(accounts.credentials("unknown")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> identities.login("unknown","test-password-123")).isInstanceOfSatisfying(ApiException.class,e -> assertThat(e.code()).isEqualTo("INVALID_CREDENTIALS"));
         UUID id=UUID.randomUUID();
@@ -37,7 +37,7 @@ class PasswordAuthenticationTest {
         assertThatThrownBy(() -> identities.login("disabled","test-password-123")).isInstanceOfSatisfying(ApiException.class,e -> assertThat(e.code()).isEqualTo("INVALID_CREDENTIALS"));
     }
     @Test void invalidPasswordsAreRejectedBeforeDatabaseAccessWithoutEchoingTheValue() {
-        var identities = new IdentityService(accounts,encoder);
+        var identities = new IdentityService(accounts,encoder,org.mockito.Mockito.mock(com.campus.identity.infrastructure.IdentityAuditOutbox.class));
         for (String password : new String[]{null, "", "short", " ".repeat(8), "x".repeat(65)}) {
             assertThatThrownBy(() -> identities.register("new-user",password))
                     .isInstanceOfSatisfying(ApiException.class,e -> {
@@ -57,7 +57,7 @@ class PasswordAuthenticationTest {
         UUID id=UUID.randomUUID();
         when(accounts.credentials("admin")).thenReturn(Optional.of(new AccountRepository.Credentials(id,"existing")));
         when(accounts.find(id)).thenReturn(Optional.of(new Account(id,"admin","Admin",null,UUID.randomUUID(),"USER",true,true,1,Set.of())));
-        assertThatThrownBy(() -> new IdentityService(accounts,encoder).bootstrapAdmin("admin","bootstrap-password-123")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new IdentityService(accounts,encoder,org.mockito.Mockito.mock(com.campus.identity.infrastructure.IdentityAuditOutbox.class)).bootstrapAdmin("admin","bootstrap-password-123")).isInstanceOf(IllegalStateException.class);
         verify(accounts,never()).create(anyString(),anyString(),anyString());
     }
 }

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 public class AccountRepository {
     private static final String SELECT = """
         SELECT u.id,u.login_name,u.display_name,u.email,u.role_id,r.code AS role_code,
-               r.enabled AS role_enabled,u.enabled,u.auth_version
+               r.enabled AS role_enabled,u.enabled,u.auth_version,u.department_code,u.can_apply_room
         FROM iam.users u JOIN iam.roles r ON r.id=u.role_id
         """;
     private final JdbcTemplate jdbc;
@@ -50,17 +50,17 @@ public class AccountRepository {
         } catch (DuplicateKeyException error) { throw new ApiException(409, "LOGIN_NAME_TAKEN"); }
     }
 
-    public record Role(UUID id, String code, String name, boolean enabled) {}
+    public record Role(UUID id, String code, String name, boolean enabled,Set<String> permissions) {}
     public List<Role> roles() {
         return jdbc.query("SELECT id,code,name,enabled FROM iam.roles ORDER BY code",
-                (rs, row) -> new Role(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("name"), rs.getBoolean("enabled")));
+                (rs, row) -> new Role(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("name"), rs.getBoolean("enabled"),Set.copyOf(jdbc.queryForList("SELECT p.code FROM iam.role_permissions rp JOIN iam.permissions p ON p.id=rp.permission_id WHERE rp.role_id=?",String.class,rs.getObject("id",UUID.class)))));
     }
 
-    public record UserRow(UUID id, String loginName, String displayName, UUID roleId, String role, boolean enabled, int authVersion) {}
+    public record UserRow(UUID id, String loginName, String displayName, UUID roleId, String role, boolean enabled, int authVersion,String departmentCode,boolean canApplyRoom) {}
     public List<UserRow> listUsers() {
         return jdbc.query(SELECT + " ORDER BY u.login_name LIMIT 100", (rs, row) ->
                 new UserRow(rs.getObject("id", UUID.class), rs.getString("login_name"), rs.getString("display_name"),
-                        rs.getObject("role_id", UUID.class), rs.getString("role_code"), rs.getBoolean("enabled"), rs.getInt("auth_version")));
+                        rs.getObject("role_id", UUID.class), rs.getString("role_code"), rs.getBoolean("enabled"), rs.getInt("auth_version"),rs.getString("department_code"),rs.getBoolean("can_apply_room")));
     }
 
     public boolean updateAccess(UUID id, UUID roleId, boolean enabled, int expectedVersion) {

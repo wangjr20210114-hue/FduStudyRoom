@@ -18,7 +18,10 @@ public class IdentityService implements IdentityLookup {
     private final AccountRepository accounts;
     private final PasswordEncoder passwords;
     private final String dummyHash;
-    public IdentityService(AccountRepository accounts, PasswordEncoder passwords) {
+    private final com.campus.identity.infrastructure.IdentityAuditOutbox audit;
+    @org.springframework.beans.factory.annotation.Autowired
+    public IdentityService(AccountRepository accounts, PasswordEncoder passwords,com.campus.identity.infrastructure.IdentityAuditOutbox audit) {
+        this.audit=audit;
         this.accounts = accounts; this.passwords = passwords;
         this.dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
@@ -91,10 +94,11 @@ public class IdentityService implements IdentityLookup {
 
     @Transactional
     public void changeAccess(UUID actor, UUID id, UUID roleId, boolean enabled, int expectedVersion) {
-        accounts.find(id).orElseThrow(() -> new ApiException(404, "USER_NOT_FOUND"));
+        var before = accounts.find(id).orElseThrow(() -> new ApiException(404, "USER_NOT_FOUND"));
         accounts.roles().stream().filter(item -> item.id().equals(roleId) && item.enabled())
                 .findFirst().orElseThrow(() -> new ApiException(400, "INVALID_ROLE"));
         if (!accounts.updateAccess(id, roleId, enabled, expectedVersion)) throw new ApiException(409, "VERSION_CONFLICT");
+        audit.enqueue("ACCOUNT_ACCESS_CHANGED",id,java.util.Map.of("authVersion",before.authVersion(),"enabled",before.enabled(),"roleId",before.roleId()),java.util.Map.of("authVersion",expectedVersion+1,"enabled",enabled,"roleId",roleId));
         LOG.info("security_event=access_changed actor_id={} user_id={}", actor, id);
     }
 }
