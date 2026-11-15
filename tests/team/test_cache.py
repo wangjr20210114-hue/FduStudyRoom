@@ -12,6 +12,31 @@ sys.path.insert(0, str(ROOT / "tools/team"))
 import cache
 
 
+class CacheCommandTests(unittest.TestCase):
+    def test_one_layer_warms_only_its_selected_cache(self):
+        with patch.object(sys, "argv", ["cache.py", "/warm/m2", "/private/m2"]), patch.object(cache, "repair_cache", return_value=3) as repair:
+            error = None
+            try:
+                cache.main()
+            except SystemExit as failure:
+                error = str(failure)
+            self.assertIsNone(error, "The streamed cache CLI must accept one layer's source/destination pair")
+            repair.assert_called_once_with("/warm/m2", "/private/m2")
+
+    def test_multiple_layer_pairs_keep_existing_support(self):
+        with patch.object(sys, "argv", ["cache.py", "/warm/m2", "/private/m2", "/warm/node", "/private/node"]), patch.object(cache, "repair_cache", return_value=1) as repair:
+            cache.main()
+            self.assertEqual([("/warm/m2", "/private/m2"), ("/warm/node", "/private/node")],
+                             [call.args for call in repair.call_args_list])
+
+    def test_missing_or_unpaired_paths_fail_before_repairing_anything(self):
+        for arguments in ([], ["source"], ["source", "destination", "extra"]):
+            with self.subTest(arguments=arguments), patch.object(sys, "argv", ["cache.py", *arguments]), patch.object(cache, "repair_cache") as repair:
+                with self.assertRaises(SystemExit):
+                    cache.main()
+                repair.assert_not_called()
+
+
 @unittest.skipUnless(os.name == "posix", "Cache repair executes inside the Linux runner")
 class CacheRepairTests(unittest.TestCase):
     def setUp(self):
