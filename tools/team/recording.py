@@ -1,16 +1,67 @@
 """Run tests only in the assigned container, with fresh reports and immutable input snapshots."""
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
+import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 from policy import PolicyError, guard, load, git
 from environment import docker, docker_path, sandbox_project
 from workflow import source_snapshot, save, read, now
 from test_reports import parse_report, merge_reports, validate_result
 from pilot import resolve_pilot, validate_receipt_scope
+
+# The lock protects receipt bookkeeping only, never Docker or a test run.
+RECEIPT_LOCK_TIMEOUT_SECONDS = 5
+
+
+@contextmanager
+def receipt_lock(output):
+    lock = output.with_name(output.name + ".lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    deadline = time.monotonic() + RECEIPT_LOCK_TIMEOUT_SECONDS
+    while True:
+        try:
+            lock.mkdir()
+            break
+        except FileExistsError:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise PolicyError("RECEIPT_LOCK_BUSY: " + str(lock))
+            time.sleep(min(0.05, remaining))
+    try:
+        save(lock / "owner.local", {"pid": os.getpid(), "created_at": now()})
+        yield
+    finally:
+        # Only the process which created this directory may release it. Never
+        # expire/reclaim an existing lock: a slow or interrupted owner needs review.
+        (lock / "owner.local").unlink(missing_ok=True)
+        lock.rmdir()
+
+
+def reserve_receipt_order(output, scope):
+    with receipt_lock(output):
+        data = read(output) if output.exists() else {}
+        validate_receipt_scope(data, scope)
+        sequence_path = output.with_name(output.name + ".order.local")
+        previous = read(sequence_path)["last"] if sequence_path.exists() else 0
+        if type(previous) is not int or previous < 0:
+            raise PolicyError("INVALID_RECEIPT_ORDER")
+        sequence = previous + 1
+        save(sequence_path, {"last": sequence})
+        return sequence
+
+
+def validate_stage_order(stages, keys, item):
+    for key in keys:
+        previous = stages.get(key, {})
+        if previous.get("receipt_sequence", 0) > item["receipt_sequence"]:
+            raise PolicyError("STALE_RECEIPT_RUN: " + item["run_id"] + " cannot replace " + previous["run_id"] + " at " + key)
+
 
 def report_path(value, context):
     path=PurePosixPath(value)
@@ -40,11 +91,10 @@ def record(root,args,execute=subprocess.run):
     output=Path(args.output).resolve()
     permitted=[Path(ctx["policy_root"]).resolve()/".campus",worktree/".campus"]
     if not any(output.is_relative_to(folder) for folder in permitted):raise PolicyError("RECEIPTS_MUST_STAY_IN_PRIVATE_CAMPUS_DIRECTORY")
-    data=read(output) if output.exists() else {}
-    validate_receipt_scope(data,pilot_scope)
     reports=[report_path(p,ctx) for p in (args.report or [])]
     if stage!="check" and not reports:raise PolicyError("ACTUAL_TEST_REPORT_REQUIRED")
     if len(reports)!=len(set(reports)):raise PolicyError("DUPLICATE_REPORT_PATH")
+    sequence=reserve_receipt_order(output,pilot_scope)
     run_id=str(uuid.uuid4());directory=output.parent/"runs"/run_id
     directory.mkdir(parents=True)
     source=source_snapshot(worktree,ctx,directory)
@@ -68,7 +118,7 @@ def record(root,args,execute=subprocess.run):
         raise PolicyError("TEST_RUN_TIMEOUT") from error
     (directory/"stdout.txt").write_bytes(stdout.encode("utf-8"));(directory/"stderr.txt").write_bytes(stderr.encode("utf-8"))
     log=(stdout+stderr)[-200000:];parsed=[];report_entries=[]
-    item={"run_id":run_id,"command":command,"exit_code":code,"log":log,"sha256":hashlib.sha256(log.encode()).hexdigest(),"expected_assertion":args.assertion,"source":source,"started_at":started,"finished_at":now(),"kind":args.kind or ("build" if stage=="check" else "component" if member["layer"]=="frontend" else "unit"),"verification_scope":"isolated"}
+    item={"run_id":run_id,"receipt_sequence":sequence,"command":command,"exit_code":code,"log":log,"sha256":hashlib.sha256(log.encode()).hexdigest(),"expected_assertion":args.assertion,"source":source,"started_at":started,"finished_at":now(),"kind":args.kind or ("build" if stage=="check" else "component" if member["layer"]=="frontend" else "unit"),"verification_scope":"isolated"}
     try:
         for index,path in enumerate(reports):
             report=execute(prefix+["cat","--",path],capture_output=True,timeout=15)
@@ -97,22 +147,38 @@ def record(root,args,execute=subprocess.run):
         item["result"]="ERROR";item["reason"]=str(error);save(directory/"run.local",item)
         raise
     save(directory/"run.local",item)
-    if pilot_scope:
-        current=resolve_pilot(ctx["policy_root"],member,ctx["module"],scenario,args.requirement)
-        if current["source"]["sha256"]!=pilot_scope["source"]["sha256"]:raise PolicyError("PILOT_SOURCE_CHANGED_DURING_RUN")
-        data["scope"]="scenario_pilot"
-        receipt=data.setdefault("scenarios",{}).setdefault(scenario,{**pilot_scope,"version":2,"stages":{}})
-        receipt["completion_mode"]="baseline_satisfied" if item.get("existing_behavior") else args.completion_mode or receipt.get("completion_mode","tdd")
-        receipt["stages"][stage]=item
-        if item.get("existing_behavior"):receipt["stages"]["green"]=item
-    elif module_run:data.setdefault("module",{})[stage]=item
-    else:
-        receipt=data.setdefault("requirements",{}).setdefault(args.requirement,{})
-        receipt["version"]=2
-        receipt["completion_mode"]="baseline_satisfied" if item.get("existing_behavior") else args.completion_mode or receipt.get("completion_mode","tdd")
-        receipt[stage]=item
-        if item.get("existing_behavior"):receipt["green"]=item
-    save(output,data)
+    try:
+        with receipt_lock(output):
+            # Another original/mutation runner may have committed while tests ran.
+            # Re-read and validate inside the same lock as the atomic replacement.
+            data=read(output) if output.exists() else {}
+            validate_receipt_scope(data,pilot_scope)
+            keys=[stage,"green"] if item.get("existing_behavior") else [stage]
+            if pilot_scope:
+                current=resolve_pilot(ctx["policy_root"],member,ctx["module"],scenario,args.requirement)
+                if current["source"]["sha256"]!=pilot_scope["source"]["sha256"]:raise PolicyError("PILOT_SOURCE_CHANGED_DURING_RUN")
+                data["scope"]="scenario_pilot"
+                receipt=data.setdefault("scenarios",{}).setdefault(scenario,{**pilot_scope,"version":2,"stages":{}})
+                stages=receipt["stages"]
+            elif module_run:
+                receipt=None
+                stages=data.setdefault("module",{})
+            else:
+                receipt=data.setdefault("requirements",{}).setdefault(args.requirement,{})
+                stages=receipt
+            validate_stage_order(stages,keys,item)
+            if receipt is not None:
+                receipt["version"]=2
+                receipt["completion_mode"]="baseline_satisfied" if item.get("existing_behavior") else args.completion_mode or receipt.get("completion_mode","tdd")
+            for key in keys:
+                stages[key]=item
+            save(output,data)
+    except PolicyError as error:
+        # A completed test remains real evidence even when its receipt cannot be
+        # committed. Preserve its result and disclose the rejected commit.
+        item["receipt_commit"]={"status":"rejected","reason":str(error)}
+        save(directory/"run.local",item)
+        raise
     print(json.dumps({"run_id":run_id,"stage":stage,"result":item["result"],"counts":item.get("test_result",{}).get("counts"),"receipt":str(output),**({"scope":"scenario_pilot","scenario":scenario,"parent_requirement":args.requirement,"status":"partial"} if pilot_scope else {})},ensure_ascii=False))
 
 def mutation(root,args):

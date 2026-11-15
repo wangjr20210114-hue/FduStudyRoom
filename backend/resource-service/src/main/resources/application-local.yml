@@ -1,3 +1,5 @@
 campus:
+  reservation:
+    notification-url: ${CAMPUS_RESERVATION_NOTIFICATION_URL:http://127.0.0.1:8081}
   auth:
     secure-cookies: false
