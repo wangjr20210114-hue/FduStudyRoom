@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSSRApp, h } from 'vue'
+import { createSSRApp, defineComponent, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { createMemoryHistory, RouterView } from 'vue-router'
 import { createAppRouter } from '../src/app/router'
@@ -31,6 +31,14 @@ async function setupPage(identity: CurrentUser, path: string, fullApp = false) {
   } satisfies AuthApi
   const session = createLoginFlow(api)
   const router = createAppRouter(session, createMemoryHistory())
+  // Shell contract test: real Router, guards, module metadata and shell.
+  // Domain bodies are explicitly stubbed; their own browser suites test business UI.
+  for (const route of router.getRoutes()) {
+    if (route.meta.navigation && route.name !== 'workspace' && route.components) {
+      const name = String(route.name)
+      route.components.default = defineComponent(() => () => h('section', { 'data-route-name': name }, name))
+    }
+  }
   const app = createSSRApp(fullApp ? App : { render: () => h(RouterView) })
   app.provide(authSessionKey, session)
   app.use(i18n)
@@ -66,13 +74,12 @@ describe('role shell rendering', () => {
   })
 
   it.each([
-    ['USER', '/reservations', '我的预约'],
-    ['SYSTEM_ADMIN', '/manage/approvals', '教室审批'],
-    ['MAINTAINER', '/maintenance/tasks', '维修任务'],
-  ] as const)('renders %s page content and highlights its selected entry', async (role, path, title) => {
+    ['USER', '/reservations', 'reservations'],
+    ['SYSTEM_ADMIN', '/manage/approvals', 'approvals'],
+    ['MAINTAINER', '/maintenance/tasks', 'maintenance-tasks'],
+  ] as const)('renders %s page content and highlights its selected entry', async (role, path, name) => {
     const html = await renderPage(roleProfiles[role], path)
-    expect(html).toMatch(new RegExp('<h1[^>]*>' + title + '</h1>'))
-    expect(html).toContain('暂未开放')
+    expect(html).toContain('data-route-name="' + name + '"')
     const selected = [...navFrom(html).matchAll(/<a\b[^>]*>/g)].map(match => match[0]).find(tag => tag.includes(`href="${path}"`))
     expect(selected).toContain('aria-current="page"')
     expect(selected).toContain('router-link-exact-active')
@@ -83,8 +90,7 @@ describe('role shell rendering', () => {
     const html = await renderPage(roleProfiles.USER, '/rooms')
     expect(navFrom(html)).toContain('Book a seat')
     expect(navFrom(html)).toContain('My bookings')
-    expect(html).toContain('Not available yet')
-    expect(html).toMatch(/<h1[^>]*>Book a seat<\/h1>/)
+    expect(html).toContain('data-route-name="rooms"')
     expect(html).toContain('User</span>')
   })
 })
@@ -92,10 +98,10 @@ describe('role shell rendering', () => {
 
 describe('navigation without a full-page loading flash', () => {
   it.each([
-    ['USER', '/reservations', '我的预约'],
-    ['SYSTEM_ADMIN', '/manage/approvals', '教室审批'],
-    ['MAINTAINER', '/maintenance/tasks', '维修任务'],
-  ] as const)('keeps the %s shell visible while checking the next page', async (role, path, title) => {
+    ['USER', '/reservations', 'reservations'],
+    ['SYSTEM_ADMIN', '/manage/approvals', 'approvals'],
+    ['MAINTAINER', '/maintenance/tasks', 'maintenance-tasks'],
+  ] as const)('keeps the %s shell visible while checking the next page', async (role, path, name) => {
     const { app, api, session, router } = await setupPage(roleProfiles[role], '/workspace', true)
     let complete!: (identity: CurrentUser) => void
     let started!: () => void
@@ -117,7 +123,7 @@ describe('navigation without a full-page loading flash', () => {
     await navigation
     const html = await renderToString(app)
     expect(router.currentRoute.value.path).toBe(path)
-    expect(html).toMatch(new RegExp('<h1[^>]*>' + title + '</h1>'))
+    expect(html).toContain('data-route-name="' + name + '"')
     expect(html).not.toContain('class="session-loading"')
   })
 

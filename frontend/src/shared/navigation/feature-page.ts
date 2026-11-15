@@ -4,8 +4,8 @@ interface FeaturePageOptions {
   path: string
   name: string
   titleKey: string
-  roles?: readonly string[]
   permission?: string
+  anyPermissions?: readonly string[]
 }
 
 export function featurePage(options: FeaturePageOptions): WorkspaceRoute {
@@ -15,8 +15,8 @@ export function featurePage(options: FeaturePageOptions): WorkspaceRoute {
     component: () => import('../pages/FeaturePage.vue'),
     meta: {
       titleKey: options.titleKey,
-      roles: options.roles,
-      permission: options.permission ?? 'identity:read',
+      permission: options.permission ?? (options.anyPermissions === undefined ? 'identity:read' : undefined),
+      anyPermissions: options.anyPermissions,
       navigation: true,
     },
   }
