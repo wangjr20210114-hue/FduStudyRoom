@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(classes=WorkflowApplication.class,webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,
  properties={"campus.auth.signing-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","campus.auth.service-key=repair-isolated-fixture-service-key-000000","server.address=127.0.0.1","campus.migrations.modules=repair"})
 @Import(RepairEvaluationApiTest.FixtureConfiguration.class)
+@org.springframework.test.annotation.DirtiesContext(classMode=org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class RepairEvaluationApiTest {
  static final UUID ADMIN=UUID.randomUUID(),WORKER=UUID.randomUUID(),REPORTER=UUID.randomUUID(),OTHER=UUID.randomUUID();
  static final Set<String> ALL=Set.of("repair:evaluate","repair:accept","repair:history:read");
@@ -61,6 +62,15 @@ class RepairEvaluationApiTest {
  @Autowired JdbcTemplate jdbc;
  @Autowired TokenService tokens;
  final HttpClient http=HttpClient.newHttpClient();
+ @AfterEach void closeTestClient(){http.close();}
+ @AfterAll static void stopFixture()throws InterruptedException{
+  var executor=IDENTITY.getExecutor();
+  IDENTITY.stop(0);
+  if(executor instanceof ExecutorService service){
+   service.shutdown();
+   if(!service.awaitTermination(5,TimeUnit.SECONDS))service.shutdownNow();
+  }
+ }
  @BeforeEach void reset(){REVOKED.clear();PERMISSIONS.put(ADMIN,ALL);PERMISSIONS.put(WORKER,ALL);PERMISSIONS.put(REPORTER,ALL);PERMISSIONS.put(OTHER,ALL);}
  boolean table(){return jdbc.queryForObject("select to_regclass('m3.repair_orders') is not null",Boolean.class);}
  UUID order(String status,UUID accepted){UUID id=UUID.randomUUID();if(table())jdbc.update("insert into m3.repair_orders(id,reporter_id,room_id,description,technician_id,status,due_at,accepted_by,accepted_at,version) values(?,?,?,?,?,?,now()+interval '1 day',?,case when ?::uuid is null then null else now() end,1)",id,REPORTER,UUID.randomUUID(),"broken lamp",WORKER,status,accepted,accepted);return id;}
