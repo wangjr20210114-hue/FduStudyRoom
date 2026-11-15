@@ -24,6 +24,10 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(OutputCaptureExtension.class)
 public abstract class SupportHttpFixture {
  protected static final String KEY="support-contract-test-service-key-00000000000000";
+ protected final String smtpHost=env("CAMPUS_TEST_SMTP_HOST",System.getenv("CAMPUS_SANDBOX")!=null?"smtp":"127.0.0.1");
+ protected final int smtpPort=Integer.parseInt(env("CAMPUS_TEST_SMTP_PORT","1025"));
+ protected final String inbox=env("CAMPUS_TEST_MAILPIT_URL","http://"+smtpHost+":8025");
+ protected String env(String key,String fallback){String value=System.getenv(key);return value==null||value.isBlank()?fallback:value;}
  protected final JsonMapper json=JsonMapper.builder().build();
  protected final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
  protected final UUID user=UUID.randomUUID(),denied=UUID.randomUUID(),room=UUID.randomUUID();
@@ -43,7 +47,7 @@ public abstract class SupportHttpFixture {
   upstream.createContext("/internal/resources/statistics",e->source(e,true));
   upstream.createContext("/internal/reservations/statistics",e->source(e,false));upstream.start();
   String service="http://127.0.0.1:"+upstream.getAddress().getPort();
-  app=new SpringApplicationBuilder(WorkflowApplication.class).run("--server.address=127.0.0.1","--server.port=0","--spring.datasource.url="+System.getenv("CAMPUS_DB_URL"),"--spring.datasource.username="+System.getenv("CAMPUS_DB_USER"),"--spring.datasource.password="+System.getenv("CAMPUS_DB_PASSWORD"),"--campus.auth.mode=password","--campus.auth.signing-key="+sign,"--campus.auth.service-key="+KEY,"--campus.auth.secure-cookies=true","--campus.workflow.identity-url="+service+"/introspect","--campus.notifications.initial-delay-ms=3600000","--campus.notifications.smtp.host=smtp","--campus.notifications.smtp.port=1025","--campus.notifications.smtp.from=studyroom@example.test","--campus.notifications.smtp.allow-insecure=true");
+  app=new SpringApplicationBuilder(WorkflowApplication.class).run("--server.address=127.0.0.1","--server.port=0","--spring.datasource.url="+System.getenv("CAMPUS_DB_URL"),"--spring.datasource.username="+System.getenv("CAMPUS_DB_USER"),"--spring.datasource.password="+System.getenv("CAMPUS_DB_PASSWORD"),"--campus.auth.mode=password","--campus.auth.signing-key="+sign,"--campus.auth.service-key="+KEY,"--campus.auth.secure-cookies=true","--campus.workflow.identity-url="+service+"/introspect","--campus.notifications.initial-delay-ms=3600000","--campus.notifications.smtp.host="+smtpHost,"--campus.notifications.smtp.port="+smtpPort,"--campus.notifications.smtp.from=studyroom@example.test","--campus.notifications.smtp.allow-insecure=true");
   base="http://127.0.0.1:"+app.getEnvironment().getProperty("local.server.port");jdbc=app.getBean(JdbcTemplate.class);
  }
  @AfterAll void stopFixture(){
@@ -78,7 +82,7 @@ public abstract class SupportHttpFixture {
  }
  protected JsonNode require(HttpResponse<String> response,int status)throws Exception{assertEquals(status,response.statusCode(),"Required business HTTP behavior: "+response.body());return json.readTree(response.body());}
  protected JsonNode get(String path)throws Exception{return require(request("GET",path,null,cookie(user),null),200);}
- protected JsonNode mailList()throws Exception{return json.readTree(http.send(HttpRequest.newBuilder(URI.create("http://smtp:8025/api/v1/messages")).GET().build(),HttpResponse.BodyHandlers.ofString()).body());}
+ protected JsonNode mailList()throws Exception{return json.readTree(http.send(HttpRequest.newBuilder(URI.create(inbox+"/api/v1/messages")).GET().build(),HttpResponse.BodyHandlers.ofString()).body());}
  protected int mailCount(String address)throws Exception{int count=0;for(var m:mailList().path("messages"))for(var to:m.path("To"))if(address.equals(to.path("Address").asText()))count++;return count;}
- protected JsonNode mail(String address)throws Exception{for(var m:mailList().path("messages"))for(var to:m.path("To"))if(address.equals(to.path("Address").asText()))return json.readTree(http.send(HttpRequest.newBuilder(URI.create("http://smtp:8025/api/v1/message/"+m.path("ID").asText())).GET().build(),HttpResponse.BodyHandlers.ofString()).body());fail("Real SMTP message missing");return null;}
+ protected JsonNode mail(String address)throws Exception{for(var m:mailList().path("messages"))for(var to:m.path("To"))if(address.equals(to.path("Address").asText()))return json.readTree(http.send(HttpRequest.newBuilder(URI.create(inbox+"/api/v1/message/"+m.path("ID").asText())).GET().build(),HttpResponse.BodyHandlers.ofString()).body());fail("Real SMTP message missing");return null;}
 }
