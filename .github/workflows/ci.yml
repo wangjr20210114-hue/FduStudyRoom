@@ -46,13 +46,19 @@ jobs:
         run: |
           git show -s --format=%B "$GITHUB_SHA" > /tmp/commit-description.txt
           python3 scripts/check-commit.py /tmp/commit-description.txt
-      - name: Prepare real backend test database
+      - name: Prepare isolated PostgreSQL test databases
         env:
           PGPASSWORD: ci-only-password
-        run: psql -h 127.0.0.1 -U module_user -d campus_migration_probe -v ON_ERROR_STOP=1 -c 'CREATE DATABASE module_test OWNER module_user'
+        run: |
+          psql -h 127.0.0.1 -U module_user -d campus_migration_probe -v ON_ERROR_STOP=1 -c 'CREATE DATABASE module_test OWNER module_user'
+          psql -h 127.0.0.1 -U module_user -d campus_migration_probe -v ON_ERROR_STOP=1 -c 'CREATE DATABASE campus_buffer_test OWNER module_user'
       - name: Workflow tooling tests
         run: python3 -m unittest discover -s tests/team -v
       - name: Buffer service tests
+        env:
+          CAMPUS_BUFFER_TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/campus_buffer_test
+          CAMPUS_BUFFER_TEST_DB_USER: module_user
+          CAMPUS_BUFFER_TEST_DB_PASSWORD: ci-only-password
         run: sh backend/mvnw -B -f tools/buffer/backend/pom.xml verify
       - name: Frontend tests and build
         working-directory: frontend
