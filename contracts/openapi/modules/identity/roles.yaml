@@ -1,0 +1,288 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "IAM role management",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/admin/roles": {
+      "get": {
+        "summary": "List roles",
+        "description": "Requires identity:roles:read. Returns id, code, name, enabled.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role list"
+          },
+          "403": {
+            "description": "Permission denied"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a role with exactly the selected permissions",
+        "description": "Requires identity:roles:write and a current CSRF token. Permissions are loaded for each request; role names do not grant authority.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "name",
+                  "permissions"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "code",
+                    "name",
+                    "enabled",
+                    "permissions"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "permissions": {
+                      "type": "array",
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unknown permission"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Actual permission missing or role disabled"
+          },
+          "404": {
+            "description": "Role not found"
+          },
+          "409": {
+            "description": "Role code already exists"
+          }
+        }
+      }
+    },
+    "/api/admin/permissions": {
+      "get": {
+        "summary": "List assignable permission codes",
+        "description": "Requires identity:roles:read. Each item contains code, name, module. Frontends use the stable code for localized labels; role names remain user content.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permission catalogue"
+          },
+          "403": {
+            "description": "Permission denied"
+          }
+        }
+      }
+    },
+    "/api/admin/roles/{id}/permissions": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "put": {
+        "summary": "Replace the complete permission set",
+        "description": "Requires identity:roles:write and a current CSRF token. Permissions are loaded for each request; role names do not grant authority.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "permissions"
+                ],
+                "properties": {
+                  "permissions": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Saved"
+          },
+          "400": {
+            "description": "Invalid input or unknown permission"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Actual permission missing or role disabled"
+          },
+          "404": {
+            "description": "Role not found"
+          },
+          "409": {
+            "description": "Role code already exists"
+          }
+        }
+      }
+    },
+    "/api/admin/roles/{id}/enabled": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "patch": {
+        "summary": "Enable or disable a role without deleting historical references",
+        "description": "Requires identity:roles:write and a current CSRF token. Permissions are loaded for each request; role names do not grant authority.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Saved"
+          },
+          "400": {
+            "description": "Invalid input or unknown permission"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Actual permission missing or role disabled"
+          },
+          "404": {
+            "description": "Role not found"
+          },
+          "409": {
+            "description": "Role code already exists"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-FDU_SESSION",
+        "description": "Local isolated tests use FDU_SESSION. Obtain CSRF header name/token from GET /api/auth/csrf; do not put credentials into request bodies."
+      }
+    }
+  }
+}

@@ -1,0 +1,152 @@
+openapi: 3.1.0
+info:
+  title: Repair evaluation and process history
+  version: 1.0.0
+  description: >-
+    M3-06 backend only. Completed orders and prior repair/acceptance events are provided by
+    upstream workflows. Evaluation requires the current repair:evaluate permission and an
+    identity matching persisted accepted_by. Reporter or administrator role names do not grant
+    substitute evaluation. Technicians cannot accept or evaluate their own tasks.
+    This delivery does not implement order creation, assignment, repair completion or resource release.
+servers:
+  - url: /
+security:
+  - session: []
+paths:
+  /api/repairs/{id}:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+    get:
+      operationId: repairDetail
+      description: Requires repair:history:read and membership as reporter, technician or actual acceptor.
+      responses:
+        '200':
+          description: Persisted current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401': {description: Invalid or revoked session}
+        '403': {description: Missing permission or unrelated identity}
+        '404': {description: Unknown order}
+  /api/repairs/{id}/history:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+    get:
+      operationId: repairHistory
+      description: >-
+        Requires repair:history:read and membership as reporter, technician or actual acceptor.
+        Returns every persisted event sorted by createdAt and id; previous rounds are never overwritten.
+      responses:
+        '200':
+          description: Complete chronological process history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Event'}
+        '401': {description: Invalid or revoked session}
+        '403': {description: Missing permission or unrelated identity}
+        '404': {description: Unknown order}
+  /api/repairs/{id}/evaluation:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+    post:
+      operationId: repairEvaluate
+      description: >-
+        Requires Cookie, CSRF, current repair:evaluate permission, COMPLETED status, and the
+        actual accepted_by identity distinct from technician_id. Only one evaluation is saved.
+        An atomic version increment and immutable EVALUATE event accompany the update.
+        Identity or extra fields in the body are rejected. Current permissions are checked by
+        the shared RemoteIdentityLookup on each request.
+      parameters:
+        - $ref: '#/components/parameters/csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [rating, evaluation, version]
+              properties:
+                rating: {type: integer, minimum: 1, maximum: 5, description: JSON integer token; strings and decimal tokens rejected}
+                evaluation: {type: string, minLength: 1, description: Nonblank text preserved verbatim}
+                version: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: Evaluation committed with incremented version and one history event
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Order'}
+        '400': {description: Invalid fields, score, text or version type}
+        '401': {description: Invalid or revoked session}
+        '403': {description: Missing CSRF or permission, wrong acceptor, or technician self evaluation}
+        '404': {description: Unknown order}
+        '409': {description: Incomplete order, stale version or duplicate evaluation}
+  /api/repairs/{id}/acceptance:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+    post:
+      operationId: repairAcceptanceGuard
+      description: >-
+        Boundary guard for M3-06 self-acceptance prevention. Requires repair:accept and CSRF.
+        A technician is rejected using the trusted current identity before interpreting body identity fields.
+        Valid independent requests return ACCEPTANCE_INTEGRATION_PENDING without changing the order,
+        resource state or events. M3-05 resource release integration remains outstanding.
+      parameters:
+        - $ref: '#/components/parameters/csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [approved, comment, version]
+              properties:
+                approved: {type: boolean}
+                comment: {type: string, minLength: 1, description: Nonblank}
+                version: {type: integer, minimum: 1}
+      responses:
+        '400': {description: Invalid fields or body}
+        '401': {description: Invalid or revoked session}
+        '403': {description: Missing CSRF or permission, or technician self acceptance}
+        '404': {description: Unknown order}
+        '409': {description: ACCEPTANCE_INTEGRATION_PENDING, version conflict or wrong state; no mutation}
+components:
+  securitySchemes:
+    session: {type: apiKey, in: cookie, name: __Host-FDU_SESSION}
+  parameters:
+    orderId: {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    csrf: {name: X-XSRF-TOKEN, in: header, required: true, schema: {type: string}, description: Shared security CSRF token and matching Cookie}
+  schemas:
+    Order:
+      type: object
+      required: [id, reporterId, technicianId, status, acceptedBy, acceptedAt, acceptanceComment, rating, evaluation, evaluatedAt, version]
+      properties:
+        id: {type: string, format: uuid}
+        reporterId: {type: string, format: uuid}
+        technicianId: {type: [string, 'null'], format: uuid}
+        status: {type: string}
+        acceptedBy: {type: [string, 'null'], format: uuid}
+        acceptedAt: {type: [string, 'null'], format: date-time}
+        acceptanceComment: {type: [string, 'null']}
+        rating: {type: [integer, 'null'], minimum: 1, maximum: 5}
+        evaluation: {type: [string, 'null']}
+        evaluatedAt: {type: [string, 'null'], format: date-time}
+        version: {type: integer, minimum: 1}
+    Event:
+      type: object
+      required: [id, actorId, eventType, fromStatus, toStatus, assignedTo, note, createdAt, orderVersion, rating]
+      properties:
+        id: {type: string, format: uuid}
+        actorId: {type: [string, 'null'], format: uuid}
+        eventType: {type: string}
+        fromStatus: {type: [string, 'null']}
+        toStatus: {type: string}
+        assignedTo: {type: [string, 'null'], format: uuid}
+        note: {type: [string, 'null']}
+        createdAt: {type: string, format: date-time}
+        orderVersion: {type: integer, minimum: 1}
+        rating: {type: [integer, 'null'], minimum: 1, maximum: 5}

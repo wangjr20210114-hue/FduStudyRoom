@@ -1,0 +1,327 @@
+{
+  "version": 2,
+  "module": "M04",
+  "layer": "backend",
+  "source_snapshots": [
+    {
+      "path": "spec/requirements.json",
+      "sha256": "2d81f4d10992e69130b1bbb4201da8a913415466e563cc977831b1a87493cb4e",
+      "full_value": {
+        "id": "M2-02",
+        "module": "M04",
+        "title": "多级审批通过与驳回",
+        "source": {
+          "kind": "derived",
+          "pdf_pages": [
+            1
+          ],
+          "note": "由任务书约束推导，属于需验收的设计决策"
+        },
+        "acceptance": [
+          "至少两级审批，处理顺序和处理人明确",
+          "禁止申请人自审，同一人不能重复通过同一申请多级",
+          "并发处理通过版本或锁防止重复决策"
+        ],
+        "layers": [
+          "backend",
+          "frontend"
+        ],
+        "baseline_status": {
+          "backend": "pending",
+          "frontend": "pending"
+        },
+        "external_dependencies": [],
+        "verification": {
+          "red": "新增行为测试，未实现时必须以目标断言失败",
+          "green": "实现后同一测试通过，相关回归通过",
+          "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+        },
+        "evidence": [],
+        "execution_owner": "member",
+        "integration_dependencies": [
+          "IAM-05",
+          "RES-04",
+          "RES-06",
+          "SUP-01",
+          "SUP-02"
+        ]
+      }
+    },
+    {
+      "path": "spec/specs/S040.md",
+      "sha256": "058bfd32aa668adfc9d0c5c38179045d4485f55e8856cea54ff5301ac8f18f9d",
+      "full_text": "# 审批人依次通过或说明理由后驳回\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s040sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n审批人按顺序办理，越级操作被拒绝。最后一级通过后仍需确认教室占用，不能立即宣称资源已落实。\n\n### 操作步骤与预期结果\n\n1. Q1当前等admin1一级审批，二级为admin2。\n2. admin2先尝试办理，系统拒绝，状态不变。\n3. admin1通过后，再由admin2通过，每次合法决定只推进一级。\n4. 最后进入资源确认阶段，尚不直接显示已落实。\n\n<details>\n<summary>场景编号与精确规则补充（S040.SC01）</summary>\n\n- 场景名称：按顺序审批，不能跳过前一级\n- 场景编号：S040.SC01\n\n**对应的业务要求**\n\n- M2-02.AC1：至少两级，先后顺序和每级办理人明确\n\n**精确条件**\n\n- Q1当前一级admin1，二级admin2\n\n**精确动作**\n\n- 先由admin2尝试，再由admin1通过，最后admin2通过\n\n**结果与约束**\n\n- 越级拒绝且状态不变；每次合法决策仅推进一级，最终进入资源确认而非直接宣称已落实\n\n</details>\n\n<a id=\"s040sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n申请人不能审批自己的申请，同一个管理员也不能包办同一申请的多个审批级别。\n\n### 操作步骤与预期结果\n\n1. 申请人尝试审批自己的申请，系统拒绝。\n2. 另在旧配置中，同一管理员兼任两级，并尝试跨级重复通过。\n3. 系统同样拒绝，不因管理员身份而免除自审和多级人员限制。\n\n<details>\n<summary>场景编号与精确规则补充（S040.SC02）</summary>\n\n- 场景名称：申请人不能自审，同一个人不能包办两级\n- 场景编号：S040.SC02\n\n**对应的业务要求**\n\n- M2-02.AC2：不能审批自己的申请，同一人不能包办同一申请的多个审批级\n\n**精确条件**\n\n- 申请人尝试审批；另有管理员兼任两级的旧配置\n\n**精确动作**\n\n- 分别提交自审及重复跨级决策\n\n**结果与约束**\n\n- 自审和重复跨级均拒绝；不因同为管理员就放行\n\n</details>\n\n<a id=\"s040sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n同一级审批的通过和驳回同时提交时，只能一个决定生效；另一个收到旧版本冲突，驳回还必须提供理由。\n\n### 操作步骤与预期结果\n\n1. Q1处于同一级、同一版本，admin1准备通过与带理由的驳回。\n2. 两份决定同时提交。\n3. 系统只保存一次该版本决定，另一份提示资料已变化，不能覆盖。\n4. 驳回没有理由时不能提交。\n\n<details>\n<summary>场景编号与精确规则补充（S040.SC03）</summary>\n\n- 场景名称：同时点击通过和驳回，只能有一个结果生效\n- 场景编号：S040.SC03\n\n**对应的业务要求**\n\n- M2-02.AC3：同时作决定时，用版本检查或锁保证不重复生效\n\n**精确条件**\n\n- Q1同一级同版本，admin1分别发通过和附理由驳回\n\n**精确动作**\n\n- 用事务屏障并发提交两决策\n\n**结果与约束**\n\n- 恰有一个生效，另一个旧版本冲突；历史只有一次该版本决策，驳回必须非空理由\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S040\n- 业务分组：整室申请与审批\n- 范围：核心业务\n- 对应要求：M2-02\n- 有关业务功能：[S039 管理员设置逐级审批的人选和期限](S039.md)。\n- 相关业务规则：[P04](../policies.md#p04)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    }
+  ],
+  "boundary": {
+    "observed": [
+      "approval模块Java为空；公共SecurityConfiguration使用Cookie/CSRF；RemoteIdentityLookup每请求HTTP校验权限。"
+    ],
+    "unverified": [
+      "前端、共同IAM/资源/通知服务联调；M2-01申请提交和M2-03资源占用不属于本轮。"
+    ]
+  },
+  "requirements": [
+    {
+      "id": "M2-02",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          1
+        ],
+        "note": "由任务书约束推导，属于需验收的设计决策"
+      },
+      "acceptance": [
+        "至少两级审批，处理顺序和处理人明确",
+        "禁止申请人自审，同一人不能重复通过同一申请多级",
+        "并发处理通过版本或锁防止重复决策"
+      ],
+      "scenarios": [
+        {
+          "id": "M2-02.S01",
+          "covers": [
+            1
+          ],
+          "original_text": "### 场景概述\n\n审批人按顺序办理，越级操作被拒绝。最后一级通过后仍需确认教室占用，不能立即宣称资源已落实。\n\n### 操作步骤与预期结果\n\n1. Q1当前等admin1一级审批，二级为admin2。\n2. admin2先尝试办理，系统拒绝，状态不变。\n3. admin1通过后，再由admin2通过，每次合法决定只推进一级。\n4. 最后进入资源确认阶段，尚不直接显示已落实。",
+          "business_scene_refs": [
+            "S040.SC01"
+          ],
+          "preconditions": [
+            "本人隔离 PostgreSQL 中直接构造申请与任务前态，RemoteIdentityLookup 通过本地 HTTP 可信身份夹具返回当前权限，不代表 IAM 共同联调。"
+          ],
+          "actions": [
+            "通过真实 Cookie/CSRF HTTP 请求读取任务并提交决策；并发场景用起跑屏障同时发送两个同版本请求。"
+          ],
+          "expected": [
+            "至少两级审批，处理顺序和处理人明确"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests/{requestId}",
+              "status": "missing",
+              "evidence": "approval Java目录为空；GET当前不存在，S040要求明确进度。"
+            },
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests/{requestId}/tasks/{taskId}/decision",
+              "status": "missing",
+              "evidence": "approval Java目录为空；S040顺序/防自审/并发决定。"
+            },
+            {
+              "kind": "table",
+              "key": "m2.classroom_requests + m2.approval_tasks",
+              "status": "missing",
+              "evidence": "本轮契约确认业务表尚未实现，docs/02表设计。"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-02.S01#1",
+              "criterion": 1,
+              "basis": "至少两级审批，处理顺序和处理人明确",
+              "kind": "api",
+              "expected": "orderedTwoLevelFlow: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
+              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
+              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
+              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "test_ids": [
+                "com.campus.approval.ApprovalHttpTest#orderedTwoLevelFlow"
+              ]
+            },
+            {
+              "id": "M2-02.S01#2",
+              "criterion": 1,
+              "basis": "至少两级审批，处理顺序和处理人明确",
+              "kind": "api",
+              "expected": "designatedActorAndReadScope: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
+              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
+              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
+              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "test_ids": [
+                "com.campus.approval.ApprovalHttpTest#designatedActorAndReadScope"
+              ]
+            },
+            {
+              "id": "M2-02.S01#3",
+              "criterion": 1,
+              "basis": "至少两级审批，处理顺序和处理人明确",
+              "kind": "api",
+              "expected": "singleLevelPlanDenied: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
+              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
+              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
+              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "test_ids": [
+                "com.campus.approval.ApprovalHttpTest#singleLevelPlanDenied"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-02.S02",
+          "covers": [
+            2
+          ],
+          "original_text": "### 场景概述\n\n申请人不能审批自己的申请，同一个管理员也不能包办同一申请的多个审批级别。\n\n### 操作步骤与预期结果\n\n1. 申请人尝试审批自己的申请，系统拒绝。\n2. 另在旧配置中，同一管理员兼任两级，并尝试跨级重复通过。\n3. 系统同样拒绝，不因管理员身份而免除自审和多级人员限制。",
+          "business_scene_refs": [
+            "S040.SC02"
+          ],
+          "preconditions": [
+            "本人隔离 PostgreSQL 中直接构造申请与任务前态，RemoteIdentityLookup 通过本地 HTTP 可信身份夹具返回当前权限，不代表 IAM 共同联调。"
+          ],
+          "actions": [
+            "通过真实 Cookie/CSRF HTTP 请求读取任务并提交决策；并发场景用起跑屏障同时发送两个同版本请求。"
+          ],
+          "expected": [
+            "禁止申请人自审，同一人不能重复通过同一申请多级"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests/{requestId}",
+              "status": "missing",
+              "evidence": "approval Java目录为空；GET当前不存在，S040要求明确进度。"
+            },
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests/{requestId}/tasks/{taskId}/decision",
+              "status": "missing",
+              "evidence": "approval Java目录为空；S040顺序/防自审/并发决定。"
+            },
+            {
+              "kind": "table",
+              "key": "m2.classroom_requests + m2.approval_tasks",
+              "status": "missing",
+              "evidence": "本轮契约确认业务表尚未实现，docs/02表设计。"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-02.S02#1",
+              "criterion": 2,
+              "basis": "禁止申请人自审，同一人不能重复通过同一申请多级",
+              "kind": "api",
+              "expected": "applicantCannotSelfApprove: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
+              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
+              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
+              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "test_ids": [
+                "com.campus.approval.ApprovalHttpTest#applicantCannotSelfApprove"
+              ]
+            },
+            {
+              "id": "M2-02.S02#2",
+              "criterion": 2,
+              "basis": "禁止申请人自审，同一人不能重复通过同一申请多级",
+              "kind": "api",
+              "expected": "sameActorCannotApproveAnotherLevel: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
+              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
+              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
+              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "test_ids": [
+                "com.campus.approval.ApprovalHttpTest#sameActorCannotApproveAnotherLevel"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M2-02.S03",
+          "covers": [
+            3
+          ],
+          "original_text": "### 场景概述\n\n同一级审批的通过和驳回同时提交时，只能一个决定生效；另一个收到旧版本冲突，驳回还必须提供理由。\n\n### 操作步骤与预期结果\n\n1. Q1处于同一级、同一版本，admin1准备通过与带理由的驳回。\n2. 两份决定同时提交。\n3. 系统只保存一次该版本决定，另一份提示资料已变化，不能覆盖。\n4. 驳回没有理由时不能提交。",
+          "business_scene_refs": [
+            "S040.SC03"
+          ],
+          "preconditions": [
+            "本人隔离 PostgreSQL 中直接构造申请与任务前态，RemoteIdentityLookup 通过本地 HTTP 可信身份夹具返回当前权限，不代表 IAM 共同联调。"
+          ],
+          "actions": [
+            "通过真实 Cookie/CSRF HTTP 请求读取任务并提交决策；并发场景用起跑屏障同时发送两个同版本请求。"
+          ],
+          "expected": [
+            "并发处理通过版本或锁防止重复决策"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests/{requestId}",
+              "status": "missing",
+              "evidence": "approval Java目录为空；GET当前不存在，S040要求明确进度。"
+            },
+            {
+              "kind": "api",
+              "key": "/api/approvals/requests/{requestId}/tasks/{taskId}/decision",
+              "status": "missing",
+              "evidence": "approval Java目录为空；S040顺序/防自审/并发决定。"
+            },
+            {
+              "kind": "table",
+              "key": "m2.classroom_requests + m2.approval_tasks",
+              "status": "missing",
+              "evidence": "本轮契约确认业务表尚未实现，docs/02表设计。"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M2-02.S03#1",
+              "criterion": 3,
+              "basis": "并发处理通过版本或锁防止重复决策",
+              "kind": "api",
+              "expected": "concurrentDecisionAppliesOnce: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
+              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
+              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
+              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "test_ids": [
+                "com.campus.approval.ApprovalHttpTest#concurrentDecisionAppliesOnce"
+              ]
+            },
+            {
+              "id": "M2-02.S03#2",
+              "criterion": 3,
+              "basis": "并发处理通过版本或锁防止重复决策",
+              "kind": "api",
+              "expected": "rejectionRequiresReason: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
+              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
+              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
+              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "test_ids": [
+                "com.campus.approval.ApprovalHttpTest#rejectionRequiresReason"
+              ]
+            },
+            {
+              "id": "M2-02.S03#3",
+              "criterion": 3,
+              "basis": "并发处理通过版本或锁防止重复决策",
+              "kind": "api",
+              "expected": "staleAndTerminalDecisionsDenied: 明确HTTP状态及持久化状态，不跳级/自审/重复或覆盖决定",
+              "sample": "隔离PostgreSQL本人模块前态，两个指定不同审批人；真实HTTP可信身份适配夹具",
+              "observation": "HTTP code, tasks/approverId/status/version/comment; m2 task acted_at and request version",
+              "comparison": "精确状态、指定人和递增版本；并发结果恰好200+409",
+              "test_ids": [
+                "com.campus.approval.ApprovalHttpTest#staleAndTerminalDecisionsDenied"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "id": "A01",
+      "category": "ATTRIBUTION",
+      "status": "已确认",
+      "conclusion": "本轮任务明确允许本模块PG申请/任务夹具构造前态；不声明M2-01/M2-03完成；最终RESOURCE_PENDING资源待落实。"
+    },
+    {
+      "id": "U01",
+      "category": "UNRESOLVED",
+      "status": "记录边界",
+      "conclusion": "S039全局流程配置和申请提交属于IAM-04/M2-01未实现部分；本轮保存并执行每申请不可重派的人员、期限、流程版本快照，决策时拒绝非法快照。"
+    }
+  ]
+}

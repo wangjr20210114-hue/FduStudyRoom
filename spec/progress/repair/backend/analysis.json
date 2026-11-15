@@ -1,0 +1,289 @@
+{
+  "version": 2,
+  "module": "M05",
+  "layer": "backend",
+  "requirements": [
+    {
+      "id": "M3-06",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          1
+        ],
+        "note": "由任务书约束推导，属于需验收的设计决策"
+      },
+      "acceptance": [
+        "合法评分及文字评价，只有允许的验收方可提交",
+        "保留维修、返工、多轮验收轨迹",
+        "维修人员不能自行验收自身任务"
+      ],
+      "scenarios": [
+        {
+          "id": "M3-06.S01",
+          "covers": [
+            1
+          ],
+          "original_text": "\n\n### 场景概述\n\n获授权的验收人给已验收工单评分，分数只能是1到5的整数。无效分数和其他人员的代评不会保存。\n\n### 操作步骤与预期结果\n\n1. admin2打开已验收而尚未评分的工单，每种尝试使用独立工单。\n2. 分别提交1分和5分，系统保存成功。\n3. 另分别提交0分、6分和小数，系统拒绝，原评分不变。\n4. 非授权验收方尝试评分也被拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC01）</summary>\n\n- 场景名称：有权验收的人才能评分，分数必须是1到5的整数\n- 场景编号：S055.SC01\n\n**对应的业务要求**\n\n- M3-06.AC1：只有允许的验收方能提交符合范围的评分和文字评价\n\n**精确条件**\n\n- admin2为合法验收人，准备两条独立已验收工单；每次非法评分用未评分的独立初态\n\n**精确动作**\n\n- 在两条工单分别提交评分1和5；另以独立工单分别提交0、6及小数\n\n**结果与约束**\n\n- 评分1与5分别保存；0、6及小数均拒绝且原评分不变；只有授权验收方可提交，非验收方不能代评\n\n</details>\n\n",
+          "business_scene_refs": [
+            "S055.SC01"
+          ],
+          "preconditions": [
+            "本人隔离PostgreSQL中构造已验收未评分工单及两轮维修事件；真实HTTP身份适配fixture返回当前权限，不是共同身份服务联调"
+          ],
+          "actions": [
+            "授权验收人提交1和5及无效分数与文字",
+            "其他人尝试代评"
+          ],
+          "expected": [
+            "合法评分及文字评价，只有允许的验收方可提交"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.evaluation",
+              "status": "missing",
+              "evidence": "已检索workflow-service/src/main/java，只有workflow健康及身份适配器，无repair实现"
+            },
+            {
+              "kind": "table",
+              "key": "m3.repair_orders / m3.repair_events",
+              "status": "missing",
+              "evidence": "round2-contracts确认尚无业务表，模块迁移目录为空"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-06.S01#1",
+              "criterion": 1,
+              "basis": "合法评分及文字评价，只有允许的验收方可提交",
+              "kind": "api",
+              "expected": "ratingsPersistForActualAcceptor: 合法评分及文字评价，只有允许的验收方可提交",
+              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
+              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
+              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "test_ids": [
+                "com.campus.repair.RepairEvaluationApiTest#ratingsPersistForActualAcceptor"
+              ]
+            },
+            {
+              "id": "M3-06.S01#2",
+              "criterion": 1,
+              "basis": "合法评分及文字评价，只有允许的验收方可提交",
+              "kind": "api",
+              "expected": "invalidScoresAndTextNeverMutate: 合法评分及文字评价，只有允许的验收方可提交",
+              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
+              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
+              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "test_ids": [
+                "com.campus.repair.RepairEvaluationApiTest#invalidScoresAndTextNeverMutate"
+              ]
+            },
+            {
+              "id": "M3-06.S01#3",
+              "criterion": 1,
+              "basis": "合法评分及文字评价，只有允许的验收方可提交",
+              "kind": "api",
+              "expected": "currentPermissionsAndAcceptorBinding: 合法评分及文字评价，只有允许的验收方可提交",
+              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
+              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
+              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "test_ids": [
+                "com.campus.repair.RepairEvaluationApiTest#currentPermissionsAndAcceptorBinding"
+              ]
+            },
+            {
+              "id": "M3-06.S01#4",
+              "criterion": 1,
+              "basis": "合法评分及文字评价，只有允许的验收方可提交",
+              "kind": "api",
+              "expected": "optimisticConcurrencyPreventsDuplicateEvaluation: 合法评分及文字评价，只有允许的验收方可提交",
+              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
+              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
+              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "test_ids": [
+                "com.campus.repair.RepairEvaluationApiTest#optimisticConcurrencyPreventsDuplicateEvaluation"
+              ]
+            },
+            {
+              "id": "M3-06.S01#5",
+              "criterion": 1,
+              "basis": "合法评分及文字评价，只有允许的验收方可提交",
+              "kind": "api",
+              "expected": "cookieCsrfAndStrictPayload: 合法评分及文字评价，只有允许的验收方可提交",
+              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
+              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
+              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "test_ids": [
+                "com.campus.repair.RepairEvaluationApiTest#cookieCsrfAndStrictPayload"
+              ]
+            },
+            {
+              "id": "M3-06.S01#6",
+              "criterion": 1,
+              "basis": "合法评分及文字评价，只有允许的验收方可提交",
+              "kind": "db",
+              "expected": "databaseConstraintsAndReplay: 合法评分及文字评价，只有允许的验收方可提交",
+              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
+              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
+              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "test_ids": [
+                "com.campus.repair.RepairEvaluationApiTest#databaseConstraintsAndReplay"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-06.S02",
+          "covers": [
+            2
+          ],
+          "original_text": "\n\n### 场景概述\n\n工单多次返工和验收后，用户在时间线仍能看到每一轮处理过程，最终状态不覆盖此前历史。\n\n### 操作步骤与预期结果\n\n1. W1先申请完工、被验收驳回，再次完工后验收通过。\n2. 用户打开工单详情和时间线。\n3. 每一轮的维修、处理人、时刻、结果和理由均保留，最新状态不覆盖前轮。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC02）</summary>\n\n- 场景名称：返工多次后，之前的过程仍能看到\n- 场景编号：S055.SC02\n\n**对应的业务要求**\n\n- M3-06.AC2：保留维修、返工和多次验收的过程\n\n**精确条件**\n\n- W1曾完工、验收驳回、再次完工并通过\n\n**精确动作**\n\n- 读取工单时间线\n\n**结果与约束**\n\n- 保留每轮维修、处理人、时刻、结果和理由；最新状态不覆盖前轮历史\n\n</details>\n\n",
+          "business_scene_refs": [
+            "S055.SC02"
+          ],
+          "preconditions": [
+            "本人隔离PostgreSQL中构造已验收未评分工单及两轮维修事件；真实HTTP身份适配fixture返回当前权限，不是共同身份服务联调"
+          ],
+          "actions": [
+            "读取工单详情及完整时间线"
+          ],
+          "expected": [
+            "保留维修、返工、多轮验收轨迹"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.history",
+              "status": "missing",
+              "evidence": "已检索workflow-service/src/main/java，只有workflow健康及身份适配器，无repair实现"
+            },
+            {
+              "kind": "table",
+              "key": "m3.repair_orders / m3.repair_events",
+              "status": "missing",
+              "evidence": "round2-contracts确认尚无业务表，模块迁移目录为空"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-06.S02#1",
+              "criterion": 2,
+              "basis": "保留维修、返工、多轮验收轨迹",
+              "kind": "api",
+              "expected": "historyRetainsEveryRepairAndAcceptance: 保留维修、返工、多轮验收轨迹",
+              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
+              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
+              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "test_ids": [
+                "com.campus.repair.RepairEvaluationApiTest#historyRetainsEveryRepairAndAcceptance"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M3-06.S03",
+          "covers": [
+            3
+          ],
+          "original_text": "\n\n### 场景概述\n\n维修人即使在验收或评分请求里冒充其他管理员，也不能自己验收或代评，原工单和资源状态保持不变。\n\n### 操作步骤与预期结果\n\n1. worker1是W1维修人，使用自己的真实登录信息。\n2. 直接请求验收或评价接口，并把请求里的身份填成admin2。\n3. 系统按worker1拒绝，工单、评分和资源状态均不变。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC03）</summary>\n\n- 场景名称：维修人改请求里的身份，也不能自验或代评\n- 场景编号：S055.SC03\n\n**对应的业务要求**\n\n- M3-06.AC3：维修人不能验收自己的任务\n\n**精确条件**\n\n- worker1是W1维修者\n\n**精确动作**\n\n- 直接调用验收/评价接口伪装admin2\n\n**结果与约束**\n\n- 均按真实身份拒绝；工单、评分和资源状态不改变\n\n</details>\n\n",
+          "business_scene_refs": [
+            "S055.SC03"
+          ],
+          "preconditions": [
+            "本人隔离PostgreSQL中构造已验收未评分工单及两轮维修事件；真实HTTP身份适配fixture返回当前权限，不是共同身份服务联调"
+          ],
+          "actions": [
+            "维修人通过真实Cookie身份请求验收及评分，伪装admin2"
+          ],
+          "expected": [
+            "维修人员不能自行验收自身任务"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "repair.acceptance",
+              "status": "missing",
+              "evidence": "已检索workflow-service/src/main/java，只有workflow健康及身份适配器，无repair实现"
+            },
+            {
+              "kind": "table",
+              "key": "m3.repair_orders / m3.repair_events",
+              "status": "missing",
+              "evidence": "round2-contracts确认尚无业务表，模块迁移目录为空"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M3-06.S03#1",
+              "criterion": 3,
+              "basis": "维修人员不能自行验收自身任务",
+              "kind": "api",
+              "expected": "technicianCannotImpersonateAcceptor: 维修人员不能自行验收自身任务",
+              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
+              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
+              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "test_ids": [
+                "com.campus.repair.RepairEvaluationApiTest#technicianCannotImpersonateAcceptor"
+              ]
+            },
+            {
+              "id": "M3-06.S03#2",
+              "criterion": 3,
+              "basis": "维修人员不能自行验收自身任务",
+              "kind": "api",
+              "expected": "authorizedAcceptanceRemainsExplicitlyPending: 维修人员不能自行验收自身任务",
+              "sample": "独立module_test PostgreSQL、随机工单ID、四个可信身份HTTP夹具；权限/评分/版本/维修轮次覆盖正常与边界初态",
+              "observation": "真实HTTP状态/JSON及m3.repair_orders、m3.repair_events持久化行；身份服务请求当前权限",
+              "comparison": "精确身份和文本/评分比较，非法请求前后快照一致，事件不可变，版本递增，同版本并发仅一次成功",
+              "test_ids": [
+                "com.campus.repair.RepairEvaluationApiTest#authorizedAcceptanceRemainsExplicitlyPending"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "source_snapshots": [
+    {
+      "path": "spec/requirements.json",
+      "sha256": "2d81f4d10992e69130b1bbb4201da8a913415466e563cc977831b1a87493cb4e",
+      "requirement_ids": [
+        "M3-06"
+      ],
+      "text": "{\"id\": \"M3-06\", \"module\": \"M05\", \"title\": \"验收评价和过程历史\", \"source\": {\"kind\": \"derived\", \"pdf_pages\": [1], \"note\": \"由任务书约束推导，属于需验收的设计决策\"}, \"acceptance\": [\"合法评分及文字评价，只有允许的验收方可提交\", \"保留维修、返工、多轮验收轨迹\", \"维修人员不能自行验收自身任务\"], \"layers\": [\"backend\", \"frontend\"], \"baseline_status\": {\"backend\": \"pending\", \"frontend\": \"pending\"}, \"external_dependencies\": [], \"verification\": {\"red\": \"新增行为测试，未实现时必须以目标断言失败\", \"green\": \"实现后同一测试通过，相关回归通过\", \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"}, \"evidence\": [], \"execution_owner\": \"member\", \"integration_dependencies\": [\"IAM-05\", \"RES-05\", \"RES-06\", \"SUP-01\", \"SUP-02\"]}",
+      "kind": "canonical"
+    },
+    {
+      "path": "spec/specs/S055.md",
+      "sha256": "d81d9ee8f8657a0114d4e417b3f6ea2a47a96615e38fd5981d6088d501652a79",
+      "text": "# 验收方评分，并保留每一轮返工记录\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s055sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n获授权的验收人给已验收工单评分，分数只能是1到5的整数。无效分数和其他人员的代评不会保存。\n\n### 操作步骤与预期结果\n\n1. admin2打开已验收而尚未评分的工单，每种尝试使用独立工单。\n2. 分别提交1分和5分，系统保存成功。\n3. 另分别提交0分、6分和小数，系统拒绝，原评分不变。\n4. 非授权验收方尝试评分也被拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC01）</summary>\n\n- 场景名称：有权验收的人才能评分，分数必须是1到5的整数\n- 场景编号：S055.SC01\n\n**对应的业务要求**\n\n- M3-06.AC1：只有允许的验收方能提交符合范围的评分和文字评价\n\n**精确条件**\n\n- admin2为合法验收人，准备两条独立已验收工单；每次非法评分用未评分的独立初态\n\n**精确动作**\n\n- 在两条工单分别提交评分1和5；另以独立工单分别提交0、6及小数\n\n**结果与约束**\n\n- 评分1与5分别保存；0、6及小数均拒绝且原评分不变；只有授权验收方可提交，非验收方不能代评\n\n</details>\n\n<a id=\"s055sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n工单多次返工和验收后，用户在时间线仍能看到每一轮处理过程，最终状态不覆盖此前历史。\n\n### 操作步骤与预期结果\n\n1. W1先申请完工、被验收驳回，再次完工后验收通过。\n2. 用户打开工单详情和时间线。\n3. 每一轮的维修、处理人、时刻、结果和理由均保留，最新状态不覆盖前轮。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC02）</summary>\n\n- 场景名称：返工多次后，之前的过程仍能看到\n- 场景编号：S055.SC02\n\n**对应的业务要求**\n\n- M3-06.AC2：保留维修、返工和多次验收的过程\n\n**精确条件**\n\n- W1曾完工、验收驳回、再次完工并通过\n\n**精确动作**\n\n- 读取工单时间线\n\n**结果与约束**\n\n- 保留每轮维修、处理人、时刻、结果和理由；最新状态不覆盖前轮历史\n\n</details>\n\n<a id=\"s055sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n维修人即使在验收或评分请求里冒充其他管理员，也不能自己验收或代评，原工单和资源状态保持不变。\n\n### 操作步骤与预期结果\n\n1. worker1是W1维修人，使用自己的真实登录信息。\n2. 直接请求验收或评价接口，并把请求里的身份填成admin2。\n3. 系统按worker1拒绝，工单、评分和资源状态均不变。\n\n<details>\n<summary>场景编号与精确规则补充（S055.SC03）</summary>\n\n- 场景名称：维修人改请求里的身份，也不能自验或代评\n- 场景编号：S055.SC03\n\n**对应的业务要求**\n\n- M3-06.AC3：维修人不能验收自己的任务\n\n**精确条件**\n\n- worker1是W1维修者\n\n**精确动作**\n\n- 直接调用验收/评价接口伪装admin2\n\n**结果与约束**\n\n- 均按真实身份拒绝；工单、评分和资源状态不改变\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S055\n- 业务分组：报修与维修\n- 范围：核心业务\n- 对应要求：M3-06\n- 有关业务功能：[S054 维修人申请完工，由另一人验收后再恢复](S054.md)。\n- 相关业务规则：[P07](../policies.md#p07)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+      "kind": "business_spec; admin2验收方评分按本轮协调人明确说明执行"
+    }
+  ],
+  "boundary": {
+    "pages": [],
+    "components": [],
+    "data": [
+      "已核验workflow现有RemoteIdentityLookup真实HTTP身份适配；独立runner/PG；本轮可构造0/1/多事件前态"
+    ],
+    "unverified": [
+      "未运行前端，非本层。未实现上游工单创建/派单/完工/资源解除；只构造本库测试前态。最终真实身份服务联调由协调人执行。"
+    ]
+  },
+  "issues": [
+    {
+      "id": "U01",
+      "status": "已确认",
+      "description": "docs02报修人评价与S055授权验收人评价不一致；按协调人本轮明确授权和S055，评价绑定实际accepted_by与repair:evaluate，非验收者不代评。"
+    },
+    {
+      "id": "U02",
+      "status": "已确认",
+      "description": "M3-05资源恢复不在本轮；验收接口仅做可信身份防自验检查，合法请求返回明确409 ACCEPTANCE_INTEGRATION_PENDING，不写完成状态、不调用未实现资源服务。"
+    }
+  ]
+}

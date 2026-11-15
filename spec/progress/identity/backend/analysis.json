@@ -1,0 +1,300 @@
+{
+  "version": 2,
+  "module": "M01",
+  "layer": "backend",
+  "source_snapshots": [
+    {
+      "path": "spec/requirements.json",
+      "sha256": "2d81f4d10992e69130b1bbb4201da8a913415466e563cc977831b1a87493cb4e",
+      "requirement_ids": [
+        "IAM-02"
+      ],
+      "text": {
+        "id": "IAM-02",
+        "module": "M01",
+        "title": "可配置角色和权限",
+        "source": {
+          "kind": "explicit",
+          "pdf_pages": [
+            5
+          ],
+          "note": "任务书明确要求"
+        },
+        "acceptance": [
+          "可新增角色并授予权限；停用角色生效",
+          "前后端拒绝越权，不能只按三种固定角色名授权业务"
+        ],
+        "layers": [
+          "backend",
+          "frontend"
+        ],
+        "baseline_status": {
+          "backend": "pending",
+          "frontend": "pending"
+        },
+        "external_dependencies": [],
+        "verification": {
+          "red": "新增行为测试，未实现时必须以目标断言失败",
+          "green": "实现后同一测试通过，相关回归通过",
+          "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+        },
+        "evidence": [],
+        "execution_owner": "member",
+        "integration_dependencies": []
+      },
+      "kind": "canonical_catalogue"
+    }
+  ],
+  "boundary": {
+    "identity": "Actual password login, Cookie and CSRF; test-generated isolated local accounts only",
+    "backend": "Existing IAM JDBC tables and dynamic permissions; role write endpoints missing by source inspection",
+    "unverified": [
+      "Frontend pages are a separate frontend work order; classroom operation will be checked in integrated branch using public resource API"
+    ]
+  },
+  "requirements": [
+    {
+      "id": "IAM-02",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          5
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "可新增角色并授予权限；停用角色生效",
+        "前后端拒绝越权，不能只按三种固定角色名授权业务"
+      ],
+      "scenarios": [
+        {
+          "id": "IAM-02.S01",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "管理员已登录且有角色管理权限"
+          ],
+          "actions": [
+            "新增自定义角色，只授予勾选权限；通过用户管理接口分配角色"
+          ],
+          "expected": [
+            "数据库保存角色和准确权限，自定义角色可用已授予功能"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S004.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n管理员新增“教室管理员”角色，只为它勾选查看和维护教室的权限。保存后该角色可分配给账号，但不会同时获得未勾选的管理功能。\n\n### 操作步骤与预期结果\n\n1. admin1打开角色管理页面，点击新增角色。\n2. 管理员填写ROOM_MANAGER，并只勾选查看教室和维护教室，点击保存。\n3. 系统保存该角色并允许分配给账号。\n4. 使用该角色的账号不能操作未授予的系统设置或审批功能。\n\n<details>\n<summary>场景编号与精确规则补充（S004.SC01）</summary>\n\n- 场景名称：新增角色时，只给它选中的功能\n- 场景编号：S004.SC01\n\n**对应的业务要求**\n\n- IAM-02.AC1：可以新增角色并勾选允许的功能，停用后实际生效\n\n**精确条件**\n\n- admin1有角色管理权限\n\n**精确动作**\n\n- 创建角色ROOM_MANAGER，只授予教室读取和维护权限\n\n**结果与约束**\n\n- 角色保存后可被分配；权限列表不隐含系统设置或审批权限\n\n</details>",
+          "source_path": "spec/specs/S004.md",
+          "source_sha256": "c7502d3e5a96953f1659509366d118797ee2ed84572c10b7dce57ae145b8cfe5",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/admin/roles",
+              "status": "existing",
+              "evidence": "AccountAdminController currently lists roles but has no creation, permission replacement or disabling endpoints"
+            },
+            {
+              "kind": "api",
+              "key": "/api/admin/permissions",
+              "status": "missing",
+              "evidence": "Read all identity/api controller mappings: no permission catalogue endpoint exists"
+            },
+            {
+              "kind": "table",
+              "key": "iam.roles,iam.permissions,iam.role_permissions,iam.users",
+              "status": "existing",
+              "evidence": "db/migration/V1__identity_schema.sql; IAM owns these tables"
+            }
+          ],
+          "cells": [
+            {
+              "id": "IAM-02.S01#1",
+              "criterion": 1,
+              "basis": "可新增角色并授予权限；停用角色生效",
+              "kind": "api",
+              "expected": "创建并分配自定义角色；只保存选中权限",
+              "sample": "PG fixtures + real HTTP admin role creation and account access update",
+              "observation": "POST /api/admin/roles; iam.role_permissions; /api/auth/me",
+              "comparison": "HTTP 201, exact role/permission sets and assigned role",
+              "test_ids": [
+                "com.campus.identity.api.RoleManagementHttpTest#canCreateRoleWithExactPermissionsAndAssignIt"
+              ]
+            },
+            {
+              "id": "IAM-02.S01#2",
+              "criterion": 1,
+              "basis": "可新增角色并授予权限；停用角色生效",
+              "kind": "api",
+              "expected": "未知权限不得部分创建角色",
+              "sample": "isolated DB role count then real POST unknown permission",
+              "observation": "HTTP status and role count",
+              "comparison": "400; count unchanged",
+              "test_ids": [
+                "com.campus.identity.api.RoleManagementHttpTest#rejectsUnknownPermissionWithoutPartialRole"
+              ]
+            },
+            {
+              "id": "IAM-02.S01#3",
+              "criterion": 1,
+              "basis": "可新增角色并授予权限；停用角色生效",
+              "kind": "api",
+              "expected": "权限目录包含六模块公开权限",
+              "sample": "admin authenticated actual HTTP",
+              "observation": "GET /api/admin/permissions codes",
+              "comparison": "200 and full required code set",
+              "test_ids": [
+                "com.campus.identity.api.RoleManagementHttpTest#permissionCatalogueContainsPublishedModuleCodes"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "IAM-02.S02",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "普通账号没有管理权限"
+          ],
+          "actions": [
+            "使用真实 Cookie 会话直接调用管理 API"
+          ],
+          "expected": [
+            "HTTP 拒绝且数据未变化，权限判断不依赖固定角色名称"
+          ],
+          "depends_on": [],
+          "business_scene_refs": [
+            "S004.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n没有教室维护权限的普通用户，既不能从页面修改教室，也不能通过直接发送请求绕过权限检查。\n\n### 操作步骤与预期结果\n\n1. user1登录后尝试打开教室管理入口，页面不允许执行维护操作。\n2. user1直接提交修改教室的请求，后端仍按真实权限拒绝。\n3. 教室资料和账号权限保持原样，不因绕开页面而发生变化。\n\n<details>\n<summary>场景编号与精确规则补充（S004.SC02）</summary>\n\n- 场景名称：没有权限的人，改网址或直接发请求也不能修改教室\n- 场景编号：S004.SC02\n\n**对应的业务要求**\n\n- IAM-02.AC2：页面和后端都检查实际权限，不能只认3个固定角色名称\n\n**精确条件**\n\n- user1无教室维护权限\n\n**精确动作**\n\n- 尝试打开管理入口并直接提交教室修改请求\n\n**结果与约束**\n\n- 入口不可执行；API拒绝，教室数据及权限不变\n\n</details>",
+          "source_path": "spec/specs/S004.md",
+          "source_sha256": "c7502d3e5a96953f1659509366d118797ee2ed84572c10b7dce57ae145b8cfe5",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/admin/roles",
+              "status": "existing",
+              "evidence": "AccountAdminController currently lists roles but has no creation, permission replacement or disabling endpoints"
+            },
+            {
+              "kind": "api",
+              "key": "/api/admin/permissions",
+              "status": "missing",
+              "evidence": "Read all identity/api controller mappings: no permission catalogue endpoint exists"
+            },
+            {
+              "kind": "table",
+              "key": "iam.roles,iam.permissions,iam.role_permissions,iam.users",
+              "status": "existing",
+              "evidence": "db/migration/V1__identity_schema.sql; IAM owns these tables"
+            }
+          ],
+          "cells": [
+            {
+              "id": "IAM-02.S02#1",
+              "criterion": 2,
+              "basis": "前后端拒绝越权，不能只按三种固定角色名授权业务",
+              "kind": "api",
+              "expected": "普通用户越权写角色被拒绝且数据不变",
+              "sample": "registered ordinary user and existing role fixtures",
+              "observation": "POST/PATCH protected role APIs and DB count",
+              "comparison": "403; role state and count unchanged",
+              "test_ids": [
+                "com.campus.identity.api.RoleManagementHttpTest#ordinaryUserCannotManageRolesOrChangeData"
+              ]
+            },
+            {
+              "id": "IAM-02.S02#2",
+              "criterion": 2,
+              "basis": "前后端拒绝越权，不能只按三种固定角色名授权业务",
+              "kind": "api",
+              "expected": "自定义角色按实际权限访问接口",
+              "sample": "isolated custom role with identity:roles:read only",
+              "observation": "GET /api/admin/roles and /api/admin/users",
+              "comparison": "roles 200; users 403",
+              "test_ids": [
+                "com.campus.identity.api.RoleManagementHttpTest#customRoleUsesGrantedPermissionRatherThanRoleName"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "IAM-02.S03",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "自定义角色账号已经登录"
+          ],
+          "actions": [
+            "管理员停用或撤销权限后，旧 Cookie 再请求"
+          ],
+          "expected": [
+            "下一请求拒绝，角色与历史用户引用保留"
+          ],
+          "depends_on": [
+            "IAM-02.S01"
+          ],
+          "business_scene_refs": [
+            "S004.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n管理员停用一个角色后，已登录的相关账号也不能继续使用该角色修改教室。过去记录中使用过这个角色的信息仍然保留。\n\n### 操作步骤与预期结果\n\n1. 使用ROOM_MANAGER角色的账号已经登录。\n2. 管理员在角色管理页面停用ROOM_MANAGER。\n3. 该账号保持原登录状态，继续尝试修改教室，系统拒绝操作，页面入口随权限更新。\n4. 历史记录中的角色引用仍保留，不因为停用而被删除。\n\n<details>\n<summary>场景编号与精确规则补充（S004.SC03）</summary>\n\n- 场景名称：角色停用后，已经登录的人也不能继续用它修改资料\n- 场景编号：S004.SC03\n\n**对应的业务要求**\n\n- IAM-02.AC1：可以新增角色并勾选允许的功能，停用后实际生效\n- IAM-02.AC2：页面和后端都检查实际权限，不能只认3个固定角色名称\n\n**精确条件**\n\n- ROOM_MANAGER账号已登录\n\n**精确动作**\n\n- admin1停用角色，再使用旧会话修改教室\n\n**结果与约束**\n\n- 写请求被拒绝，入口更新；停用不是删除历史角色引用\n\n</details>",
+          "source_path": "spec/specs/S004.md",
+          "source_sha256": "c7502d3e5a96953f1659509366d118797ee2ed84572c10b7dce57ae145b8cfe5",
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/api/admin/roles",
+              "status": "existing",
+              "evidence": "AccountAdminController currently lists roles but has no creation, permission replacement or disabling endpoints"
+            },
+            {
+              "kind": "api",
+              "key": "/api/admin/permissions",
+              "status": "missing",
+              "evidence": "Read all identity/api controller mappings: no permission catalogue endpoint exists"
+            },
+            {
+              "kind": "table",
+              "key": "iam.roles,iam.permissions,iam.role_permissions,iam.users",
+              "status": "existing",
+              "evidence": "db/migration/V1__identity_schema.sql; IAM owns these tables"
+            }
+          ],
+          "cells": [
+            {
+              "id": "IAM-02.S03#1",
+              "criterion": 1,
+              "basis": "可新增角色并授予权限；停用角色生效",
+              "kind": "api",
+              "expected": "角色停用后旧登录请求拒绝且外键保留",
+              "sample": "custom role assigned to real logged-in account",
+              "observation": "PATCH role enabled; old-cookie /api/admin/users; iam.users.role_id",
+              "comparison": "204;403; same role and user reference",
+              "test_ids": [
+                "com.campus.identity.api.RoleManagementHttpTest#disabledRoleRejectsExistingSessionAndPreservesReferences"
+              ]
+            },
+            {
+              "id": "IAM-02.S03#2",
+              "criterion": 2,
+              "basis": "前后端拒绝越权，不能只按三种固定角色名授权业务",
+              "kind": "api",
+              "expected": "撤销权限后旧登录下一请求拒绝",
+              "sample": "custom role with users:read, real login, admin removes permission",
+              "observation": "PUT /api/admin/roles/{id}/permissions; old cookie GET users",
+              "comparison": "204; next request403; /me empty permissions",
+              "test_ids": [
+                "com.campus.identity.api.RoleManagementHttpTest#permissionRemovalAffectsTheNextRequest"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "issues": []
+}
