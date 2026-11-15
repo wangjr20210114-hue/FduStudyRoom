@@ -37,7 +37,7 @@ public final class ReminderDispatcher {
   for(int i=0;i<100;i++)if(!Boolean.TRUE.equals(transactions.execute(tx->dispatchOne(now))))break;
  }
  private void createTasks(Instant now) {
-  var rows=jdbc.queryForList("SELECT r.id,r.user_id,r.starts_at FROM m1.seat_reservations r WHERE r.status='RESERVED' AND r.checked_in_at IS NULL AND NOT EXISTS(SELECT 1 FROM m1.reminder_tasks t WHERE t.reservation_id=r.id) ORDER BY r.starts_at,r.id LIMIT 100 FOR UPDATE OF r SKIP LOCKED");
+  var rows=jdbc.queryForList("SELECT r.id,r.user_id,r.starts_at FROM m1.seat_reservations r WHERE r.room_id IS NULL AND r.status='RESERVED' AND r.checked_in_at IS NULL AND NOT EXISTS(SELECT 1 FROM m1.reminder_tasks t WHERE t.reservation_id=r.id) ORDER BY r.starts_at,r.id LIMIT 100 FOR UPDATE OF r SKIP LOCKED");
   for(var row:rows) {
    UUID event=UUID.randomUUID();UUID id=(UUID)row.get("id");
    Instant due=instant(row.get("starts_at")).plus(Duration.ofMinutes(10));
@@ -46,11 +46,11 @@ public final class ReminderDispatcher {
   }
  }
  private boolean dispatchOne(Instant now) {
-  var rows=jdbc.queryForList("SELECT t.event_id,t.reservation_id,t.payload::text AS payload,t.attempts,t.status,r.status AS reservation_status,r.checked_in_at,r.checkin_deadline_at FROM m1.reminder_tasks t JOIN m1.seat_reservations r ON r.id=t.reservation_id WHERE t.status IN ('PENDING','CANCEL_PENDING') AND t.next_retry_at<=? AND (t.scheduled_at<=? OR r.status<>'RESERVED' OR r.checked_in_at IS NOT NULL) ORDER BY t.scheduled_at,t.event_id LIMIT 1 FOR UPDATE OF r,t SKIP LOCKED",Timestamp.from(now),Timestamp.from(now));
+  var rows=jdbc.queryForList("SELECT t.event_id,t.reservation_id,t.payload::text AS payload,t.attempts,t.status,r.status AS reservation_status,r.checked_in_at,r.checkin_deadline_at,r.ends_at FROM m1.reminder_tasks t JOIN m1.seat_reservations r ON r.id=t.reservation_id WHERE t.status IN ('PENDING','CANCEL_PENDING') AND t.next_retry_at<=? AND (t.scheduled_at<=? OR r.status<>'RESERVED' OR r.checked_in_at IS NOT NULL) ORDER BY t.scheduled_at,t.event_id LIMIT 1 FOR UPDATE OF r,t SKIP LOCKED",Timestamp.from(now),Timestamp.from(now));
   if(rows.isEmpty())return false;
   var row=rows.getFirst();UUID event=(UUID)row.get("event_id");
   Instant deadline=instant(row.get("checkin_deadline_at"));
-  boolean cancel=!"RESERVED".equals(row.get("reservation_status"))||row.get("checked_in_at")!=null||!now.isBefore(deadline)||"CANCEL_PENDING".equals(row.get("status"));
+  boolean cancel=!"RESERVED".equals(row.get("reservation_status"))||row.get("checked_in_at")!=null||!now.isBefore(deadline)||!now.isBefore(instant(row.get("ends_at")))||"CANCEL_PENDING".equals(row.get("status"));
   int attempts=((Number)row.get("attempts")).intValue();
   if(cancel&&attempts==0){finish(event,"CANCELLED",attempts,null,now);return true;}
   URI endpoint=cancel?URI.create(events+"/"+event+"/cancel"):events;
