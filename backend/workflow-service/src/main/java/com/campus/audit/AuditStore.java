@@ -28,7 +28,8 @@ public class AuditStore {
    if(key.equals("permissions"))allowed=value instanceof List<?> list&&list.size()<=200&&list.stream().allMatch(v->v instanceof String code&&code.length()<=128&&code.matches("[a-z][a-z0-9_-]*(?::[a-z][a-z0-9_-]*){1,7}"));
    else if(key.equals("roleCode"))allowed=value instanceof String code&&code.matches("[A-Z][A-Z0-9_]{0,63}");
    else if(Set.of("maxReservationHours","beforeStartReminderMinutes","afterStartReminderMinutes","checkinDeadlineMinutes","approvalTtlMinutes","repairSlaMinutes").contains(key))allowed=value instanceof Number n&&n.longValue()>0&&n.longValue()<=Integer.MAX_VALUE&&n.doubleValue()==n.longValue();
-   else if(Set.of("status","reasonCode","departmentCode").contains(key))allowed=value instanceof String s&&s.matches("[A-Za-z0-9_.:-]{1,64}");
+   else if(Set.of("status","reasonCode").contains(key))allowed=value instanceof String s&&s.matches("[A-Za-z0-9_.:-]{1,64}");
+   else if(key.equals("departmentCode"))allowed=value instanceof String s&&!s.isEmpty()&&s.length()<=64&&s.chars().noneMatch(Character::isISOControl);
    else if(Set.of("version","authVersion","score","level").contains(key))allowed=value instanceof Number n&&n.longValue()>=0&&n.doubleValue()==n.longValue();
    else if(Set.of("enabled","canApplyRoom","hasEmail","verified","hasDepartment").contains(key))allowed=value instanceof Boolean;
    else if(Set.of("roomId","seatId","roleId").contains(key)){try{if(value instanceof String s){UUID.fromString(s);allowed=true;}}catch(IllegalArgumentException ignored){}}

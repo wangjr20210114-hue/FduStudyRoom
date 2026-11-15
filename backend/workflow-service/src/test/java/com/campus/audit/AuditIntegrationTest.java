@@ -41,4 +41,43 @@ class AuditIntegrationTest extends SupportHttpFixture {
   assertThrows(DataAccessException.class,()->jdbc.update("DELETE FROM support.audit_logs WHERE event_key=?",e.get("eventKey")));
   assertEquals(1,get("/api/audit?sourceModule=M2&sourceId="+e.get("sourceId")).path("total").asInt());
  }
+
+ Map<String,Object> eligibilityEvent(String before,String after){
+  var e=event(UUID.randomUUID().toString(),true);e.put("sourceService","resource-service");e.put("sourceModule","D");e.put("action","ELIGIBILITY_CHANGED");
+  e.put("beforeData",Map.of("departmentCode",before,"hasDepartment",true));e.put("afterData",Map.of("departmentCode",after,"hasDepartment",true));return e;
+ }
+ void assertDepartmentStored(Map<String,Object> e,String before,String after)throws Exception {
+  accept(e);var item=get("/api/audit?traceId="+e.get("traceId")).path("items").get(0);
+  assertEquals(before,item.path("beforeData").path("departmentCode").asText());assertEquals(after,item.path("afterData").path("departmentCode").asText());
+  var persisted=json.readTree(jdbc.queryForObject("SELECT json_build_object('beforeData',before_data,'afterData',after_data)::text FROM support.audit_logs WHERE event_key=?",String.class,e.get("eventKey")));
+  assertEquals(before,persisted.path("beforeData").path("departmentCode").asText());assertEquals(after,persisted.path("afterData").path("departmentCode").asText());
+ }
+ void assertSummaryRejected(Map<String,Object> e)throws Exception {
+  var response=require(request("POST","/internal/audit/events",e,null,KEY),400);assertEquals("INVALID_AUDIT_SUMMARY",response.path("code").asText());
+  assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM support.audit_logs WHERE event_key=?",Integer.class,e.get("eventKey")));
+ }
+ @Test void preservesChineseDepartmentWithoutCopyingUnknownRequestText()throws Exception {
+  String before="\u6570\u5b66\u5b66\u9662",after="\u8ba1\u7b97\u673a\u5b66\u9662",secret="raw-request-"+UUID.randomUUID();var e=eligibilityEvent(before,after);
+  var data=new LinkedHashMap<>((Map<String,Object>)e.get("afterData"));data.put("request",Map.of("password",secret));data.put("unrelatedText",secret);e.put("afterData",data);
+  assertDepartmentStored(e,before,after);String stored=jdbc.queryForObject("SELECT row_to_json(a)::text FROM support.audit_logs a WHERE event_key=?",String.class,e.get("eventKey"));assertFalse(stored.contains(secret));assertFalse(stored.contains("unrelatedText"));assertFalse(stored.contains("password"));
+ }
+ @Test void preservesDepartmentInternalSpaces()throws Exception {
+  assertDepartmentStored(eligibilityEvent("CS FDU","SCI FDU"),"CS FDU","SCI FDU");
+  // A hyphen was already accepted by the baseline; it is not a reproducer for this defect.
+  assertDepartmentStored(eligibilityEvent("CS-01","SCI-02"),"CS-01","SCI-02");
+ }
+ @Test void acceptsDepartmentAt64CharacterLimit()throws Exception {
+  String value="\u9662".repeat(64);assertDepartmentStored(eligibilityEvent(value,value),value,value);
+ }
+ @Test void rejectsDepartmentsOver64Characters()throws Exception {
+  for(String value:List.of("A".repeat(65),"\u9662".repeat(65)))assertSummaryRejected(eligibilityEvent("CS",value));
+ }
+ @Test void rejectsDepartmentIsoControlCharacters()throws Exception {
+  for(char control:new char[]{0,9,10,127,133})assertSummaryRejected(eligibilityEvent("CS","CS"+control+"FDU"));
+ }
+ @Test void keepsStatusAndReasonCodeRestricted()throws Exception {
+  for(String field:List.of("status","reasonCode"))for(String value:List.of("\u5df2\u901a\u8fc7","WITH SPACE","VALID\nCODE")){
+   var e=eligibilityEvent("CS","CS");var data=new LinkedHashMap<>((Map<String,Object>)e.get("afterData"));data.put(field,value);e.put("afterData",data);assertSummaryRejected(e);
+  }
+ }
 }
