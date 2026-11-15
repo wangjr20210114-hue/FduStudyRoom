@@ -58,10 +58,16 @@ class GitHubExportTests(unittest.TestCase):
      # bare remote is not the different-owner checkout under test.
      probe=original(command[:index]+['rev-parse','HEAD'],*args,**kwargs)
      self.assertEqual(0,probe.returncode,probe.stderr.decode(errors='replace'))
+     for key,expected in [('core.longpaths','true'),('http.postBuffer','1048576'),('pack.threads','1'),('pack.windowMemory','32m')]:
+      effective=original(command[:index]+['config','--get',key],*args,**kwargs)
+      self.assertEqual(expected,effective.stdout.decode().strip(),'Export Git must use process-scoped host limits')
+     self.assertEqual('host-only-helper-token',kwargs['env']['GH_TOKEN'])
+     helper=original(command[:index]+['config','--get','credential.helper'],*args,**kwargs)
+     self.assertEqual('host-only-helper',helper.stdout.decode().strip(),'Host helper authentication must survive the per-process limits')
      command[index+1]=str(bare)
      kwargs={**kwargs,'env':{**kwargs['env'],'GIT_TEST_ASSUME_DIFFERENT_OWNER':'0'}}
     return original(command,*args,**kwargs)
-   with patch.dict('os.environ',{'GIT_TEST_ASSUME_DIFFERENT_OWNER':'1'}),patch('delivery.subprocess.run',side_effect=local_push):
+   with patch.dict('os.environ',{'GIT_TEST_ASSUME_DIFFERENT_OWNER':'1','GH_TOKEN':'host-only-helper-token','GIT_CONFIG_COUNT':'1','GIT_CONFIG_KEY_0':'credential.helper','GIT_CONFIG_VALUE_0':'host-only-helper'}),patch('policy.subprocess.run',side_effect=local_push):
     result=github_export(root,work,context,ack,'feat','Add room page',['Show room list'],['RES-01'])
     again=github_export(root,work,context,ack,'feat','Add room page',['Show room list'],['RES-01'])
    self.assertEqual('pushed',result['state']);self.assertEqual(result['commit'],again['commit'])

@@ -27,6 +27,8 @@ spring:
     deserialization:
       fail-on-unknown-properties: true
 campus:
+  reservation:
+    notification-url: ${CAMPUS_RESERVATION_NOTIFICATION_URL:http://workflow:8081}
   migrations:
     modules: identity,resource,reservation
   auth:
