@@ -20,7 +20,7 @@ public class AccountAdminController {
     public AccountAdminController(AccountRepository accounts, IdentityService identities) { this.accounts = accounts; this.identities = identities; }
 
     @GetMapping("/roles")
-    @PreAuthorize("hasAuthority('identity:users:read')")
+    @PreAuthorize("hasAuthority('identity:roles:read')")
     List<AccountRepository.Role> roles() { return accounts.roles(); }
 
     @GetMapping("/users")
