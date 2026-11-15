@@ -45,7 +45,7 @@ public class RepairEvaluationService {
   throw new ApiException(409,"ACCEPTANCE_INTEGRATION_PENDING");
  }
  @Transactional(readOnly=true)
- public Order detail(UUID id,IdentityPrincipal actor){permission(actor,"repair:history:read");Order o=load(id,false);if(flow!=null && flow.managed(id))flow.detail(id,actor);else participant(o,actor);return o;}
+ public Order detail(UUID id,IdentityPrincipal actor){permission(actor,"repair:history:read");Order o=load(id,false);if(flow!=null)flow.detail(id,actor);else participant(o,actor);return o;}
  @Transactional(readOnly=true)
  public List<Event> history(UUID id,IdentityPrincipal actor){
   detail(id,actor);
