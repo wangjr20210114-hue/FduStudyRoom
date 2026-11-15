@@ -9,7 +9,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 WORKDIR /opt/warm/backend
 COPY backend ./
-RUN sh mvnw -B verify && mkdir -p /opt/warm/m2 && cp -a /root/.m2/. /opt/warm/m2/
+RUN sh mvnw -B verify -DskipTests && mkdir -p /opt/warm/m2 && cp -a /root/.m2/. /opt/warm/m2/
 RUN chmod -R a+rX /opt/warm && mkdir -p /cache/m2
 WORKDIR /workspace
 ENTRYPOINT []

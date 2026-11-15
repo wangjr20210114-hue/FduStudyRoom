@@ -2,12 +2,12 @@
 
 ## 当前基线的真实能力
 
-- frontend/vitest.config.ts 的 test.environment 是 node；目前包含业务逻辑、路由、SSR 和 API mock 测试。
-- SSR renderToString 能检查输出 HTML，不能执行浏览器点击、焦点、布局、CSS 动画或真实 Cookie 链路。
-- frontend/package.json 没有 Playwright / 浏览器 runner；不要将 SSR 测试标成 component 交互来通过门禁。
-- 后端使用现有 JUnit / Surefire。记录器接受 Vitest JSON 和 JUnit XML；支持某种格式不代表已验证任意 runner 的报告兼容。
-- Playwright 是可选基线方案，不是当前已安装能力。补齐依赖、浏览器镜像、隔离初态、报告解析 / ID 映射和独立 CI 后才能写正式命令。
-- 尚无可运行的 UI 自动化时，保留必需 UI 类的 BLOCKED 和人工观察；不静默降级为 SSR / mock，不把人工结果塞进自动收据。
+- frontend/vitest.config.ts 的 test.environment 是 node；普通逻辑、路由和 SSR 测试仍在 Node 中运行。SSR 不能执行浏览器交互，也不能证明真实 Cookie 链路。
+- `frontend/tests/shared/browser.ts` 通过 Node24 内置 WebSocket 驱动批准镜像中的 Chrome/CDP，不增加 npm 依赖。浏览器必须由协调人预装，成员不临时 npx 下载或改锁文件。
+- 模块的 `*.browser.test.ts` 放在 `frontend/tests/modules/<模块key>/`，导入公共 `startBrowser`。Vitest 启动真实浏览器并加载实际产品 Vue 组件/路由，fixture 只提供 API 响应与初态，不另写一份假页面来代替产品。按页面 DOM、输入和点击结果作断言；记录 `--kind e2e`，报告仍是原生 Vitest JSON。
+- 成员前端容器继续 network=none、公共目录只读、无 Docker socket 和其他成员凭据。测试 HTTP server 与 Chrome 同在本容器，仅访问 loopback。fixture API 能证明界面行为，不能冒充真实后端集成；后者在协调测试环境另验。
+- 后端使用现有 JUnit/Surefire。记录器接受 Vitest JSON 和 JUnit XML，Chrome/CDP 故障属于 ERROR，不算业务 Red。
+- 浏览器安装、协议示例、截图归档和实际验证见 [Web 浏览器基线](../../../docs/workflow/web-browser-baseline.md)。缺少浏览器或真实业务前置条件时，必需观察保留 BLOCKED，不降级成 SSR 或人工 PASS。
 
 ## cells 与真实测试 ID
 
@@ -37,6 +37,14 @@ Green使用相同测试命令、必测ID和报告路径。record先删除该容�
 后端使用实际类名，例如 `mvn -o -f backend/pom.xml -pl resource-service -am -Dtest=com.campus.resource.RoomTest -Dsurefire.failIfNoSpecifiedTests=false test`，报告路径为/workspace/backend/resource-service/target/surefire-reports/TEST-com.campus.resource.RoomTest.xml。核对真实服务和类，不盲抄示例。
 
 模块基线与回归：--requirement M02 --stage baseline或regression。构建/类型检查：--requirement M02 --stage check，此阶段可不传报告，例如前端npm --prefix frontend run build。check不代替行为测试。
+
+浏览器命令只增加模块测试过滤条件与 `--kind e2e`，例如：
+
+```text
+python scripts/team.py record --worktree <工作树> --requirement RES-01 --stage green --output <工作树>/.campus/tdd.local --report /tmp/campus-reports/RES-01.json --require-test <实际VitestID> --kind e2e -- npm --prefix frontend test -- tests/modules/resource/rooms.browser.test.ts --maxWorkers=1 --reporter=json --outputFile=/tmp/campus-reports/RES-01.json
+```
+
+Red/Green/Mutation 使用同一组测试、必测ID及报告路径。截图通过 `page.screenshot("/tmp/campus-reports/<场景>-<阶段>.png")` 保存，由协调人只读取回 `.campus` 证据目录并记录哈希；不提交截图、不手造报告。
 
 ## 判据
 

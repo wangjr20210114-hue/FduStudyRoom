@@ -2024,6 +2024,76 @@
       "evidence": [],
       "execution_owner": "human",
       "integration_dependencies": []
+    },
+    {
+      "id": "IAM-07",
+      "module": "M01",
+      "title": "通知邮箱填写与验证",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          1,
+          6
+        ],
+        "note": "将既有S081邮箱验证场景按账户与投递所有权分开登记；不改变已验收SUP-01的历史范围"
+      },
+      "acceptance": [
+        "本人填写合法邮箱后进入待验证；拒绝非法地址或夹带角色、院系资格；缺邮箱仍可登录和使用站内通知",
+        "本人当前目标邮箱在有效期内可由验证链接确认，重复确认幂等；原始令牌不以明文存入数据库或公开日志",
+        "过期、他人和旧邮箱链接均被拒绝；缺邮箱不静默取消预约，邮件任务明确显示缺地址或待补全状态"
+      ],
+      "layers": [
+        "backend",
+        "frontend"
+      ],
+      "baseline_status": {
+        "backend": "pending",
+        "frontend": "pending"
+      },
+      "external_dependencies": [],
+      "verification": {
+        "red": "新增行为测试，未实现时必须以目标断言失败",
+        "green": "实现后同一测试通过，相关回归通过",
+        "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+      },
+      "evidence": [],
+      "execution_owner": "member",
+      "integration_dependencies": [
+        "SUP-04"
+      ]
+    },
+    {
+      "id": "SUP-04",
+      "module": "M06",
+      "title": "邮箱验证邮件投递通道",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          1,
+          6
+        ],
+        "note": "将既有S081邮箱验证场景按账户与投递所有权分开登记；不改变已验收SUP-01的历史范围"
+      },
+      "acceptance": [
+        "仅可信服务端通过公开HTTP申请投递，实际调用可配置SMTP并保留幂等回执，不直接操作账户库",
+        "区分确定成功、确定失败和投递不确定；同请求重放不盲目多发，同编号不同参数拒绝，不确定结果不伪称送达",
+        "验证令牌与整封验证正文仅在本次发送内存中使用，不明文持久化或进入公开日志；真实邮件及失败边界有可观察证据"
+      ],
+      "layers": [
+        "backend"
+      ],
+      "baseline_status": {
+        "backend": "pending"
+      },
+      "external_dependencies": [],
+      "verification": {
+        "red": "新增行为测试，未实现时必须以目标断言失败",
+        "green": "实现后同一测试通过，相关回归通过",
+        "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+      },
+      "evidence": [],
+      "execution_owner": "member",
+      "integration_dependencies": []
     }
   ]
 }
