@@ -1,0 +1,778 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Repair lifecycle",
+    "version": "2.0.0",
+    "description": "M05 backend. SUBMITTED maps new. Half-finished resource requests visibly remain pending and retry after process/lease recovery. Persistent exact original effectiveAt string is broadcast only after real b receipt to both /internal/reservations/maintenance-events and /internal/approvals/maintenance-events with source highwater; 404/503 retain pending tasks. No cross-domain DB writes. Overdue >=first dueAt escalates once to effective repair:assign recipients, without reassignment. Email only from current enabled+verified identity; in-app is bilingual. Public source/settings URLs derive existing workflow identity resource origin; same service HTTP defaults loopback8081. All external calls outside DB transactions. Existing V1/9-test evaluation history preserved; evaluation text0..500 chars, integer rating1..5, no self evaluation."
+  },
+  "paths": {
+    "/api/repairs": {
+      "post": {
+        "description": "repair:report. Optional seatId UUID must belong to actual room; omit if no seat. Same operation/actor/payload returns original snapshot; different content409. SUBMITTED does not restrict resources. Body never supplies reporter identity. Creation replays also201.",
+        "security": [
+          {
+            "Session": [],
+            "Csrf": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operationId",
+                  "roomId",
+                  "description"
+                ],
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "roomId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "seatId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "description": "repair:history:read. Own reporter/assigned/accepted orders; repair:assign grants project dispatch scope. No body identity widens scope.",
+        "security": [
+          {
+            "Session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        }
+      }
+    },
+    "/api/repairs/{id}": {
+      "get": {
+        "description": "Same scope as listing. Managed order includes roomId,seatId,description,technicianId,status,dueAt,version,desiredVersion/appliedVersion,desiredActive/appliedActive,resourceError and cancellation inspection fields. Legacy evaluated orders retain legacy published shape.",
+        "security": [
+          {
+            "Session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/repairs/{id}/history": {
+      "get": {
+        "description": "Append-only SUBMIT/ASSIGN/REASSIGN/START/FINISH/ACCEPT/REJECT/CANCEL/ESCALATE/RESOURCE_ACK and safety history. Same object scope.",
+        "security": [
+          {
+            "Session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/repairs/candidates": {
+      "get": {
+        "description": "repair:assign. permission query repair:maintain(default) or repair:accept; trusted effective [{userId,displayName}], no email or service key exposed.",
+        "security": [
+          {
+            "Session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        }
+      }
+    },
+    "/api/repairs/{id}/assignment": {
+      "post": {
+        "description": "repair:assign; valid enabled repair:maintain candidate. SUBMITTED/ASSIGNED/IN_PROGRESS. First assignment snapshots trusted positive SLA, default120 minutes; reassignment never extends first dueAt. CAS prevents simultaneous assignments. Every new write requires current permission even on idempotent replay, exact fields and version; conflict409. Short domain transactions persist command/history/outbox before HTTP.",
+        "security": [
+          {
+            "Session": [],
+            "Csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operationId",
+                  "version",
+                  "technicianId"
+                ],
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "technicianId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/repairs/{id}/start": {
+      "post": {
+        "description": "Current assignee AND repair:maintain. ASSIGNED -> RESTRICTION_PENDING, durable M3 resource intent. Only real ACK changes to IN_PROGRESS. Every new write requires current permission even on idempotent replay, exact fields and version; conflict409. Short domain transactions persist command/history/outbox before HTTP.",
+        "security": [
+          {
+            "Session": [],
+            "Csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operationId",
+                  "version"
+                ],
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/repairs/{id}/finish": {
+      "post": {
+        "description": "Current assignee AND repair:maintain. IN_PROGRESS -> PENDING_ACCEPTANCE; no release. Notify effective repair:accept candidates. Every new write requires current permission even on idempotent replay, exact fields and version; conflict409. Short domain transactions persist command/history/outbox before HTTP.",
+        "security": [
+          {
+            "Session": [],
+            "Csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operationId",
+                  "version",
+                  "report"
+                ],
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "report": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/repairs/{id}/acceptance": {
+      "post": {
+        "description": "repair:accept and neither current technician nor any START/FINISH actor. Reject -> IN_PROGRESS without release; approve -> RESTORATION_PENDING, acceptedBy bound actual principal. Resource ACK -> COMPLETED. Existing unmanaged orphan rows retain explicit409 ACCEPTANCE_INTEGRATION_PENDING; old3-field legacy payload unchanged. Managed writes require operationId; response200 may have empty body, refresh detail. Every new write requires current permission even on idempotent replay, exact fields and version; conflict409. Short domain transactions persist command/history/outbox before HTTP.",
+        "security": [
+          {
+            "Session": [],
+            "Csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operationId",
+                  "version",
+                  "approved",
+                  "comment"
+                ],
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "approved": {
+                    "type": "boolean"
+                  },
+                  "comment": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/repairs/{id}/cancel": {
+      "post": {
+        "description": "Reporter with history permission or repair:admin-cancel. SUBMITTED/ASSIGNED -> CANCELLED without inventing release. Active/unknown restriction or pending acceptance -> CANCEL_REVIEW_PENDING; no release yet. Every new write requires current permission even on idempotent replay, exact fields and version; conflict409. Short domain transactions persist command/history/outbox before HTTP.",
+        "security": [
+          {
+            "Session": [],
+            "Csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operationId",
+                  "version",
+                  "reason"
+                ],
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/repairs/{id}/cancel-review": {
+      "post": {
+        "description": "repair:admin-cancel. Approve -> CANCEL_SAFETY_PENDING. Reject resumes IN_PROGRESS or RESTRICTION_PENDING if ACK unknown. Every new write requires current permission even on idempotent replay, exact fields and version; conflict409. Short domain transactions persist command/history/outbox before HTTP.",
+        "security": [
+          {
+            "Session": [],
+            "Csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operationId",
+                  "version",
+                  "approved",
+                  "comment"
+                ],
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "approved": {
+                    "type": "boolean"
+                  },
+                  "comment": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/repairs/{id}/cancel-inspection": {
+      "post": {
+        "description": "repair:accept and independent of all actual technicians. Same independent administrator with both permissions may review then inspect. Reject resumes maintenance; approve -> RESTORATION_PENDING with higher resource version/tombstone. ACK -> CANCELLED. Other work-order restrictions/M2 occupancy remain. Every new write requires current permission even on idempotent replay, exact fields and version; conflict409. Short domain transactions persist command/history/outbox before HTTP.",
+        "security": [
+          {
+            "Session": [],
+            "Csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed result; resource transitions may remain pending"
+          },
+          "400": {
+            "description": "Invalid fields or candidate"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Current permission, ownership, CSRF or independent inspector denied"
+          },
+          "404": {
+            "description": "Unknown resource/order"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          },
+          "503": {
+            "description": "Required dependency unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "operationId",
+                  "version",
+                  "approved",
+                  "comment"
+                ],
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "approved": {
+                    "type": "boolean"
+                  },
+                  "comment": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "Session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-FDU_SESSION"
+      },
+      "Csrf": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-XSRF-TOKEN"
+      }
+    }
+  }
+}
