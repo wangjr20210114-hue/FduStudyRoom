@@ -29,3 +29,7 @@ Windows 回归实际创建 staged 新 SQL，并复制到大于260字符的变异
 - 真实 Docker 历史单探针验证通过：新旧 Git commit 真实存在；先模拟 CI 失败不生成提交，再在同一原 base 上重试成功。使用真实隔离 PostgreSQL、SMTP 收件箱和 Java 数据库探针，检查源补丁、正式提交父版本、当前 HEAD 和自身资源清理。该探针不是六模块业务全量 Maven 验收。
 
 私有证据位于 `.campus/codex-round3-20261115-0e4fdd/private/baseline-history-fixes-20261116/`，包含原产品副本、原始命令输出、补丁和 summary.local.json。不改 Java 上传规则、不改五个 skill 源、成员工作树或原收据。
+
+## 完整回归的客户端生命周期
+
+三份HTTP测试夹具复用各自无Cookie的内部客户端，并在类结束时关闭创建的用户客户端。用户Cookie仍各自隔离，业务断言、并发竞态和请求超时不变。首轮完整回归在pids=256产生真实pthread_create EAGAIN，属于运行错误，不计业务Red；临时增加上限后146项通过。修复夹具后恢复原256上限，146项再次全部通过。正式成员原始补丁和证据未改，协调修复独立提交。

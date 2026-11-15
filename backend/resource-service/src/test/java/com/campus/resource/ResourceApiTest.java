@@ -39,7 +39,8 @@ import static org.junit.jupiter.api.Assertions.*;
     ConfigurableApplicationContext app;
     JdbcTemplate db;
     String base;
-    HttpClient admin,user;
+    HttpClient admin,user,internalClient;
+    private final List<HttpClient> clients=new CopyOnWriteArrayList<>();
     UUID userId,user2Id;
     HttpServer eligibility;
     volatile boolean failEligibility;
@@ -82,13 +83,22 @@ import static org.junit.jupiter.api.Assertions.*;
         assertEquals(204,call(admin,"PATCH","/api/admin/users/"+userId+"/access",map("roleId",tree(role).path("id").asText(),"enabled",true,"expectedAuthVersion",1),false).statusCode());
         user=client();
         assertEquals(200,call(user,"POST","/api/auth/login",map("loginName",uname,"password",PASS),false).statusCode());
+        internalClient=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+        clients.add(internalClient);
     }
     @AfterAll void stop(){
-        if(app!=null){
-            clean();
-            app.close();
+        try{
+            if(app!=null){
+                try{clean();}finally{app.close();}
+            }
+        }finally{
+            try{
+                if(eligibility!=null)eligibility.stop(0);
+            }finally{
+                clients.forEach(HttpClient::close);
+                clients.clear();
+            }
         }
-        if(eligibility!=null)eligibility.stop(0);
     }
     boolean exists(String table){
         return Boolean.TRUE.equals(db.queryForObject("SELECT to_regclass(?) IS NOT NULL",Boolean.class,table));
@@ -111,8 +121,10 @@ import static org.junit.jupiter.api.Assertions.*;
         for(int i=0;i<a.length;i+=2)m.put((String)a[i],a[i+1]);
         return m;
     }
-    static HttpClient client(){
-        return HttpClient.newBuilder().cookieHandler(new CookieManager(null,CookiePolicy.ACCEPT_ALL)).connectTimeout(Duration.ofSeconds(5)).build();
+    HttpClient client(){
+        HttpClient client=HttpClient.newBuilder().cookieHandler(new CookieManager(null,CookiePolicy.ACCEPT_ALL)).connectTimeout(Duration.ofSeconds(5)).build();
+        clients.add(client);
+        return client;
     }
     HttpResponse<String> call(HttpClient c,String verb,String path,Object body,boolean internal)throws Exception{
         var b=HttpRequest.newBuilder(URI.create(base+path)).timeout(Duration.ofSeconds(20)).header("Content-Type","application/json");
@@ -125,7 +137,7 @@ import static org.junit.jupiter.api.Assertions.*;
         return c.send(b.method(verb,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body))).build(),HttpResponse.BodyHandlers.ofString());
     }
     HttpResponse<String> in(String verb,String path,Object body)throws Exception{
-        return call(client(),verb,path,body,true);
+        return call(internalClient,verb,path,body,true);
     }
     JsonNode tree(HttpResponse<String>r){
         return JSON.readTree(r.body());

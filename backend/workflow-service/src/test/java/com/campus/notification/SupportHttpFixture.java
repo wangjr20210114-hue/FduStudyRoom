@@ -46,7 +46,13 @@ public abstract class SupportHttpFixture {
   app=new SpringApplicationBuilder(WorkflowApplication.class).run("--server.address=127.0.0.1","--server.port=0","--spring.datasource.url="+System.getenv("CAMPUS_DB_URL"),"--spring.datasource.username="+System.getenv("CAMPUS_DB_USER"),"--spring.datasource.password="+System.getenv("CAMPUS_DB_PASSWORD"),"--campus.auth.mode=password","--campus.auth.signing-key="+sign,"--campus.auth.service-key="+KEY,"--campus.auth.secure-cookies=true","--campus.workflow.identity-url="+service+"/introspect","--campus.notifications.initial-delay-ms=3600000","--campus.notifications.smtp.host=smtp","--campus.notifications.smtp.port=1025","--campus.notifications.smtp.from=studyroom@example.test","--campus.notifications.smtp.allow-insecure=true");
   base="http://127.0.0.1:"+app.getEnvironment().getProperty("local.server.port");jdbc=app.getBean(JdbcTemplate.class);
  }
- @AfterAll void stopFixture(){if(app!=null)app.close();if(upstream!=null)upstream.stop(0);}
+ @AfterAll void stopFixture(){
+  try{if(app!=null)app.close();}
+  finally{
+   try{if(upstream!=null)upstream.stop(0);}
+   finally{http.close();}
+  }
+ }
  @BeforeEach void resetFixture(){permit=true;sourceStatus=200;wrongScope=false;brokenSource=false;history=true;zero=false;sourceRequests.clear();app.getEnvironment().getPropertySources().remove("support-overrides");}
  protected void overrides(Map<String,Object> values){app.getEnvironment().getPropertySources().addFirst(new MapPropertySource("support-overrides",values));}
  protected void respond(com.sun.net.httpserver.HttpExchange e,int status,Object body)throws java.io.IOException {
