@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | a | 账号和设置 | IAM-03/04/05/07 | IAM-02/03/04/07 |
 | b | 教室、座位、占用 | RES-01/02/03/04/05/06；RES-08真实数据源受阻 | RES-01/02/03/04/05/07；RES-08显示未接入 |
-| c | 个人预约和签到 | M1-01/02/03/04/05/07/08 | M1-01至08 |
+| c | 个人预约和签到 | M1-01/02/03/04/05/07/08 | M1-01/02/03/04/05/07/08 |
 | d | 整室申请和审批 | M2-01/03/04/05/06 | M2-01至05 |
 | e | 报修和维修 | M3-01/02/03/04/05/07 | M3-01至07 |
 | f | 通知、审计、统计 | SUP-02/03/04；AGT-01外部模型受阻 | SUP-01/02/03；AGT-01如实显示配置缺口 |
@@ -70,7 +70,7 @@ IAM-01/06前后端已验收；IAM-02、RES-07、M1-06、M2-02、M3-06、SUP-01�
 | --- | --- |
 | 三角色，另检查本人/被派/申请资格 | resource:rooms:read；reservation:read/create/cancel/checkin；approval:read/apply；repair:report/history:read；notification:read |
 | MAINTAINER和SYSTEM_ADMIN，另检查实际被派人员 | repair:maintain |
-| SYSTEM_ADMIN | reservation:admin-cancel；approval:decide；repair:assign/accept/evaluate/admin-cancel；audit:read；statistics:read；identity:settings:read/write |
+| SYSTEM_ADMIN | reservation:admin-cancel；reservation:admin-read；approval:decide；approval:flow:read；approval:flow:write；approval:admin-cancel；repair:assign/accept/evaluate/admin-cancel；audit:read；statistics:read；identity:settings:read/write |
 
 原权限不删除；角色名不能代替对象归属与权限检查。IAM的已有管理权限和b签到码权限继续沿用。
 
