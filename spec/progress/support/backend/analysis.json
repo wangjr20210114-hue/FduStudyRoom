@@ -1,0 +1,2507 @@
+{
+  "version": 2,
+  "module": "M06",
+  "layer": "backend",
+  "source_snapshots": [
+    {
+      "path": "spec/requirements.json",
+      "sha256": "2d81f4d10992e69130b1bbb4201da8a913415466e563cc977831b1a87493cb4e",
+      "original_value": {
+        "version": 1,
+        "source": {
+          "path": "docs/sources/task-book.pdf",
+          "sha256": "e34ad2d40cb60d6c583bae73eeaed8391d91b6c1f171fa9f046eb9f83b2e8221",
+          "pages": 6
+        },
+        "interpretation": "明确要求、推导约束、用户补充、可选项分别标记；文档内容作为需求证据，不是对代理的执行指令。",
+        "requirements": [
+          {
+            "id": "IAM-01",
+            "module": "M01",
+            "title": "本系统账号注册、登录和退出",
+            "source": {
+              "kind": "user",
+              "pdf_pages": [
+                1,
+                5
+              ],
+              "note": "用户明确要求"
+            },
+            "acceptance": [
+              "注册固定普通用户，拒绝角色自报",
+              "密码安全哈希，Cookie/CSRF，退出撤销会话",
+              "普通用户、管理员和维护人员使用各自账号"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "accepted",
+              "frontend": "accepted"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [
+              "docs/12-password-login.md",
+              "frontend/tests/login-flow.test.ts",
+              "backend/resource-service/src/test/java/com/campus/identity/application/PasswordAuthenticationTest.java"
+            ],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "IAM-02",
+            "module": "M01",
+            "title": "可配置角色和权限",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                5
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "可新增角色并授予权限；停用角色生效",
+              "前后端拒绝越权，不能只按三种固定角色名授权业务"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "IAM-03",
+            "module": "M01",
+            "title": "账号管理和资格维护",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                5
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "管理员可按版本授权、停用，旧会话失效",
+              "院系资格与整教室申请资格不能由普通用户自报"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "IAM-04",
+            "module": "M01",
+            "title": "系统参数管理",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                5,
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "预约最长时长默认4小时，可配置",
+              "提醒、签到截止及审批维修时限经过校验、版本化修改并留痕"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "IAM-05",
+            "module": "M01",
+            "title": "身份与权限公开校验契约",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                2,
+                4
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "流程服务通过服务端网络确认身份",
+              "不信任前端的用户ID、角色或业务资格",
+              "调用有超时，失败拒绝敏感操作"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "IAM-06",
+            "module": "M01",
+            "title": "三角色导航与会话恢复",
+            "source": {
+              "kind": "user",
+              "pdf_pages": [
+                5
+              ],
+              "note": "用户明确要求"
+            },
+            "acceptance": [
+              "不同角色入口正确，直接地址也鉴权",
+              "支持中英文、个人信息、退出和受保护内容隐藏"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "accepted",
+              "frontend": "accepted"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [
+              "docs/12-password-login.md",
+              "frontend/tests/login-flow.test.ts",
+              "backend/resource-service/src/test/java/com/campus/identity/application/PasswordAuthenticationTest.java"
+            ],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "RES-01",
+            "module": "M02",
+            "title": "教室登记、注销与可用性",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                5
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "管理员维护校区、楼宇、房间、开放状态",
+              "有历史引用时停用，历史记录保持可追溯"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-02",
+              "IAM-03"
+            ]
+          },
+          {
+            "id": "RES-02",
+            "module": "M02",
+            "title": "座位主数据和特殊标记",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                5,
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "教室内座位编号唯一",
+              "座位可停用，插座标记可搜索"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-02",
+              "IAM-03"
+            ]
+          },
+          {
+            "id": "RES-03",
+            "module": "M02",
+            "title": "开放时间和院系最小限制",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                5
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "支持每日开放时段，拒绝越界预约",
+              "仅有经过管理员确认的匹配院系资格才能使用受限教室",
+              "不引入院系组织树"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-02",
+              "IAM-03"
+            ]
+          },
+          {
+            "id": "RES-04",
+            "module": "M02",
+            "title": "统一时段占用和并发互斥",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                2,
+                6
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "个人预约和整室占用竞争同一资源，事务内只允许一个成功",
+              "区间左闭右开，整室占用必须全部成功或全部失败",
+              "跨用户同座位和同用户重叠时段被约束拒绝"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-02",
+              "IAM-03"
+            ]
+          },
+          {
+            "id": "RES-05",
+            "module": "M02",
+            "title": "维修限制与按来源恢复",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                2
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "维修中教室全部座位下架",
+              "验收后只释放该工单限制，其他工单/停用/整室占用仍生效",
+              "重复和乱序写回不得错误恢复"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-02",
+              "IAM-03"
+            ]
+          },
+          {
+            "id": "RES-06",
+            "module": "M02",
+            "title": "占用来源追溯公开接口",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                2,
+                4
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "记录M1/M2/M3、业务ID、版本和时间",
+              "重试相同ID参数幂等；相同ID不同参数拒绝",
+              "调用方通过HTTP写回，不直接访问本模块库"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-02",
+              "IAM-03"
+            ]
+          },
+          {
+            "id": "RES-07",
+            "module": "M02",
+            "title": "教室每日签到编码",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "编码与教室和日期绑定，按上海时区换日",
+              "管理员可查看当日展示码，过期或其他教室码无效"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-02",
+              "IAM-03"
+            ]
+          },
+          {
+            "id": "RES-08",
+            "module": "M02",
+            "title": "复旦空教室只读接入",
+            "source": {
+              "kind": "user",
+              "pdf_pages": [],
+              "note": "用户明确要求"
+            },
+            "acceptance": [
+              "必须具备合法可用的数据源、授权和范围",
+              "显示数据来源、更新时间与过期状态，不能把课表空闲当成本系统可预约"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [
+              "FUDAN_DATA_AUTHORIZATION"
+            ],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-02",
+              "IAM-03"
+            ]
+          },
+          {
+            "id": "M1-01",
+            "module": "M03",
+            "title": "按条件搜索可用座位",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                1,
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "按区域、日期、时段和插座筛选",
+              "只返回开放且符合资格、没有占用和维修限制的座位"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "RES-01",
+              "RES-02",
+              "RES-03",
+              "RES-04",
+              "RES-07",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M1-02",
+            "module": "M03",
+            "title": "整点小时预约及最长时长",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "起止整点，正时长，默认最多4小时",
+              "动态参数生效，禁止过去时段和超出开放时间",
+              "数据库并发测试验证同座位仅一人成功"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "RES-01",
+              "RES-02",
+              "RES-03",
+              "RES-04",
+              "RES-07",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M1-03",
+            "module": "M03",
+            "title": "预约取消与释放",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                6
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "仅本人或有权限管理员可取消",
+              "只释放本预约占用，重复取消不影响其他来源",
+              "不可取消状态给出明确错误"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "RES-01",
+              "RES-02",
+              "RES-03",
+              "RES-04",
+              "RES-07",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M1-04",
+            "module": "M03",
+            "title": "Web编码签到",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "本人在有效窗口用当前教室当日编码签到",
+              "错误教室、过期码、越权和重复签到受到检查",
+              "签到与超时取消并发只有一个状态终结"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "RES-01",
+              "RES-02",
+              "RES-03",
+              "RES-04",
+              "RES-07",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M1-05",
+            "module": "M03",
+            "title": "预约前15分钟提醒",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "按预约开始时间减15分钟触发",
+              "取消记录不再提醒，任务重试不重复通知",
+              "真实邮件发送需邮件服务，测试使用可观察的测试邮件收件箱"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [
+              "SMTP_PROVIDER"
+            ],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "RES-01",
+              "RES-02",
+              "RES-03",
+              "RES-04",
+              "RES-07",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M1-06",
+            "module": "M03",
+            "title": "开始后10分钟未签到再次提醒",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "到开始后10分钟仍未签到时仅提醒一次",
+              "已签到或取消不发，重复调度保持幂等"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "RES-01",
+              "RES-02",
+              "RES-03",
+              "RES-04",
+              "RES-07",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M1-07",
+            "module": "M03",
+            "title": "开始后15分钟违约自动取消",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "未签到则取消、释放、通知并记录一次违约",
+              "重启后补偿到期任务，不能重复计违约",
+              "使用可控时钟测试10/15分钟边界"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "RES-01",
+              "RES-02",
+              "RES-03",
+              "RES-04",
+              "RES-07",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M1-08",
+            "module": "M03",
+            "title": "历史查询与再次预约",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                1,
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "只能查询本人历史，管理员另行授权",
+              "再次预约走当前全部规则，不能直接复制旧占用",
+              "分页和时区展示正确"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "RES-01",
+              "RES-02",
+              "RES-03",
+              "RES-04",
+              "RES-07",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M2-01",
+            "module": "M04",
+            "title": "整教室申请资格和提交",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                1,
+                2
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "通过权限和资格门槛后提交，普通用户不得自授资格",
+              "申请人、教室、时段、用途经校验",
+              "提交不等于审批通过，不向用户承诺已占用"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-04",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M2-02",
+            "module": "M04",
+            "title": "多级审批通过与驳回",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                1
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "至少两级审批，处理顺序和处理人明确",
+              "禁止申请人自审，同一人不能重复通过同一申请多级",
+              "并发处理通过版本或锁防止重复决策"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-04",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M2-03",
+            "module": "M04",
+            "title": "审批通过后网络占用整室",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                2
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "最终审批通过通过HTTP请求统一占用",
+              "座位冲突则申请不能展示为已落实成功",
+              "覆盖整个时段全部座位且保留M2来源"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-04",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M2-04",
+            "module": "M04",
+            "title": "驳回、超时撤销和释放",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                1,
+                2
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "到expires_at自动撤销；申请人按规则可撤销",
+              "驳回/撤销只幂等释放本申请资源",
+              "超时与审批并发不产生已撤销却继续占用"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-04",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M2-05",
+            "module": "M04",
+            "title": "申请进度与审批历史",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                1
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "本人可查本人申请，审批人只查授权任务",
+              "每次决策包含处理人、时间、结果和必要理由",
+              "状态变更投递通知和审计"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-04",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M2-06",
+            "module": "M04",
+            "title": "写回失败可重试与对账",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                2,
+                3
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "事务内保存可重试任务，崩溃后恢复",
+              "来源ID和版本防重放/乱序，失败可见",
+              "业务完成必须经过真实网络集成验证"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-04",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M3-01",
+            "module": "M05",
+            "title": "故障上报和工单查询",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                1
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "关联实际教室，可选座位；必填故障说明",
+              "本人可查本人，管理员查调度范围",
+              "报修本身不等于维修中下架"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-05",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M3-02",
+            "module": "M05",
+            "title": "派单和维修人员任务",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                1
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "管理员派给有效维护人员，记录派单/转派",
+              "维护人员只能操作分配给自己的工单",
+              "并发和旧版本更新被拒绝"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-05",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M3-03",
+            "module": "M05",
+            "title": "维修中网络下架教室",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                2
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "进入维修中经HTTP限制全室座位",
+              "持久任务重试，不能直接修改M1/资源库",
+              "现存预约处置、通知和历史记录有明确规则"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-05",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M3-04",
+            "module": "M05",
+            "title": "超时升级",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                1
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "按due_at升级并通知管理人员",
+              "同一升级级别只记录一次，崩溃恢复不重复升级",
+              "责任人和处理历史可查"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-05",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M3-05",
+            "module": "M05",
+            "title": "完工申请与独立验收",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                1,
+                2
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "维护人员申请完工，验收人独立于维修人",
+              "验收不通过继续维修，不提前恢复座位",
+              "验收通过网络释放本工单限制"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-05",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M3-06",
+            "module": "M05",
+            "title": "验收评价和过程历史",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                1
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "合法评分及文字评价，只有允许的验收方可提交",
+              "保留维修、返工、多轮验收轨迹",
+              "维修人员不能自行验收自身任务"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-05",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "M3-07",
+            "module": "M05",
+            "title": "工单取消与幂等恢复",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                4
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "可取消状态与授权人明确，修复中取消走审批规则",
+              "重复请求不多次释放，其他工单限制仍保留",
+              "向报修人及执行人通知结果"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": [
+              "IAM-05",
+              "RES-05",
+              "RES-06",
+              "SUP-01",
+              "SUP-02"
+            ]
+          },
+          {
+            "id": "SUP-01",
+            "module": "M06",
+            "title": "站内通知和真实邮件适配",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                1,
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "站内消息按收件人隔离、已读幂等",
+              "邮件失败可重试并显示投递结果，不伪称已送达",
+              "真实提醒必须使用可配置SMTP"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [
+              "SMTP_PROVIDER"
+            ],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "SUP-02",
+            "module": "M06",
+            "title": "关键操作持久审计",
+            "source": {
+              "kind": "derived",
+              "pdf_pages": [
+                1,
+                2
+              ],
+              "note": "由任务书约束推导，属于需验收的设计决策"
+            },
+            "acceptance": [
+              "记录操作者、对象、来源、结果和时间",
+              "不记录密码、Cookie、签名密钥或整份敏感请求",
+              "只有有权限的人可以查询，支持追踪ID"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "SUP-03",
+            "module": "M06",
+            "title": "运营统计",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                6
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "教室座位预约、签到、违约与利用率有明确计算口径",
+              "管理员权限受控，空数据不显示虚构统计",
+              "来自真实业务查询/公开接口，不读其他模块私有库"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-01",
+            "module": "M06",
+            "title": "机器可读规则、需求与验收追踪",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                1,
+                2,
+                3
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "每条需求有ID、来源、验收、实现和测试证据",
+              "未完成/受阻项留在清单，六模块所有权版本管理",
+              "公共层归属、候选方案及取舍形成书面记录"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-02",
+            "module": "M06",
+            "title": "严格TDD与有效测试",
+            "source": {
+              "kind": "user",
+              "pdf_pages": [
+                3
+              ],
+              "note": "用户明确要求"
+            },
+            "acceptance": [
+              "记录预期业务断言的RED、相同测试GREEN、回归和重构",
+              "故意破坏实现后测试必须失败",
+              "编译失败、缺工具、网络失败不能充当RED"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-03",
+            "module": "M06",
+            "title": "人工验收与合并请求",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                2,
+                3
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "AI输出经人工验收后进入正式提交",
+              "测试失败禁止合并，公共层/跨模块/schema变更组内评审",
+              "冲突留给人处理，AI不得自动解决冲突"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-04",
+            "module": "M06",
+            "title": "提交与合并请求触发流水线",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                2,
+                3
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "每次提交/MR触发构建、有效测试；失败后续不执行",
+              "包含规则、迁移、需求、决策和配置的版本历史",
+              "流水线使用仓库外CI凭据"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [
+              "CI_RUNNER"
+            ],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-05",
+            "module": "M06",
+            "title": "一键环境和干净环境部署",
+            "source": {
+              "kind": "user",
+              "pdf_pages": [
+                3,
+                5
+              ],
+              "note": "用户明确要求"
+            },
+            "acceptance": [
+              "Windows/macOS按stage检查并补齐兼容工具",
+              "IDE未安装给出明确提示，已有工具复用",
+              "依赖失败停止并可重试，不覆盖现存数据库"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-06",
+            "module": "M06",
+            "title": "测试环境整组自动部署",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                3,
+                5
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "一次覆盖本组全部交付模块，自动健康检查",
+              "部署锁/窗口防止与集成测试互相误报",
+              "全新环境通过脚本重放并实演"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [
+              "TEST_SERVER"
+            ],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-07",
+            "module": "M06",
+            "title": "生产审批、版本与回滚",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                2,
+                3,
+                5
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "人工批准后发布，有tag和提交回溯",
+              "发布失败可回滚代码并兼容数据演进",
+              "实际演示生产发布与回退，不用截图替代"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [
+              "PRODUCTION_SERVER",
+              "HUMAN_RELEASE_APPROVAL"
+            ],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-08",
+            "module": "M06",
+            "title": "模块化迁移和幂等种子",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                3
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "空库至最新版本可重放，重复启动不重复造数据",
+              "迁移版本按模块独立历史，无跨模块争抢V3",
+              "正式种子与业务/演示数据分离，不覆盖人工修改"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-09",
+            "module": "M06",
+            "title": "真实跨模块集成验收",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                2,
+                4,
+                5
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "实演M2占用、M3维修下架恢复、M1来源追溯",
+              "依赖只允许公开网络接口，mock只用于独立开发测试",
+              "网络超时、重复、乱序和失败重试可验证"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-10",
+            "module": "M06",
+            "title": "环境文件与密钥隔离",
+            "source": {
+              "kind": "user",
+              "pdf_pages": [
+                1,
+                3
+              ],
+              "note": "用户明确要求"
+            },
+            "acceptance": [
+              "每成员/模块/层独立工作区、端口、数据库角色、数据卷和缓存",
+              "只可写所属路径，冻结公共层只读，不能访问其他模块环境或密钥",
+              "宿主IDE无沙箱时只提供越界检测，不谎称OS强制隔离"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-11",
+            "module": "M06",
+            "title": "中英国际化与基线栈锁定",
+            "source": {
+              "kind": "user",
+              "pdf_pages": [],
+              "note": "用户明确要求"
+            },
+            "acceptance": [
+              "Vue/TypeScript、Java21/SpringBoot、PostgreSQL维持基线",
+              "新增业务文案放模块自己的中英字典，键一致",
+              "不引入替代后端语言/数据库或修改公共锁文件"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-12",
+            "module": "M06",
+            "title": "缓冲网站及三天定时同步",
+            "source": {
+              "kind": "user",
+              "pdf_pages": [],
+              "note": "用户明确要求"
+            },
+            "acceptance": [
+              "身份必须绑定令牌，不能只输入Gitee用户名就获得权限",
+              "完成后自动上传模块限定diff和TDD证据，重复上传幂等",
+              "每72小时只推已审核且独立验证通过的分支并创建MR；不直推main、不自动处理冲突",
+              "停机后补执行，任务互斥，失败可重试且显示状态"
+            ],
+            "layers": [
+              "backend"
+            ],
+            "baseline_status": {
+              "backend": "pending"
+            },
+            "external_dependencies": [
+              "GITEE_WRITE_CREDENTIAL",
+              "GITEE_MR_CREDENTIAL"
+            ],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "coordinator",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ETH-01",
+            "module": "M06",
+            "title": "工程伦理与个人报告证据",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                3
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "持续记录真实的隐私、误判、公平、AI质量等问题与处理",
+              "每位成员自己完成个人分析，不能虚构参与和人类评审记录"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [
+              "HUMAN_PERSONAL_REPORT"
+            ],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "human",
+            "integration_dependencies": []
+          },
+          {
+            "id": "AGT-01",
+            "module": "M06",
+            "title": "可选自然语言业务代理",
+            "source": {
+              "kind": "optional",
+              "pdf_pages": [
+                4,
+                5
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "通过M1/M2/M3公开接口真实调用主要操作",
+              "不确定时间/地点时追问，敏感操作按实际身份授权",
+              "建议DSH插件，安装配置进入流水线；缺真实模型凭据不能伪称完成"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [
+              "LLM_PROVIDER",
+              "DSH_PLUGIN_RUNTIME"
+            ],
+            "verification": {
+              "red": "新增行为测试，未实现时必须以目标断言失败",
+              "green": "实现后同一测试通过，相关回归通过",
+              "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
+            },
+            "evidence": [],
+            "execution_owner": "member",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-13",
+            "module": "M06",
+            "title": "评审节点与最终现场演示",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                4,
+                5
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "项目启动提交分工和公共层归属；Review1提交需求基线、依赖、架构、首次迭代、规则和风险",
+              "Review2提交主功能集成、自动迁移和提交至部署的演示及质量保证",
+              "期末现场演示干净环境部署、提交触发测试、schema演进、生产发布回退、真实跨模块网络链路，不用截图替代"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [
+              "HUMAN_REVIEW_PRESENTATION"
+            ],
+            "verification": {
+              "method": "真实交付与人工评审证据，不能由代码测试替代"
+            },
+            "evidence": [],
+            "execution_owner": "human",
+            "integration_dependencies": []
+          },
+          {
+            "id": "ENG-14",
+            "module": "M06",
+            "title": "组内共同环境与公共层决策",
+            "source": {
+              "kind": "explicit",
+              "pdf_pages": [
+                1
+              ],
+              "note": "任务书明确要求"
+            },
+            "acceptance": [
+              "项目组独占开发、测试、生产；各模块集成到同一整组环境",
+              "至少三个模块组及成员认领、公共层责任形成书面说明，考虑工作量、契约和故障责任",
+              "当前四人安排与任务书约六人组队建议的适配由团队/教师确认，AI不虚构成员或一致意见"
+            ],
+            "layers": [
+              "backend",
+              "frontend"
+            ],
+            "baseline_status": {
+              "backend": "pending",
+              "frontend": "pending"
+            },
+            "external_dependencies": [
+              "HUMAN_TEAM_ASSIGNMENT"
+            ],
+            "verification": {
+              "method": "真实交付与人工评审证据，不能由代码测试替代"
+            },
+            "evidence": [],
+            "execution_owner": "human",
+            "integration_dependencies": []
+          }
+        ]
+      }
+    },
+    {
+      "path": "spec/specs/S062.md",
+      "sha256": "bd1a3c29ca613a1c560617fd6f26f05ce87da248b98bdb624cedda33e1d210b0",
+      "original_value": "# 查看站内消息，避免重复通知和过时提醒\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s062sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在消息页面只能看本人消息。重复标已读不产生新记录，切换中英文后消息模板和状态有对应文字。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有站内消息，user1打开消息页面。\n2. user1读取自己的消息并重复标为已读，系统仍只保留原消息及已读结果。\n3. 尝试查询user2的消息，被拒绝。\n4. 切换中文和英文，系统消息模板和状态按当前语言显示。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC01）</summary>\n\n- 场景名称：只看自己的消息，重复标已读不多建记录\n- 场景编号：S062.SC01\n\n**对应的业务要求**\n\n- SUP-01.AC1：每人只看自己的站内消息，重复已读不多建记录\n\n**精确条件**\n\n- user1/user2各有站内消息\n\n**精确动作**\n\n- user1读取并重复已读，再请求user2消息\n\n**结果与约束**\n\n- 只返回本人；重复已读不产生第二份记录；越权拒绝，消息系统模板/状态支持当前中英字典\n\n</details>\n\n<a id=\"s062sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n通知事件重复到达时，站内只生成一份消息和待投递任务。未配置邮件服务时不能显示邮件已送达。\n\n### 操作步骤与预期结果\n\n1. 业务反复发送相同事件N1，真实邮件服务尚未配置。\n2. 系统接收事件，用户打开站内消息，可以查到一份对应通知。\n3. 查看邮件待办，只建立一份待投递任务，不标送达。\n4. 邮件服务缺失不妨碍站内通知这一独立功能使用。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC02）</summary>\n\n- 场景名称：没配邮件服务时，站内有消息也不能说邮件已送达\n- 场景编号：S062.SC02\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- 业务重复投递逻辑事件N1，真实SMTP尚未配置\n\n**精确动作**\n\n- 接收并查询通知/投递任务\n\n**结果与约束**\n\n- 只创建一份逻辑通知和待投递任务，站内可查；不显示邮件已送达；可继续业务独立开发\n\n</details>\n\n<a id=\"s062sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约取消后，尚未发送的提醒一起撤销；已经送达的历史保留，不把过去投递伪装成从未发生。\n\n### 操作步骤与预期结果\n\n1. 提前提醒仍等待发送，系统收到预约取消事件。\n2. 处理取消后，再执行提醒任务。\n3. 待发送提醒已撤销，不再投递邮件。\n4. 已送达通知仍保留历史记录，不删除或改成从未发送。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC03）</summary>\n\n- 场景名称：预约取消后，尚未发送的提醒也要取消\n- 场景编号：S062.SC03\n\n**对应的业务要求**\n\n- SUP-01.AC1：每人只看自己的站内消息，重复已读不多建记录\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- 预约提前提醒任务尚PENDING，收到取消事件\n\n**精确动作**\n\n- 处理取消后再次执行调度\n\n**结果与约束**\n\n- 待发送提醒取消且不会邮件投递；已经送达的历史不删除，不伪装从未投递\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S062\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-01\n- 有关业务功能：[S007 所有功能都按当前登录人的身份和权限处理](S007.md)。\n- 相关业务规则：[P13](../policies.md#p13)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S078.md",
+      "sha256": "5818cefd31f4a3c7be4bfc9a304f414cf4139c35c114eb5f5c12607600e44d96",
+      "original_value": "# 实际发送邮件，失败可重试，结果不明就提示待核实\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s078sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n系统通过实际邮件服务发送提醒，收件箱能收到包含教室和时段的邮件。测试收件成功只证明测试链路，不代表正式邮件已验收。\n\n### 操作步骤与预期结果\n\n1. 独立测试邮件服务和收件箱已配置，正式投递另需真实可用服务。\n2. 系统发送通知事件N1，打开测试收件箱核对。\n3. 能看到真实生成的邮件和业务教室、时段。\n4. 正式服务尚未具备时，仅记录测试链路通过，不称正式投递已验收。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC01）</summary>\n\n- 场景名称：测试收件箱里能真正收到邮件\n- 场景编号：S078.SC01\n\n**对应的业务要求**\n\n- SUP-01.AC3：真实邮件提醒使用可配置的邮件发送服务\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 配置独立测试SMTP/收件箱，生产终验另用可用真实服务\n\n**精确动作**\n\n- 发送逻辑事件N1并在收件箱核对\n\n**结果与约束**\n\n- 真实SMTP产生可观察邮件，内容含业务教室/时段；生产服务未具备时仅标测试链路通过\n\n</details>\n\n<a id=\"s078sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n邮件服务明确拒绝发送后，系统显示失败原因和重试时间；服务恢复后安全重试，状态与实际收件结果一致。\n\n### 操作步骤与预期结果\n\n1. 邮件服务明确拒绝第一次请求，任务不标送达。\n2. 用户查看失败原因和下次重试时间。\n3. 服务恢复后系统再次执行，状态与实际收件一致。\n4. 同一业务事件不增加另一份逻辑通知。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC02）</summary>\n\n- 场景名称：明确发送失败后，可以按计划重试\n- 场景编号：S078.SC02\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- SMTP明确拒绝第一次请求后恢复\n\n**精确动作**\n\n- 查看失败及next_retry并再次运行任务\n\n**结果与约束**\n\n- 首次不标送达，安全重试后状态与收件箱一致；同逻辑事件不多建通知\n\n</details>\n\n<a id=\"s078sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n邮件可能已被接收但确认丢失时，投递任务显示待核实，不盲目重发，也不虚称可以保证外部绝不重复。\n\n### 操作步骤与预期结果\n\n1. 外部邮件服务可能已接收，发送方未收到确认。\n2. 用户打开投递任务，看到待核实而非成功。\n3. 系统再次调度时不盲目重发。\n4. 若要求外部严格不重复，仍需投递方防重复能力或人工核对，当前不能凭空保证。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC03）</summary>\n\n- 场景名称：可能已发出却没收到确认时，不盲目重发\n- 场景编号：S078.SC03\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- SMTP可能接收但发送方没获得确认\n\n**精确动作**\n\n- 查看任务并再次调度\n\n**结果与约束**\n\n- 显示待核实而非成功，不盲重发；严格外部恰一次依赖提供方幂等或人工核对，不虚构保证\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S078\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-01、M1-05\n- 有关业务功能：[S062 查看站内消息，避免重复通知和过时提醒](S062.md)。\n- 需要的外部业务条件：可用的正式邮件服务。\n- 相关业务规则：[P13](../policies.md#p13)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "contracts/openapi/modules/support/notifications.yaml",
+      "sha256": "9f1ce79853c4a6937c2022f21c4d3f0c49fb17dbd0a7b45efc33da89f4b167dc",
+      "original_value": "openapi: 3.1.0\ninfo:\n  title: FduStudyRoom notification service contract\n  version: 0.1.0\n  description: |\n    Round 2 frozen HTTP contract. Internal callers use the existing X-Service-Key\n    from campus.auth.service-key. Browser cookies never authorize internal writes.\n    Identities in user-facing endpoints come from the existing authenticated principal.\nservers:\n  - url: /\npaths:\n  /internal/notifications/events:\n    post:\n      operationId: acceptNotificationEvent\n      security:\n        - ServiceKey: []\n      description: |\n        Atomically persist one logical event and its IN_APP notification and EMAIL task.\n        Same eventId and identical payload returns the original notificationId.\n        Same eventId with different payload returns 409 and changes nothing.\n        Persist before acknowledging; 201/200 do not assert SMTP delivery.\n        Missing SMTP or emailAddress preserves IN_APP and reports NOT_CONFIGURED.\n        title/body and titleEn/bodyEn are trusted service content, never browser input.\n      requestBody:\n        required: true\n        content:\n          application/json:\n            schema:\n              $ref: '#/components/schemas/NotificationEvent'\n      responses:\n        '201':\n          description: Event and tasks durably accepted for the first time\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/EventReceipt'\n        '200':\n          description: Identical event already durably accepted\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/EventReceipt'\n        '400':\n          $ref: '#/components/responses/Error'\n        '401':\n          $ref: '#/components/responses/Error'\n        '409':\n          $ref: '#/components/responses/Error'\n        '503':\n          $ref: '#/components/responses/Error'\n  /internal/notifications/events/{eventId}/cancel:\n    post:\n      operationId: cancelPendingNotificationEvent\n      security:\n        - ServiceKey: []\n      description: |\n        Cancel only still-pending delivery for the accepted event. Repeating cancellation\n        is idempotent. Keep already delivered notification and delivery history unchanged.\n        A delivery whose SMTP acceptance is uncertain stays UNKNOWN; do not resend it.\n        An event not yet accepted returns 404; callers must retain and retry their task.\n      parameters:\n        - $ref: '#/components/parameters/EventId'\n      responses:\n        '200':\n          description: Existing event state after idempotent cancellation\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/EventReceipt'\n        '401':\n          $ref: '#/components/responses/Error'\n        '404':\n          $ref: '#/components/responses/Error'\n  /api/notifications:\n    get:\n      operationId: listOwnNotifications\n      security:\n        - SessionCookie: []\n      description: |\n        Require notification:read and return only the authenticated principal's IN_APP\n        notifications. A recipientId or role supplied by the browser never widens scope.\n        Select title/body using Accept-Language (en or zh-CN; default zh-CN).\n      parameters:\n        - name: page\n          in: query\n          schema: {type: integer, minimum: 0, default: 0}\n        - name: size\n          in: query\n          schema: {type: integer, minimum: 1, maximum: 100, default: 20}\n      responses:\n        '200':\n          description: Own notifications in descending creation order, then descending id\n          content:\n            application/json:\n              schema:\n                type: object\n                required: [items, page, size, total]\n                properties:\n                  items:\n                    type: array\n                    items: {$ref: '#/components/schemas/Notification'}\n                  page: {type: integer, minimum: 0}\n                  size: {type: integer, minimum: 1, maximum: 100}\n                  total: {type: integer, minimum: 0}\n        '401':\n          $ref: '#/components/responses/Error'\n        '403':\n          $ref: '#/components/responses/Error'\n  /api/notifications/{notificationId}/read:\n    post:\n      operationId: markOwnNotificationRead\n      security:\n        - SessionCookie: []\n          CsrfHeader: []\n      description: |\n        Require notification:read, ownership and normal Cookie/CSRF checks. Keep the first\n        readAt on retries. Another user's id and a missing id both return 404.\n      parameters:\n        - name: notificationId\n          in: path\n          required: true\n          schema: {type: string, format: uuid}\n      responses:\n        '204':\n          description: Own notification marked read, including an identical retry\n        '401':\n          $ref: '#/components/responses/Error'\n        '403':\n          $ref: '#/components/responses/Error'\n        '404':\n          $ref: '#/components/responses/Error'\ncomponents:\n  securitySchemes:\n    ServiceKey:\n      type: apiKey\n      in: header\n      name: X-Service-Key\n    SessionCookie:\n      type: apiKey\n      in: cookie\n      name: FDU_SESSION\n      description: Production uses __Host-FDU_SESSION, issued by the existing identity service\n    CsrfHeader:\n      type: apiKey\n      in: header\n      name: X-XSRF-TOKEN\n  parameters:\n    EventId:\n      name: eventId\n      in: path\n      required: true\n      schema: {type: string, format: uuid}\n  schemas:\n    NotificationEvent:\n      type: object\n      additionalProperties: false\n      required: [eventId, recipientId, sourceModule, sourceId, title, body, titleEn, bodyEn, scheduledAt]\n      properties:\n        eventId:\n          type: string\n          format: uuid\n          description: Stable id created and persisted by the originating business transaction\n        recipientId: {type: string, format: uuid}\n        sourceModule: {type: string, enum: [M1, M2, M3, D]}\n        sourceId: {type: string, format: uuid}\n        title: {type: string, minLength: 1, maxLength: 255}\n        body: {type: string, minLength: 1, maxLength: 4000}\n        titleEn: {type: string, minLength: 1, maxLength: 255}\n        bodyEn: {type: string, minLength: 1, maxLength: 4000}\n        scheduledAt: {type: string, format: date-time}\n        emailAddress:\n          type: string\n          format: email\n          maxLength: 254\n          description: Optional address supplied only by a trusted service from verified account data; absent for M1-06 in this round\n    EventReceipt:\n      type: object\n      required: [eventId, notificationId, duplicate, inAppStatus, emailStatus]\n      properties:\n        eventId: {type: string, format: uuid}\n        notificationId: {type: string, format: uuid}\n        duplicate: {type: boolean}\n        inAppStatus: {type: string, enum: [PENDING, SENT, CANCELLED]}\n        emailStatus: {type: string, enum: [NOT_CONFIGURED, PENDING, SENT, FAILED, UNKNOWN, CANCELLED]}\n    Notification:\n      type: object\n      required: [id, eventId, recipientId, sourceModule, sourceId, title, body, locale, scheduledAt, status, emailStatus, readAt]\n      properties:\n        id: {type: string, format: uuid}\n        eventId: {type: string, format: uuid}\n        recipientId: {type: string, format: uuid}\n        sourceModule: {type: string, enum: [M1, M2, M3, D]}\n        sourceId: {type: string, format: uuid}\n        title: {type: string}\n        body: {type: string}\n        locale: {type: string, enum: [zh-CN, en]}\n        scheduledAt: {type: string, format: date-time}\n        status: {type: string, enum: [PENDING, SENT, CANCELLED]}\n        emailStatus: {type: string, enum: [NOT_CONFIGURED, PENDING, SENT, FAILED, UNKNOWN, CANCELLED]}\n        readAt: {type: [string, 'null'], format: date-time}\n        lastErrorCode: {type: [string, 'null']}\n        nextRetryAt: {type: [string, 'null'], format: date-time}\n    Error:\n      type: object\n      required: [code, message, traceId]\n      properties:\n        code: {type: string}\n        message: {type: string}\n        traceId: {type: string, format: uuid}\n  responses:\n    Error:\n      description: Existing safe ApiAdvice/ApiErrors envelope; no credentials or raw exception\n      content:\n        application/json:\n          schema:\n            $ref: '#/components/schemas/Error'\n"
+    },
+    {
+      "path": "docs/workflow/round2-contracts.md",
+      "sha256": "1b7501a3e683f0301f4aa44b291c82bbf9aadf3a327803190d8e6afbd453ec6d",
+      "original_value": "# 本轮六人后端协作契约\n\n本轮分别处理 a：IAM-02、b：RES-07、c：M1-06、d：M2-02、e：M3-06、f：SUP-01 的完整后端验收。前端、未实现的上游业务和整体联调分别记录，不能把本轮后端通过写成全部业务完成。旧 pilot 的局部收据不作为正式需求收据。\n\n## 数据与边界\n\n身份四张表已实现，其余业务表尚未实现。各成员在本模块新增必要的真实持久化表：M02 使用 resource.rooms；M03 使用 m1.seat_reservations；M04 使用 m2.classroom_requests、m2.approval_tasks；M05 使用 m3.repair_orders、m3.repair_events；M06 使用 support.notifications。字段参照 docs/02-database-design.md，不能假定表已存在。调用其他模块必须走公开契约，不查询或写入其他模块的私有库。必要的外部 UUID 通过可信服务校验。\n\n本轮每模块只新增一个未发布版本的追加式迁移，不修改历史、不删除表或字段、不清理已有数据。新增数据字段、索引和约束需留有真实 PostgreSQL 验证。测试前态可在自己的隔离数据库构造，不据此宣称预约创建、申请提交或工单创建功能已经完成。\n\n## 身份与权限\n\n外部 API 沿用 Cookie、CSRF 和 IdentityPrincipal.permissions()。流程服务沿用 RemoteIdentityLookup 真实网络校验身份，不能从请求体接受用户 ID、角色或资格作为授权依据，也不按 SYSTEM_ADMIN 字符串替代权限判断。\n\n内部服务密钥沿用 AuthSettings.serviceKey() / CAMPUS_AUTH_SERVICE_KEY，通过 X-Service-Key 发送，使用 MessageDigest.isEqual 恒定时长比较，不进入日志或 Git。当前公共安全链只放行精确路径 /internal/auth/introspect。f 可在 notification 包定义更高优先级且只匹配通知内部路径的 SecurityFilterChain，单独处理服务密钥及这些路径的 CSRF；不得放开所有 /internal/**。/api/notifications/** 仍受 Cookie 和 CSRF 保护。\n\n| 成员 | 公开权限码 |\n| --- | --- |\n| a | identity:roles:read、identity:roles:write |\n| b | resource:rooms:read、resource:rooms:write、resource:checkin-codes:read |\n| c | reservation:read |\n| d | approval:read、approval:decide |\n| e | repair:history:read、repair:accept、repair:evaluate |\n| f | notification:read |\n\na 在自己的 iam 模块登记上述权限目录。普通用户只默认获得本人通知读取权限；管理操作权限按实际角色授予，维护人员不自动拥有管理员权限。其他成员不能修改 iam，可在隔离身份适配测试中构造有权限或无权限的可信响应；最终共同测试必须使用实际身份服务。角色调整仍须校验当前操作者，停用或撤权后下一次请求生效。\n\n## 通知契约\n\n以 [notifications.yaml](../../contracts/openapi/modules/support/notifications.yaml) 为唯一接口定义。\n\n| 接口 | 鉴权 | 预期 |\n| --- | --- | --- |\n| POST /internal/notifications/events | X-Service-Key | 首次 201，相同事件重试 200，同 ID 不同内容 409 |\n| POST /internal/notifications/events/{eventId}/cancel | X-Service-Key | 取消尚未发送的事件；已发送保持历史；重复调用幂等 |\n| GET /api/notifications | Cookie、notification:read | 只返回本人通知，支持分页和中英文 |\n| POST /api/notifications/{notificationId}/read | Cookie、notification:read、CSRF | 只可标记本人通知；重复操作幂等 |\n\n事件包含稳定 eventId、recipientId、sourceModule、sourceId、scheduledAt，以及中文 title/body、英文 titleEn/bodyEn，可选 emailAddress。事件 ID 必须持久保存，不能每次重试生成新值。时间传带时区的 ISO 时间点，数据库使用 timestamptz。\n\nc 在预约开始后十分钟仍未签到时才发送：09:09:59 不发送，09:10:00 可以发送；已签到或取消不发送。网络失败保留持久任务，同一事件重试不重复建立通知。c 不访问 support 表，也不引用 f 的 Java 内部类。\n\nM1-06 可以只发送站内提醒，省略 emailAddress。f 的邮件适配必须实际连接本轮独立的 Mailpit SMTP 收件箱，验证收件人、内容和失败状态。未配置 SMTP 不得宣称发送成功；服务器接收结果不确定时保留 UNKNOWN 状态，不盲目重发造成重复邮件。公网真实邮件提供商仍是外部部署条件。\n\n## 共同测试与交付\n\n每人独立 runner、数据库、缓存、工作树和访问码。测试和产品只在本人白名单目录内写入，不把共享宿主路径检查当作强制隔离。仅协调测试环境可运行多个服务和独立 Mailpit，通过真实 HTTP 验证 c 与 f 的通知链路。stub 只证明隔离测试，不能替代共同联调。\n\n六份补丁完成后先核验各自收据和边界，再在独立目录检查能否干净叠加。若有 Git 冲突立即停止交给人。使用真实 PostgreSQL 预演六分支先后迁移及旧应用启动，确认无破坏性变化后集中调用 submit；不把仓库所有者凭据交给成员容器。\n\nGitHub 推送、CI、华为体验站更新和缓冲站审核分别记录真实结果。统一体验站展示最近成功部署的分支快照，不自动包含另外五人的功能；最终还需独立集成分支。现有部署器只备份数据库并尝试应用回退，不能保证任意 schema 变更均可回退。本轮不依赖回退保护执行破坏性迁移，也不关闭自动更新开关。\n\nGitee 仍需真人审核与独立 CI，通过后按 72 小时周期发布功能分支或创建 MR。AI 不代替真人签署审核，不以推送 GitHub 成功代替 Gitee 成功。\n"
+    }
+  ],
+  "boundary": {
+    "pages": "本轮纯后端，不声明前端UI完成",
+    "identity": "Cookie/RemoteIdentityLookup；隔离测试身份HTTP适配只证明该条件，协调联调用实际身份服务",
+    "data": "本人独立PG，真实Mailpit为本轮新实例，通知schema只由M06写",
+    "scope": "SUP-01三项AC和S062/S078六场景；S081资料邮箱验证属未来iam资料能力，本轮仅接收可信服务已验证emailAddress，协调人本轮任务明确排除S081"
+  },
+  "requirements": [
+    {
+      "id": "SUP-01",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1,
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "站内消息按收件人隔离、已读幂等",
+        "邮件失败可重试并显示投递结果，不伪称已送达",
+        "真实提醒必须使用可配置SMTP"
+      ],
+      "scenarios": [
+        {
+          "id": "SUP-01.S01",
+          "business_scene_refs": [
+            "S062.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n用户在消息页面只能看本人消息。重复标已读不产生新记录，切换中英文后消息模板和状态有对应文字。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有站内消息，user1打开消息页面。\n2. user1读取自己的消息并重复标为已读，系统仍只保留原消息及已读结果。\n3. 尝试查询user2的消息，被拒绝。\n4. 切换中文和英文，系统消息模板和状态按当前语言显示。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC01）</summary>\n\n- 场景名称：只看自己的消息，重复标已读不多建记录\n- 场景编号：S062.SC01\n\n**对应的业务要求**\n\n- SUP-01.AC1：每人只看自己的站内消息，重复已读不多建记录\n\n**精确条件**\n\n- user1/user2各有站内消息\n\n**精确动作**\n\n- user1读取并重复已读，再请求user2消息\n\n**结果与约束**\n\n- 只返回本人；重复已读不产生第二份记录；越权拒绝，消息系统模板/状态支持当前中英字典\n\n</details>\n\n<a id=\"s062sc02\"></a>",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "用户在消息页面只能看本人消息。重复标已读不产生新记录，切换中英文后消息模板和状态有对应文字。"
+          ],
+          "actions": [
+            "user1和user2各有站内消息，user1打开消息页面。",
+            "user1读取自己的消息并重复标为已读，系统仍只保留原消息及已读结果。",
+            "尝试查询user2的消息，被拒绝。",
+            "切换中文和英文，系统消息模板和状态按当前语言显示。"
+          ],
+          "expected": [
+            "站内消息按收件人隔离、已读幂等"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/internal/notifications/events",
+              "status": "missing",
+              "evidence": "notification包仅.gitkeep；冻结contracts/openapi/modules/support/notifications.yaml定义入口，源码不存在controller"
+            },
+            {
+              "kind": "api",
+              "key": "/api/notifications",
+              "status": "missing",
+              "evidence": "workflow公开路由只有health，无notification实现"
+            },
+            {
+              "kind": "table",
+              "key": "support.notifications",
+              "status": "missing",
+              "evidence": "模块support迁移目录无SQL，docs02要求持久通知"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S01#1",
+              "criterion": 1,
+              "basis": "站内消息按收件人隔离、已读幂等",
+              "kind": "api",
+              "expected": "两人各有消息；user1列表只本人、英文模板正确，重复已读保留首个readAt，越权与缺失都404",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#ownsOnlyUnreadAndIdempotentRead"
+              ]
+            },
+            {
+              "id": "SUP-01.S01#2",
+              "criterion": 1,
+              "basis": "站内消息按收件人隔离、已读幂等",
+              "kind": "api",
+              "expected": "未登录401，无permission403，Cookie写缺CSRF403且数据不改",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#rejectsUnauthenticatedForbiddenAndCsrf"
+              ]
+            },
+            {
+              "id": "SUP-01.S01#3",
+              "criterion": 1,
+              "basis": "站内消息按收件人隔离、已读幂等",
+              "kind": "db",
+              "expected": "PostgreSQL真实唯一/状态约束拒绝非法值，重新连接仍可读本人历史",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#databaseConstraintsAndRestartPersistence"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "SUP-01.S02",
+          "business_scene_refs": [
+            "S062.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n通知事件重复到达时，站内只生成一份消息和待投递任务。未配置邮件服务时不能显示邮件已送达。\n\n### 操作步骤与预期结果\n\n1. 业务反复发送相同事件N1，真实邮件服务尚未配置。\n2. 系统接收事件，用户打开站内消息，可以查到一份对应通知。\n3. 查看邮件待办，只建立一份待投递任务，不标送达。\n4. 邮件服务缺失不妨碍站内通知这一独立功能使用。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC02）</summary>\n\n- 场景名称：没配邮件服务时，站内有消息也不能说邮件已送达\n- 场景编号：S062.SC02\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- 业务重复投递逻辑事件N1，真实SMTP尚未配置\n\n**精确动作**\n\n- 接收并查询通知/投递任务\n\n**结果与约束**\n\n- 只创建一份逻辑通知和待投递任务，站内可查；不显示邮件已送达；可继续业务独立开发\n\n</details>\n\n<a id=\"s062sc03\"></a>",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "通知事件重复到达时，站内只生成一份消息和待投递任务。未配置邮件服务时不能显示邮件已送达。"
+          ],
+          "actions": [
+            "业务反复发送相同事件N1，真实邮件服务尚未配置。",
+            "系统接收事件，用户打开站内消息，可以查到一份对应通知。",
+            "查看邮件待办，只建立一份待投递任务，不标送达。",
+            "邮件服务缺失不妨碍站内通知这一独立功能使用。"
+          ],
+          "expected": [
+            "邮件失败可重试并显示投递结果，不伪称已送达"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/internal/notifications/events",
+              "status": "missing",
+              "evidence": "notification包仅.gitkeep；冻结contracts/openapi/modules/support/notifications.yaml定义入口，源码不存在controller"
+            },
+            {
+              "kind": "api",
+              "key": "/api/notifications",
+              "status": "missing",
+              "evidence": "workflow公开路由只有health，无notification实现"
+            },
+            {
+              "kind": "table",
+              "key": "support.notifications",
+              "status": "missing",
+              "evidence": "模块support迁移目录无SQL，docs02要求持久通知"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S02#1",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "api",
+              "expected": "同ID同内容201再200且id不变；同ID不同payload409，PG仅一IN_APP一EMAIL",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#deduplicatesAndRejectsChangedPayload"
+              ]
+            },
+            {
+              "id": "SUP-01.S02#2",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "api",
+              "expected": "缺邮箱或SMTP时IN_APP正常、EMAIL NOT_CONFIGURED且无sent_at",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#notConfiguredNeverClaimsDelivery"
+              ]
+            },
+            {
+              "id": "SUP-01.S02#3",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "api",
+              "expected": "并发相同事件始终同id，唯一约束防重复",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#raceDuplicateEventsStillSingleRecord"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "SUP-01.S03",
+          "business_scene_refs": [
+            "S062.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n预约取消后，尚未发送的提醒一起撤销；已经送达的历史保留，不把过去投递伪装成从未发生。\n\n### 操作步骤与预期结果\n\n1. 提前提醒仍等待发送，系统收到预约取消事件。\n2. 处理取消后，再执行提醒任务。\n3. 待发送提醒已撤销，不再投递邮件。\n4. 已送达通知仍保留历史记录，不删除或改成从未发送。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC03）</summary>\n\n- 场景名称：预约取消后，尚未发送的提醒也要取消\n- 场景编号：S062.SC03\n\n**对应的业务要求**\n\n- SUP-01.AC1：每人只看自己的站内消息，重复已读不多建记录\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- 预约提前提醒任务尚PENDING，收到取消事件\n\n**精确动作**\n\n- 处理取消后再次执行调度\n\n**结果与约束**\n\n- 待发送提醒取消且不会邮件投递；已经送达的历史不删除，不伪装从未投递\n\n</details>",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "预约取消后，尚未发送的提醒一起撤销；已经送达的历史保留，不把过去投递伪装成从未发生。"
+          ],
+          "actions": [
+            "提前提醒仍等待发送，系统收到预约取消事件。",
+            "处理取消后，再执行提醒任务。",
+            "待发送提醒已撤销，不再投递邮件。",
+            "已送达通知仍保留历史记录，不删除或改成从未发送。"
+          ],
+          "expected": [
+            "站内消息按收件人隔离、已读幂等",
+            "邮件失败可重试并显示投递结果，不伪称已送达"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/internal/notifications/events",
+              "status": "missing",
+              "evidence": "notification包仅.gitkeep；冻结contracts/openapi/modules/support/notifications.yaml定义入口，源码不存在controller"
+            },
+            {
+              "kind": "api",
+              "key": "/api/notifications",
+              "status": "missing",
+              "evidence": "workflow公开路由只有health，无notification实现"
+            },
+            {
+              "kind": "table",
+              "key": "support.notifications",
+              "status": "missing",
+              "evidence": "模块support迁移目录无SQL，docs02要求持久通知"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S03#1",
+              "criterion": 1,
+              "basis": "站内消息按收件人隔离、已读幂等",
+              "kind": "api",
+              "expected": "未来通知PENDING可撤销，重复取消幂等，已SENT保留",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#schedulesAndCancelsWithoutErasingSent"
+              ]
+            },
+            {
+              "id": "SUP-01.S03#2",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "db",
+              "expected": "取消后dispatch不发送，已成功投递历史不删除",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#schedulesAndCancelsWithoutErasingSent"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "SUP-01.S04",
+          "business_scene_refs": [
+            "S078.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n系统通过实际邮件服务发送提醒，收件箱能收到包含教室和时段的邮件。测试收件成功只证明测试链路，不代表正式邮件已验收。\n\n### 操作步骤与预期结果\n\n1. 独立测试邮件服务和收件箱已配置，正式投递另需真实可用服务。\n2. 系统发送通知事件N1，打开测试收件箱核对。\n3. 能看到真实生成的邮件和业务教室、时段。\n4. 正式服务尚未具备时，仅记录测试链路通过，不称正式投递已验收。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC01）</summary>\n\n- 场景名称：测试收件箱里能真正收到邮件\n- 场景编号：S078.SC01\n\n**对应的业务要求**\n\n- SUP-01.AC3：真实邮件提醒使用可配置的邮件发送服务\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 配置独立测试SMTP/收件箱，生产终验另用可用真实服务\n\n**精确动作**\n\n- 发送逻辑事件N1并在收件箱核对\n\n**结果与约束**\n\n- 真实SMTP产生可观察邮件，内容含业务教室/时段；生产服务未具备时仅标测试链路通过\n\n</details>\n\n<a id=\"s078sc02\"></a>",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "系统通过实际邮件服务发送提醒，收件箱能收到包含教室和时段的邮件。测试收件成功只证明测试链路，不代表正式邮件已验收。"
+          ],
+          "actions": [
+            "独立测试邮件服务和收件箱已配置，正式投递另需真实可用服务。",
+            "系统发送通知事件N1，打开测试收件箱核对。",
+            "能看到真实生成的邮件和业务教室、时段。",
+            "正式服务尚未具备时，仅记录测试链路通过，不称正式投递已验收。"
+          ],
+          "expected": [
+            "真实提醒必须使用可配置SMTP"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/internal/notifications/events",
+              "status": "missing",
+              "evidence": "notification包仅.gitkeep；冻结contracts/openapi/modules/support/notifications.yaml定义入口，源码不存在controller"
+            },
+            {
+              "kind": "api",
+              "key": "/api/notifications",
+              "status": "missing",
+              "evidence": "workflow公开路由只有health，无notification实现"
+            },
+            {
+              "kind": "table",
+              "key": "support.notifications",
+              "status": "missing",
+              "evidence": "模块support迁移目录无SQL，docs02要求持久通知"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S04#1",
+              "criterion": 3,
+              "basis": "真实提醒必须使用可配置SMTP",
+              "kind": "api",
+              "expected": "实际SMTP投递至本轮独立Mailpit，HTTP收件箱核对to/title/body含教室时段，与PG SENT一致",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#actuallyDeliversToMailpit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "SUP-01.S05",
+          "business_scene_refs": [
+            "S078.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n邮件服务明确拒绝发送后，系统显示失败原因和重试时间；服务恢复后安全重试，状态与实际收件结果一致。\n\n### 操作步骤与预期结果\n\n1. 邮件服务明确拒绝第一次请求，任务不标送达。\n2. 用户查看失败原因和下次重试时间。\n3. 服务恢复后系统再次执行，状态与实际收件一致。\n4. 同一业务事件不增加另一份逻辑通知。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC02）</summary>\n\n- 场景名称：明确发送失败后，可以按计划重试\n- 场景编号：S078.SC02\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- SMTP明确拒绝第一次请求后恢复\n\n**精确动作**\n\n- 查看失败及next_retry并再次运行任务\n\n**结果与约束**\n\n- 首次不标送达，安全重试后状态与收件箱一致；同逻辑事件不多建通知\n\n</details>\n\n<a id=\"s078sc03\"></a>",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "邮件服务明确拒绝发送后，系统显示失败原因和重试时间；服务恢复后安全重试，状态与实际收件结果一致。"
+          ],
+          "actions": [
+            "邮件服务明确拒绝第一次请求，任务不标送达。",
+            "用户查看失败原因和下次重试时间。",
+            "服务恢复后系统再次执行，状态与实际收件一致。",
+            "同一业务事件不增加另一份逻辑通知。"
+          ],
+          "expected": [
+            "邮件失败可重试并显示投递结果，不伪称已送达"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/internal/notifications/events",
+              "status": "missing",
+              "evidence": "notification包仅.gitkeep；冻结contracts/openapi/modules/support/notifications.yaml定义入口，源码不存在controller"
+            },
+            {
+              "kind": "api",
+              "key": "/api/notifications",
+              "status": "missing",
+              "evidence": "workflow公开路由只有health，无notification实现"
+            },
+            {
+              "kind": "table",
+              "key": "support.notifications",
+              "status": "missing",
+              "evidence": "模块support迁移目录无SQL，docs02要求持久通知"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S05#1",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "api",
+              "expected": "明确拒收显示FAILED/nextRetryAt，恢复后相同事件安全重试一次并实际Mailpit收件",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#explicitFailureRetriesWithSameMessage"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "SUP-01.S06",
+          "business_scene_refs": [
+            "S078.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n邮件可能已被接收但确认丢失时，投递任务显示待核实，不盲目重发，也不虚称可以保证外部绝不重复。\n\n### 操作步骤与预期结果\n\n1. 外部邮件服务可能已接收，发送方未收到确认。\n2. 用户打开投递任务，看到待核实而非成功。\n3. 系统再次调度时不盲目重发。\n4. 若要求外部严格不重复，仍需投递方防重复能力或人工核对，当前不能凭空保证。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC03）</summary>\n\n- 场景名称：可能已发出却没收到确认时，不盲目重发\n- 场景编号：S078.SC03\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- SMTP可能接收但发送方没获得确认\n\n**精确动作**\n\n- 查看任务并再次调度\n\n**结果与约束**\n\n- 显示待核实而非成功，不盲重发；严格外部恰一次依赖提供方幂等或人工核对，不虚构保证\n\n</details>",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "邮件可能已被接收但确认丢失时，投递任务显示待核实，不盲目重发，也不虚称可以保证外部绝不重复。"
+          ],
+          "actions": [
+            "外部邮件服务可能已接收，发送方未收到确认。",
+            "用户打开投递任务，看到待核实而非成功。",
+            "系统再次调度时不盲目重发。",
+            "若要求外部严格不重复，仍需投递方防重复能力或人工核对，当前不能凭空保证。"
+          ],
+          "expected": [
+            "邮件失败可重试并显示投递结果，不伪称已送达"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "api",
+              "key": "/internal/notifications/events",
+              "status": "missing",
+              "evidence": "notification包仅.gitkeep；冻结contracts/openapi/modules/support/notifications.yaml定义入口，源码不存在controller"
+            },
+            {
+              "kind": "api",
+              "key": "/api/notifications",
+              "status": "missing",
+              "evidence": "workflow公开路由只有health，无notification实现"
+            },
+            {
+              "kind": "table",
+              "key": "support.notifications",
+              "status": "missing",
+              "evidence": "模块support迁移目录无SQL，docs02要求持久通知"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S06#1",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "api",
+              "expected": "DATA终止后确认丢失为UNKNOWN且没有nextRetryAt，多次调度不自动重发",
+              "sample": "本人隔离PG的随机UUID事件/两名cookie账号；独立SMTP服务器明确失败或确认丢失；真实Mailpit测试收件箱",
+              "observation": "真实HTTP响应、support.notifications查询、Mailpit /api/v1/messages和message内容",
+              "comparison": "状态码与字段精确相等，原始消息ID/readAt不变，行数/收件数不重复",
+              "test_ids": [
+                "com.campus.notification.NotificationIntegrationTest#uncertainAcceptanceNeverAutomaticallyRetries"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "issues": [],
+  "implementation_references": [
+    "docs/02-database-design.md#support.notifications",
+    "docs/workflow/round2-contracts.md",
+    "S081尚未实现，不声明邮箱验证能力或正式邮件提供商验收"
+  ]
+}
