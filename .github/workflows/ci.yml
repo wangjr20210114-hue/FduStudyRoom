@@ -93,7 +93,9 @@ jobs:
           CAMPUS_TEST_SMTP_HOST: 127.0.0.1
           CAMPUS_TEST_SMTP_PORT: '1025'
           CAMPUS_TEST_MAILPIT_URL: http://127.0.0.1:8025
-        run: sh mvnw -B verify
+        run: |
+          sh mvnw -B -pl workflow-service -am -DskipTests package
+          sh mvnw -B verify
       - name: Package verified outputs
         env:
           RELEASE_BRANCH: ${{ github.ref_name }}

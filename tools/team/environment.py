@@ -350,6 +350,7 @@ def build(root,args):
         else:
             with verification_environment(root,env) as verify_env:
                 stage('5 verification services',detail='private PostgreSQL and SMTP ready')
+                run(maven+['-B','-q','-pl','workflow-service','-am','-DskipTests','package'],cwd=native/'backend',env=verify_env)
                 run(maven+['-B','-q','verify'],cwd=native/'backend',env=verify_env);stage('6 backend verify')
             run([picked['node'],node_modules/'vue-tsc/bin/vue-tsc.js','--noEmit','-p','tsconfig.json'],cwd=native/'frontend',env=env)
             run([picked['node'],node_modules/'typescript/bin/tsc','--noEmit','-p','tsconfig.node.json'],cwd=native/'frontend',env=env)
