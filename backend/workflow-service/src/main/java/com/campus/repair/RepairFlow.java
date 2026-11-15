@@ -26,7 +26,7 @@ public class RepairFlow {
  private final URI resource,workflow; private final String key;
  private final JsonMapper json=JsonMapper.builder().build();
  private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
- public RepairFlow(JdbcTemplate db,PlatformTransactionManager manager,ObjectProvider<Clock> clocks,
+ public RepairFlow(JdbcTemplate db,PlatformTransactionManager manager,@org.springframework.beans.factory.annotation.Qualifier("repairClock") ObjectProvider<Clock> clocks,
  @Value("${campus.workflow.identity-url:http://127.0.0.1:8080/internal/auth/introspect}") String identity,
  @Value("${campus.repair.workflow-url:http://127.0.0.1:8081}") String workflow,
  @Value("${campus.auth.service-key}") String key){this.db=db;this.tx=new TransactionTemplate(manager);this.clock=clocks.getIfAvailable(Clock::systemUTC);this.resource=URI.create(identity).resolve("/");this.workflow=URI.create(workflow);this.key=key;}

@@ -28,7 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(classes=WorkflowApplication.class,webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,
- properties={"campus.auth.signing-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","campus.auth.service-key=repair-isolated-fixture-service-key-000000","server.address=127.0.0.1","campus.migrations.modules=repair","campus.repair.poll-ms=3600000"})
+ properties={"campus.auth.signing-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","campus.auth.service-key=repair-isolated-fixture-service-key-000000","server.address=127.0.0.1","campus.migrations.modules=approval,repair,support","campus.repair.poll-ms=3600000"})
 @Import(RepairLifecycleApiTest.FixtureConfiguration.class)
 @org.springframework.test.annotation.DirtiesContext(classMode=org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class RepairLifecycleApiTest {

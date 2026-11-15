@@ -13,9 +13,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={
  "spring.main.allow-bean-definition-overriding=true","server.address=127.0.0.1","campus.auth.mode=password","campus.auth.signing-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
- "campus.auth.service-key=approval-fixture-key-32-characters","campus.migrations.modules=approval",
+ "campus.auth.service-key=approval-fixture-key-32-characters","campus.migrations.modules=approval,repair,support",
  "campus.approval.scheduling=false","spring.datasource.hikari.maximum-pool-size=2"})
 @Import(ApprovalLifecycleTest.TimeConfig.class)
+@org.springframework.test.annotation.DirtiesContext(classMode=org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class ApprovalLifecycleTest {
  static final JsonMapper JSON=JsonMapper.builder().build();
  static final String KEY="approval-fixture-key-32-characters";

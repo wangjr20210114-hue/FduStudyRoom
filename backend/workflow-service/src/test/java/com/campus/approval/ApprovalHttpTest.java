@@ -22,7 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
  "server.address=127.0.0.1", "campus.auth.mode=password",
  "campus.auth.signing-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
  "campus.auth.service-key=approval-isolated-fixture-service-key-32-characters",
- "campus.migrations.modules=approval"})
+ "campus.migrations.modules=approval,repair,support"})
+@org.springframework.test.annotation.DirtiesContext(classMode=org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class ApprovalHttpTest {
  static final Map<UUID,Set<String>> USERS=new ConcurrentHashMap<>();
  static final Set<UUID> REVOKED=ConcurrentHashMap.newKeySet();
