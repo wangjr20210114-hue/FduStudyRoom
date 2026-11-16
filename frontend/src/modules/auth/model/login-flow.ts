@@ -1,3 +1,4 @@
+import './email-intent'
 import { computed, ref, shallowRef } from 'vue'
 import { ApiError } from '@/shared/api'
 import { authApi, type AuthApi } from '../api/auth'

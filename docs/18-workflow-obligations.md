@@ -15,7 +15,7 @@
 
 ## 原要求的去向
 
-共170条原要求全部保留分类。下面列61条workflow相关要求，其中5条还含有业务部分；业务部分见[业务对照表](../spec/coverage.md)。
+历史170条要求全部保留分类；本轮新增6条业务要求，当前共176条。下面列61条workflow相关要求，其中5条还含有业务部分；业务部分见[业务对照表](../spec/coverage.md)。
 
 | 要求编号 | workflow管理的部分 | 分类 |
 | --- | --- | --- |
@@ -131,7 +131,8 @@
 ## 可核对的来源
 
 - [原始需求目录](../spec/requirements.json)
-- [170条要求的分类索引](workflow/requirements-boundary.json)
+- [历史170条要求的分类索引](workflow/requirements-boundary.json)
+- [本轮新增要求与来源重绑登记](../spec/spec-network.json)
 - [调整前的完整81项计划](workflow/previous-spec-plan.json)
 - [调整前总说明](workflow/archive/17-previous-plan.md)
 

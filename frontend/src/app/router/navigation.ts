@@ -6,16 +6,16 @@ export const navigationItems = workspaceRoutes.filter(route => route.meta.naviga
   path: `/${route.path}`,
   label: route.meta.titleKey,
   permission: route.meta.permission,
-  roles: route.meta.roles,
+  anyPermissions: route.meta.anyPermissions,
 }))
 
 export function hasPermission(user: CurrentUser | null, permission: string): boolean {
   return user?.permissions.includes(permission) ?? false
 }
 
-export function canAccessPage(user: CurrentUser | null, page: Pick<RouteMeta, 'permission' | 'roles'>): boolean {
-  if (!user || (page.roles && !page.roles.includes(user.role))) return false
-  return !page.permission || hasPermission(user, page.permission)
+export function canAccessPage(user: CurrentUser | null, page: Pick<RouteMeta, 'permission' | 'anyPermissions'>): boolean {
+  if (!user || (page.permission && !hasPermission(user, page.permission))) return false
+  return page.anyPermissions === undefined || page.anyPermissions.some(permission => hasPermission(user, permission))
 }
 
 export function visibleNavigation(user: CurrentUser | null) {

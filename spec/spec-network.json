@@ -288,28 +288,28 @@
     },
     {
       "id": "P06",
-      "status": "user_confirmed_2026_11_15",
-      "rule": "新建或已分配但未开修的工单，可由报修人或管理员取消。已在维修或待验收的工单，取消前要经过管理员审查和独立安全验收；通过才取消并解除自己的限制，不通过继续维修。维修人不能验收自己的工单。",
+      "status": "user_confirmed_2026_11_16",
+      "rule": "新建或已分配但未开修的工单，可由报修人或管理员取消。已在维修或待验收的工单，取消前先由管理员审查，再做独立安全验收；同一位有权限、且不是当前维修人或历史实际维修人的管理员可以完成这两步。当前维修人和过去实际参与过维修的人都不能验收这张工单。通过后才取消并解除自己的限制，不通过则继续维修。",
       "affected": [
         "S054",
         "S055",
         "S056",
         "S071"
       ],
-      "technical_rule": "NEW/ASSIGNED工单可由报修人或管理员取消；IN_PROGRESS/PENDING_ACCEPTANCE取消需管理员审查和独立安全验收，通过才CANCELLED并释放，未通过继续维修。维修人不能验收自己的工单。",
-      "confirmed_basis": "用户于2026-11-15明确选择按上述规则和默认值实现；审批60分钟、维修120分钟可调。"
+      "technical_rule": "NEW/ASSIGNED工单可由报修人或管理员取消；IN_PROGRESS/PENDING_ACCEPTANCE取消需管理员审查和独立安全验收，通过才CANCELLED并释放本工单限制，未通过继续维修。验收人排除当前维修人及全部历史实际worker；同一名符合独立性要求且有权限的管理员可完成取消审查和安全验收。",
+      "confirmed_basis": "用户于2026-11-15明确选择按上述规则和默认值实现；审批60分钟、维修120分钟可调。 2026-11-16补充确认：排除历史实际维修人，同一独立管理员可完成取消审查及安全验收。"
     },
     {
       "id": "P07",
-      "status": "user_confirmed_2026_11_15",
-      "rule": "维修期限必须是大于0的分钟数，派单时记住这张工单的截止时间；默认120分钟，可由管理员调整。到截止仍未通过独立验收，就上报一级管理员；同一级只记录一次，不自动转派。评价用1至5的整数，可附0至500字文字。",
+      "status": "user_confirmed_2026_11_16",
+      "rule": "维修期限必须是大于0的分钟数，首次派单时记住这张工单的截止时间；默认120分钟，可由管理员调整。之后转派给其他人，不顺延这张工单原来的截止时间。到截止仍未通过独立验收，就上报一级管理员；同一级只记录一次，不自动转派。评价用1至5的整数，可附0至500字文字。",
       "affected": [
         "S053",
         "S054",
         "S055"
       ],
-      "technical_rule": "维修SLA为正分钟数，派单时快照due_at，默认120分钟且可配置；now>=due_at且未完成独立验收时升至一级管理员，同级只记一次且不自动转派。评价为1至5整数，可附0至500字文本。",
-      "confirmed_basis": "用户于2026-11-15明确选择按上述规则和默认值实现；审批60分钟、维修120分钟可调。"
+      "technical_rule": "维修SLA为正分钟数，首次派单快照dueAt（due_at），默认120分钟且可配置；转派保留首次派单dueAt，不重新计算或延长。now>=dueAt且未完成独立验收时升至一级管理员，同级只记一次且不自动转派。评价为1至5整数，可附0至500字文本。",
+      "confirmed_basis": "用户于2026-11-15明确选择按上述规则和默认值实现；审批60分钟、维修120分钟可调。 2026-11-16补充确认：转派不延长首次派单dueAt。"
     },
     {
       "id": "P08",
@@ -374,14 +374,21 @@
     },
     {
       "id": "P14",
-      "status": "proposal_requires_review",
-      "rule": "建议申请人可以撤销自己尚未开始、还没结束的整室申请。教室占用正在确认时，先显示撤销处理中，之后补做对应释放。开始后只能由有权限的管理员说明理由后取消。已驳回或已撤销的申请重复操作，只返回原结果。",
+      "status": "user_confirmed_2026_11_16",
+      "rule": "申请人可以撤销自己尚未开始、还没结束的整室申请。教室占用正在确认时，先显示撤销处理中，再补做对应释放。资源冲突时，只要还没到开始时间，并且还没到审批截止时间，就保持等待落实，并用原命令、相同编号和参数重试。到了开始时间仍未落实，即使审批期限还没到，也按START_REACHED撤销，不能补订已经开始的时段；原expiresAt截止时间保留不改。开始后只能由有权限的管理员说明理由后取消。已驳回或已撤销的申请重复操作，只返回原结果。",
       "affected": [
         "S042",
         "S044",
         "S070"
       ],
-      "technical_rule": "整室申请人可撤销本人尚未开始且未终结申请；占用确认中的撤销先进入处理中并补偿释放。开始后仅有权限管理员带理由取消；已驳回/撤销重复操作只返回原结果。"
+      "technical_rule": "整室申请人可撤销本人尚未开始且未终结申请；占用确认中的撤销先进入处理中并补偿释放。资源冲突在now<startsAt且now<expiresAt时保留等待，并按原命令的同ID、同参数重试；到startsAt尚未落实则以START_REACHED撤销，即使expiresAt尚未来到，也不补订过去时段。提交时的expiresAt快照保持不变；开始后仅有权限管理员带理由取消，已驳回/撤销重复操作只返回原结果。",
+      "confirmation": {
+        "owner_cancel_before_start": true,
+        "admin_cancel_after_start_with_reason": true,
+        "resource_conflict_retry_until_start_or_expiry": true,
+        "cancel_unconfirmed_at_start_even_before_ttl": true,
+        "keep_original_expires_at_snapshot": true
+      }
     },
     {
       "id": "P16",
@@ -7555,7 +7562,18 @@
           "policy_refs": [
             "P13",
             "P16"
-          ]
+          ],
+          "technical_reference": {
+            "preconditions": [
+              "用户已登录，在个人资料填写合法邮箱并点击发送验证邮件。"
+            ],
+            "actions": [
+              "可信账户服务请求通知服务投递，邮件测试收件箱收到当前邮箱的验证链接。"
+            ],
+            "expected": [
+              "重复同一次投递请求，返回同一回执；站内消息或日志不展示原始验证令牌。"
+            ]
+          }
         },
         {
           "id": "S082.SC02",
@@ -7581,7 +7599,18 @@
           "policy_refs": [
             "P13",
             "P16"
-          ]
+          ],
+          "technical_reference": {
+            "preconditions": [
+              "分别让测试邮件服务明确拒绝邮件和在可能收件后丢失确认。"
+            ],
+            "actions": [
+              "页面或投递回执分别显示发送失败、投递结果待核实。"
+            ],
+            "expected": [
+              "仅确定可重试的失败允许重试；结果不确定时不会自动盲目多发。"
+            ]
+          }
         },
         {
           "id": "S082.SC03",
@@ -7607,7 +7636,18 @@
           "policy_refs": [
             "P13",
             "P16"
-          ]
+          ],
+          "technical_reference": {
+            "preconditions": [
+              "用户申请验证邮件，邮件测试收件箱接收后取出链接。"
+            ],
+            "actions": [
+              "开发者在隔离测试库和本次公开日志中检索原始令牌与整封验证正文。"
+            ],
+            "expected": [
+              "未发现明文令牌或正文；投递回执仍可按请求编号追踪，换内容重用请求编号会被拒绝。"
+            ]
+          }
         }
       ]
     }
@@ -7664,7 +7704,9 @@
     "USR-04": "一致的页面操作与中英文内容",
     "USR-05": "页面简洁，导航切换平滑",
     "USR-06": "普通注册登录取代学校认证",
-    "USR-08": "必要的公共资源和院系资格限制"
+    "USR-08": "必要的公共资源和院系资格限制",
+    "IAM-07": "通知邮箱填写与验证",
+    "SUP-04": "邮箱验证邮件投递通道"
   },
   "readable_acceptance": {
     "IAM-01.AC1": "注册后默认是普通用户，不能自己选择管理员身份",
@@ -7790,5 +7832,75 @@
   },
   "dependency_semantics": {
     "depends_on": "只表示业务能力之间的依赖：箭头从被其他功能使用的能力，指向使用它的功能；不包含分工、环境准备或开发流程步骤。"
+  },
+  "implementation_decisions": {
+    "M1_pending_timeout": "从未确认成功的PENDING到截止按非惩罚系统超时取消，不计NO_SHOW；已确认且未签到才违约，迟到占用仍高版本释放不复活。",
+    "M1_admin_detail_permission": "reservation:admin-read，与聚合statistics:read分开。",
+    "M2_start_cutoff": "保留原expiresAt快照；未落实单到startsAt另行以START_REACHED撤销，不补订过去时段。",
+    "M2_conflict": "未到开始/审批截止的冲突保持等待落实，同ID同参数重试。",
+    "M3_reassignment": "转派不改变首次派单dueAt。",
+    "M3_independent_acceptance": "排除当前及所有实际参与过维修的人员，同一非维修授权管理员可处理取消审查和安全验收。"
+  },
+  "current_catalog_extension": {
+    "basis": "本轮已批准的既有邮箱验证职责拆分；历史目录和分类索引保持原样。",
+    "historical_catalog_sha256": "2d81f4d10992e69130b1bbb4201da8a913415466e563cc977831b1a87493cb4e",
+    "requirement_ids": [
+      "IAM-07",
+      "SUP-04"
+    ],
+    "acceptance_refs": [
+      "IAM-07.AC1",
+      "IAM-07.AC2",
+      "IAM-07.AC3",
+      "SUP-04.AC1",
+      "SUP-04.AC2",
+      "SUP-04.AC3"
+    ],
+    "additional_specifications": {
+      "S082": {
+        "module": "M06",
+        "requirements": [
+          "SUP-04"
+        ],
+        "source_specification": "S081"
+      }
+    },
+    "source_rebindings": {
+      "S081": {
+        "from_requirements": [
+          "IAM-03",
+          "SUP-01"
+        ],
+        "to_requirements": [
+          "IAM-07"
+        ],
+        "scenarios": {
+          "S081.SC01": {
+            "from_acceptance_refs": [
+              "SUP-01.AC2"
+            ],
+            "to_acceptance_refs": [
+              "IAM-07.AC1"
+            ]
+          },
+          "S081.SC02": {
+            "from_acceptance_refs": [
+              "SUP-01.AC3"
+            ],
+            "to_acceptance_refs": [
+              "IAM-07.AC2"
+            ]
+          },
+          "S081.SC03": {
+            "from_acceptance_refs": [
+              "SUP-01.AC2"
+            ],
+            "to_acceptance_refs": [
+              "IAM-07.AC3"
+            ]
+          }
+        }
+      }
+    }
   }
 }

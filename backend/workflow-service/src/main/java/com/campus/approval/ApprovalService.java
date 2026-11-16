@@ -21,18 +21,19 @@ public class ApprovalService {
     private record Request(UUID id, UUID applicant, String status, int version,
             String flowVersion, OffsetDateTime expiresAt) {}
     private final JdbcTemplate db;
+    private final ApprovalEngine engine;
 
-    public ApprovalService(JdbcTemplate db) { this.db = db; }
+    public ApprovalService(JdbcTemplate db, ApprovalEngine engine) { this.db = db; this.engine=engine; }
 
     @Transactional
-    public ApprovalView read(UUID requestId, IdentityPrincipal actor) {
+    public Object read(UUID requestId, IdentityPrincipal actor) {
         permission(actor, "approval:read");
         Request request = lock(requestId);
         List<TaskView> tasks = tasks(requestId);
         if (!request.applicant.equals(actor.id()) && tasks.stream().noneMatch(t -> t.approverId.equals(actor.id()))) {
             throw new ApiException(403, "APPROVAL_READ_FORBIDDEN");
         }
-        return view(request, tasks);
+        return engine.details(requestId);
     }
 
     @Transactional
@@ -48,7 +49,7 @@ public class ApprovalService {
         // second concurrent writer reads the committed version after waiting.
         Request request = lock(requestId);
         if (request.version != input.expectedVersion) throw new ApiException(409, "APPROVAL_VERSION_CONFLICT");
-        if (!"PENDING".equals(request.status) || !request.expiresAt.isAfter(OffsetDateTime.now())) {
+        if (!"PENDING".equals(request.status) || !request.expiresAt.isAfter(OffsetDateTime.ofInstant(engine.now(), java.time.ZoneOffset.UTC))) {
             throw new ApiException(409, "APPROVAL_NOT_PENDING");
         }
         List<TaskView> tasks = tasks(requestId);
@@ -61,7 +62,7 @@ public class ApprovalService {
                 && actor.id().equals(t.decidedBy))) {
             throw new ApiException(403, "REPEATED_APPROVER_FORBIDDEN");
         }
-        if (!"PENDING".equals(task.status) || task.dueAt == null || !task.dueAt.isAfter(OffsetDateTime.now())
+        if (!"PENDING".equals(task.status) || task.dueAt == null || !task.dueAt.isAfter(OffsetDateTime.ofInstant(engine.now(), java.time.ZoneOffset.UTC))
                 || tasks.stream().anyMatch(t -> t.stepNo < task.stepNo && !"APPROVED".equals(t.status))) {
             throw new ApiException(409, "APPROVAL_STEP_NOT_CURRENT");
         }
@@ -93,13 +94,12 @@ public class ApprovalService {
             WHERE id=? AND version=? AND status='PENDING'
             """, nextStatus, requestId, input.expectedVersion);
         if (updated != 1) throw new ApiException(409, "APPROVAL_VERSION_CONFLICT");
+        engine.decided(requestId, actor, nextStatus);
         return view(new Request(request.id, request.applicant, nextStatus, request.version + 1,
                 request.flowVersion, request.expiresAt), tasks(requestId));
     }
 
-    private static void permission(IdentityPrincipal actor, String permission) {
-        if (actor == null || !actor.permissions().contains(permission)) throw new ApiException(403, "ACCESS_DENIED");
-    }
+    private void permission(IdentityPrincipal actor, String permission) { engine.permission(actor, permission); }
 
     private static void validatePlan(Request request, List<TaskView> tasks) {
         Set<UUID> actors = new HashSet<>();

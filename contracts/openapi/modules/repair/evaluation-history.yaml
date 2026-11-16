@@ -1,13 +1,14 @@
 openapi: 3.1.0
 info:
   title: Repair evaluation and process history
-  version: 1.0.0
+  version: 1.1.0
   description: >-
     M3-06 backend only. Completed orders and prior repair/acceptance events are provided by
     upstream workflows. Evaluation requires the current repair:evaluate permission and an
     identity matching persisted accepted_by. Reporter or administrator role names do not grant
     substitute evaluation. Technicians cannot accept or evaluate their own tasks.
-    This delivery does not implement order creation, assignment, repair completion or resource release.
+    Order creation, assignment, repair completion and resource release use lifecycle.json.
+    The shared evaluation route follows P07 for both managed and earlier orders after the V2 migration.
 servers:
   - url: /
 security:
@@ -71,7 +72,7 @@ paths:
               required: [rating, evaluation, version]
               properties:
                 rating: {type: integer, minimum: 1, maximum: 5, description: JSON integer token; strings and decimal tokens rejected}
-                evaluation: {type: string, minLength: 1, description: Nonblank text preserved verbatim}
+                evaluation: {type: string, minLength: 0, maxLength: 500, description: Empty string permitted; nonempty whitespace-only text rejected; text preserved verbatim}
                 version: {type: integer, minimum: 1}
       responses:
         '200':

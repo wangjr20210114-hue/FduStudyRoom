@@ -1,5 +1,4 @@
 package com.campus.resource.api;
-
 import com.campus.common.error.ApiErrors;
 import com.campus.common.security.AuthSettings;
 import jakarta.servlet.FilterChain;
@@ -16,23 +15,16 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-@Configuration(proxyBeanMethods=false)
-public class ResourceInternalSecurity {
-    @Bean @Order(1)
-    SecurityFilterChain resourceInternalChain(HttpSecurity http,AuthSettings settings,ApiErrors errors)throws Exception{
-        http.securityMatcher("/internal/resources/checkin-codes/verify")
-            .csrf(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable).httpBasic(AbstractHttpConfigurer::disable)
-            .logout(AbstractHttpConfigurer::disable).requestCache(AbstractHttpConfigurer::disable)
-            .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(a->a.anyRequest().permitAll())
-            .addFilterBefore(new OncePerRequestFilter(){
-                @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain)throws ServletException,IOException{
-                    String key=request.getHeader("X-Service-Key");
-                    if(key==null || !MessageDigest.isEqual(settings.serviceKey().getBytes(StandardCharsets.UTF_8),key.getBytes(StandardCharsets.UTF_8))){errors.write(request,response,401,"SERVICE_AUTHENTICATION_REQUIRED");return;}
-                    chain.doFilter(request,response);
+@Configuration(proxyBeanMethods=false) public class ResourceInternalSecurity {
+    @Bean @Order(1)     SecurityFilterChain resourceInternalChain(HttpSecurity http,AuthSettings settings,ApiErrors errors)throws Exception{
+        http.securityMatcher("/internal/resources/**")             .csrf(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable).httpBasic(AbstractHttpConfigurer::disable)             .logout(AbstractHttpConfigurer::disable).requestCache(AbstractHttpConfigurer::disable)             .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))             .authorizeHttpRequests(a->a.anyRequest().permitAll())             .addFilterBefore(new OncePerRequestFilter(){
+            @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain)throws ServletException,IOException{
+                String key=request.getHeader("X-Service-Key");                     if(key==null || !MessageDigest.isEqual(settings.serviceKey().getBytes(StandardCharsets.UTF_8),key.getBytes(StandardCharsets.UTF_8))){
+                    errors.write(request,response,401,"SERVICE_AUTHENTICATION_REQUIRED");return;
                 }
-            },UsernamePasswordAuthenticationFilter.class);
+                chain.doFilter(request,response);
+            }
+        },UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

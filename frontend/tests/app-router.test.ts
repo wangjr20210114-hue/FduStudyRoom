@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from '../src/app/router'
-import { safeDestination, visibleNavigation } from '../src/app/router/navigation'
+import { canAccessPage, safeDestination, visibleNavigation } from '../src/app/router/navigation'
 import { createLoginFlow } from '../src/modules/auth/model/login-flow'
 import type { AuthApi } from '../src/modules/auth/api/auth'
 import { ApiError } from '../src/shared/api/errors'
 import { passwordConfig, student } from './fixtures/auth'
 import { roleCodes, rolePaths, roleProfiles } from './fixtures/navigation'
+import { featurePage } from '../src/shared/navigation/feature-page'
 
 // Keep route behavior separate from the actual component rendering tests.
 vi.mock('../src/modules/auth/pages/LoginPage.vue', () => ({ default: {} }))
@@ -136,8 +137,8 @@ describe('role module navigation', () => {
     ['USER','/manage/rooms'], ['USER','/manage/reservations'],
     ['USER','/manage/approvals'], ['USER','/manage/repairs'],
     ['USER','/system/settings'], ['USER','/statistics'], ['USER','/audit'],
-    ['USER','/maintenance/tasks'], ['MAINTAINER','/rooms'],
-    ['MAINTAINER','/system/users'], ['SYSTEM_ADMIN','/maintenance/tasks'],
+    ['USER','/maintenance/tasks'], ['MAINTAINER','/manage/rooms'],
+    ['MAINTAINER','/system/users'], ['MAINTAINER','/manage/approvals'],
   ] as const)('rejects a direct %s visit to %s', async (role,path) => {
     const { router }=setup(roleProfiles[role])
     await router.push(path)
@@ -170,8 +171,8 @@ describe('role module navigation', () => {
     expect(router.currentRoute.value.name).toBe('forbidden')
   })
 
-  it('keeps a custom role on common pages unless it has additional permissions', () => {
-    expect(visibleNavigation({...student,role:'CUSTOM'}).map(item=>item.path)).toEqual(['/workspace','/notifications'])
+  it('uses the same granted permissions regardless of a custom role label', () => {
+    expect(visibleNavigation({...student,role:'CUSTOM'}).map(item=>item.path)).toEqual(rolePaths.USER)
   })
 
   it.each(['/rooms','/manage/approvals','/maintenance/tasks'])('accepts the known return path %s', path => {
@@ -198,5 +199,97 @@ describe('rapid navigation', () => {
     expect(router.currentRoute.value.path).toBe('/reservations')
     expect(session.user.value).toEqual(student)
     expect(api.currentUser).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('backend permission navigation contract', () => {
+  const singlePermissionRoutes = [
+    ['resource:rooms:read', '/rooms', 'rooms'],
+    ['resource:rooms:write', '/manage/rooms', 'manage-rooms'],
+    ['reservation:read', '/reservations', 'reservations'],
+    ['reservation:admin-read', '/manage/reservations', 'manage-reservations'],
+    ['approval:read', '/room-requests', 'room-requests'],
+    ['approval:decide', '/manage/approvals', 'approvals'],
+    ['approval:flow:read', '/manage/approvals', 'approvals'],
+    ['repair:report', '/repairs', 'repairs'],
+    ['repair:history:read', '/repairs', 'repairs'],
+    ['repair:history:read', '/maintenance/history', 'maintenance-history'],
+    ['identity:users:read', '/system/users', 'users'],
+    ['identity:settings:read', '/system/settings', 'settings'],
+    ['statistics:read', '/statistics', 'statistics'],
+    ['audit:read', '/audit', 'audit'],
+    ['notification:read', '/notifications', 'notifications'],
+  ] as const
+
+  it.each(singlePermissionRoutes)('lets CUSTOM with only %s reach %s', async (permission, path, name) => {
+    const actor = { ...student, role: 'CUSTOM', permissions: [permission] }
+    const { router } = setup(actor)
+    await router.push(path)
+    expect(router.currentRoute.value.name).toBe(name)
+    expect(visibleNavigation(actor).map(item => item.path)).toContain(path)
+  })
+
+  it.each(roleCodes)('does not infer business permissions from fixed role %s', async role => {
+    const actor = { ...roleProfiles[role], permissions: ['identity:read'] }
+    const { router } = setup(actor)
+    const businessPaths = [...new Set(Object.values(rolePaths).flat())].filter(path => path !== '/workspace')
+    for (const path of businessPaths) {
+      await router.push(path)
+      expect(router.currentRoute.value.name, role + ': ' + path).toBe('forbidden')
+    }
+    expect(visibleNavigation(actor).map(item => item.path)).toEqual(['/workspace'])
+  })
+
+  it.each([
+    [['repair:history:read'], '/manage/repairs', false],
+    [['repair:assign'], '/manage/repairs', false],
+    [['repair:accept'], '/manage/repairs', false],
+    [['repair:history:read', 'repair:evaluate'], '/manage/repairs', false],
+    [['repair:history:read', 'repair:assign'], '/manage/repairs', true],
+    [['repair:history:read', 'repair:accept'], '/manage/repairs', true],
+    [['repair:history:read', 'repair:admin-cancel'], '/manage/repairs', true],
+    [['repair:history:read'], '/maintenance/tasks', false],
+    [['repair:maintain'], '/maintenance/tasks', false],
+    [['repair:history:read', 'repair:maintain'], '/maintenance/tasks', true],
+  ] as const)('requires actual read and action grants %s for %s', async (permissions, path, allowed) => {
+    const actor = { ...student, role: 'CUSTOM', permissions: [...permissions] }
+    const { router } = setup(actor)
+    await router.push(path)
+    expect(router.currentRoute.value.name === 'forbidden').toBe(!allowed)
+    expect(visibleNavigation(actor).some(item => item.path === path)).toBe(allowed)
+  })
+
+  it('combines the required grant with anyPermissions and rejects an empty alternative set', () => {
+    const actor = { ...student, permissions: ['repair:accept'] }
+    expect(canAccessPage(actor, { anyPermissions: ['repair:assign', 'repair:accept'] })).toBe(true)
+    expect(canAccessPage(actor, { permission: 'repair:history:read', anyPermissions: ['repair:accept'] })).toBe(false)
+    expect(canAccessPage(actor, { anyPermissions: [] })).toBe(false)
+    expect(canAccessPage(null, { anyPermissions: ['repair:accept'] })).toBe(false)
+  })
+
+  it('preserves anyPermissions in feature metadata without silently adding identity:read', () => {
+    const alternatives = ['approval:decide', 'approval:flow:read']
+    const route = featurePage({ path: 'fixture', name: 'fixture', titleKey: 'shell.navigation.approvals', anyPermissions: alternatives })
+    expect(route.meta.anyPermissions).toEqual(alternatives)
+    expect(route.meta.permission).toBeUndefined()
+  })
+
+  it('keeps granted pages when the server changes only the role label', async () => {
+    const { router, api, session } = setup(roleProfiles.SYSTEM_ADMIN)
+    await router.push('/manage/rooms')
+    api.currentUser.mockResolvedValue({ ...roleProfiles.SYSTEM_ADMIN, role: 'CUSTOM' })
+    await router.push('/manage/reservations')
+    expect(router.currentRoute.value.name).toBe('manage-reservations')
+    expect(session.user.value?.role).toBe('CUSTOM')
+    expect(visibleNavigation(session.user.value).map(item => item.path)).toEqual(rolePaths.SYSTEM_ADMIN)
+  })
+
+  it('revokes granted pages when permissions change even if the role label does not', async () => {
+    const { router, api, session } = setup(roleProfiles.SYSTEM_ADMIN)
+    await router.push('/manage/rooms')
+    api.currentUser.mockResolvedValue({ ...roleProfiles.SYSTEM_ADMIN, permissions: ['identity:read'] })
+    await router.push('/manage/reservations')
+    expect(router.currentRoute.value.name).toBe('forbidden')
+    expect(visibleNavigation(session.user.value).map(item => item.path)).toEqual(['/workspace'])
   })
 })

@@ -1,9 +1,15 @@
 """Normalize actual Vitest JSON / JUnit XML output and reject false-green receipts."""
 import json
+import re
 import xml.etree.ElementTree as ET
 from policy import PolicyError
 
 RESULTS = {"PASS", "FAIL", "ERROR", "SKIPPED"}
+
+
+def _vitest_runtime_error(message):
+    header = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", message).lstrip()
+    return re.match(r"(?:Error: (?:BROWSER_|ELEMENT_|Test timed out\b)|(?:TypeError|ReferenceError|SyntaxError|TimeoutError|AbortError)(?::|$))", header) is not None
 
 def summarize(cases):
     names = [c["id"] for c in cases]
@@ -30,10 +36,14 @@ def parse_report(body, format):
                     if status is None:
                         raise PolicyError("UNKNOWN_TEST_RESULT")
                     title = case.get("fullName") or " ".join(case.get("ancestorTitles", []) + [case.get("title", "")])
-                    cases.append({"id": suite.get("name", "") + "::" + title, "result": status, "details": "\n".join(str(x) for x in case.get("failureMessages", []))[:8000]})
+                    messages = [str(x) for x in case.get("failureMessages", [])]
+                    if status == "FAIL" and any(_vitest_runtime_error(message) for message in messages):
+                        status = "ERROR"
+                    cases.append({"id": suite.get("name", "") + "::" + title, "result": status, "details": "\n".join(messages)[:8000]})
             result = summarize(cases)
             for key, field in [("numTotalTests", "total"), ("numPassedTests", "passed"), ("numFailedTests", "failed")]:
-                if key in value and value[key] != result["counts"][field]:
+                expected = result["counts"][field] + (result["counts"]["errors"] if field == "failed" else 0)
+                if key in value and value[key] != expected:
                     raise PolicyError("REPORT_COUNT_MISMATCH")
             return result
         if format == "junit":

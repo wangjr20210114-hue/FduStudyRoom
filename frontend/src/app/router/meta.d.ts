@@ -4,7 +4,7 @@ declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     permission?: string
-    roles?: readonly string[]
+    anyPermissions?: readonly string[]
     navigation?: boolean
     titleKey?: string
     messageKey?: string

@@ -1,0 +1,997 @@
+{
+  "version": 2,
+  "module": "M06",
+  "layer": "frontend",
+  "requirements": [
+    {
+      "id": "SUP-01",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1,
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "站内消息按收件人隔离、已读幂等",
+        "邮件失败可重试并显示投递结果，不伪称已送达",
+        "真实提醒必须使用可配置SMTP"
+      ],
+      "scenarios": [
+        {
+          "id": "SUP-01.S01",
+          "business_scene_refs": [
+            "S062.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n用户在消息页面只能看本人消息。重复标已读不产生新记录，切换中英文后消息模板和状态有对应文字。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有站内消息，user1打开消息页面。\n2. user1读取自己的消息并重复标为已读，系统仍只保留原消息及已读结果。\n3. 尝试查询user2的消息，被拒绝。\n4. 切换中文和英文，系统消息模板和状态按当前语言显示。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC01）</summary>\n\n- 场景名称：只看自己的消息，重复标已读不多建记录\n- 场景编号：S062.SC01\n\n**对应的业务要求**\n\n- SUP-01.AC1：每人只看自己的站内消息，重复已读不多建记录\n\n**精确条件**\n\n- user1/user2各有站内消息\n\n**精确动作**\n\n- user1读取并重复已读，再请求user2消息\n\n**结果与约束**\n\n- 只返回本人；重复已读不产生第二份记录；越权拒绝，消息系统模板/状态支持当前中英字典\n\n</details>",
+          "source_path": "spec/specs/S062.md",
+          "source_sha256": "bd1a3c29ca613a1c560617fd6f26f05ce87da248b98bdb624cedda33e1d210b0",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "user1和user2各有站内消息。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "user1打开消息页面，读取自己的消息，重复标为已读。",
+            "再尝试查询user2的消息，并分别切换中英文。"
+          ],
+          "expected": [
+            "只返回本人消息，不能读取他人消息。重复标已读不增加另一条记录，消息模板和状态能按当前中英文显示。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/notifications",
+              "status": "existing",
+              "evidence": "frontend/src/modules/notification/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-notifications-page",
+              "status": "missing",
+              "parent": "/notifications",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S01#1",
+              "criterion": 1,
+              "basis": "站内消息按收件人隔离、已读幂等",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 own messages and read confirmation",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 delivery states and retry metadata",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 refresh preserves delivered and cancelled history",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 uncertain delivery stays uncertain after refresh",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 lost read acknowledgement recovers from server",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 permission denial clears messages",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 41"
+              ],
+              "expected": "本人消息两条、真实标已读与刷新、英文模板重载；不发送recipientId/角色；NOT_CONFIGURED/PENDING/SENT/FAILED/UNKNOWN/CANCELLED按公开状态显示；失败原因与重试时间可见；刷新后保留已接收与撤销历史，不产生额外投递写请求；确认不明只显示待核实，不显示成功、不提供重发、不盲目写请求；服务已标已读但响应失败，先显示错误，刷新观察唯一服务端已读结果；服务403后旧消息清空，权限错误明确；服务返回19条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回20条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回21条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回41条，20条页容量；上一页/下一页边界、次页身份与总数一致",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        },
+        {
+          "id": "SUP-01.S02",
+          "business_scene_refs": [
+            "S062.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n通知事件重复到达时，站内只生成一份消息和待投递任务。未配置邮件服务时不能显示邮件已送达。\n\n### 操作步骤与预期结果\n\n1. 业务反复发送相同事件N1，真实邮件服务尚未配置。\n2. 系统接收事件，用户打开站内消息，可以查到一份对应通知。\n3. 查看邮件待办，只建立一份待投递任务，不标送达。\n4. 邮件服务缺失不妨碍站内通知这一独立功能使用。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC02）</summary>\n\n- 场景名称：没配邮件服务时，站内有消息也不能说邮件已送达\n- 场景编号：S062.SC02\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- 业务重复投递逻辑事件N1，真实SMTP尚未配置\n\n**精确动作**\n\n- 接收并查询通知/投递任务\n\n**结果与约束**\n\n- 只创建一份逻辑通知和待投递任务，站内可查；不显示邮件已送达；可继续业务独立开发\n\n</details>",
+          "source_path": "spec/specs/S062.md",
+          "source_sha256": "bd1a3c29ca613a1c560617fd6f26f05ce87da248b98bdb624cedda33e1d210b0",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "业务反复发送同一个通知事件N1，真实邮件服务尚未配置。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "让通知模块接收事件，再查看站内消息和邮件待办。"
+          ],
+          "expected": [
+            "只创建一份通知和一份待投递任务，站内可以查到。邮件不能显示已送达；不必因此停止其他独立开发。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/notifications",
+              "status": "existing",
+              "evidence": "frontend/src/modules/notification/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-notifications-page",
+              "status": "missing",
+              "parent": "/notifications",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S02#1",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 own messages and read confirmation",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 delivery states and retry metadata",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 refresh preserves delivered and cancelled history",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 uncertain delivery stays uncertain after refresh",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 lost read acknowledgement recovers from server",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 permission denial clears messages",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 41"
+              ],
+              "expected": "本人消息两条、真实标已读与刷新、英文模板重载；不发送recipientId/角色；NOT_CONFIGURED/PENDING/SENT/FAILED/UNKNOWN/CANCELLED按公开状态显示；失败原因与重试时间可见；刷新后保留已接收与撤销历史，不产生额外投递写请求；确认不明只显示待核实，不显示成功、不提供重发、不盲目写请求；服务已标已读但响应失败，先显示错误，刷新观察唯一服务端已读结果；服务403后旧消息清空，权限错误明确；服务返回19条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回20条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回21条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回41条，20条页容量；上一页/下一页边界、次页身份与总数一致",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        },
+        {
+          "id": "SUP-01.S03",
+          "business_scene_refs": [
+            "S062.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n预约取消后，尚未发送的提醒一起撤销；已经送达的历史保留，不把过去投递伪装成从未发生。\n\n### 操作步骤与预期结果\n\n1. 提前提醒仍等待发送，系统收到预约取消事件。\n2. 处理取消后，再执行提醒任务。\n3. 待发送提醒已撤销，不再投递邮件。\n4. 已送达通知仍保留历史记录，不删除或改成从未发送。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC03）</summary>\n\n- 场景名称：预约取消后，尚未发送的提醒也要取消\n- 场景编号：S062.SC03\n\n**对应的业务要求**\n\n- SUP-01.AC1：每人只看自己的站内消息，重复已读不多建记录\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- 预约提前提醒任务尚PENDING，收到取消事件\n\n**精确动作**\n\n- 处理取消后再次执行调度\n\n**结果与约束**\n\n- 待发送提醒取消且不会邮件投递；已经送达的历史不删除，不伪装从未投递\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S062\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-01\n- 有关业务功能：[S007 所有功能都按当前登录人的身份和权限处理](S007.md)。\n- 相关业务规则：[P13](../policies.md#p13)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S062.md",
+          "source_sha256": "bd1a3c29ca613a1c560617fd6f26f05ce87da248b98bdb624cedda33e1d210b0",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "预约的提前提醒仍在等待发送，随后收到预约取消事件。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "处理取消后，再次运行提醒任务。"
+          ],
+          "expected": [
+            "待发送的提醒被撤销，不再发邮件。已经送达的旧记录保留，不能伪装以前从没发送过。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/notifications",
+              "status": "existing",
+              "evidence": "frontend/src/modules/notification/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-notifications-page",
+              "status": "missing",
+              "parent": "/notifications",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S03#1",
+              "criterion": 1,
+              "basis": "站内消息按收件人隔离、已读幂等",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 own messages and read confirmation",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 delivery states and retry metadata",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 refresh preserves delivered and cancelled history",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 uncertain delivery stays uncertain after refresh",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 lost read acknowledgement recovers from server",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 permission denial clears messages",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 41"
+              ],
+              "expected": "本人消息两条、真实标已读与刷新、英文模板重载；不发送recipientId/角色；NOT_CONFIGURED/PENDING/SENT/FAILED/UNKNOWN/CANCELLED按公开状态显示；失败原因与重试时间可见；刷新后保留已接收与撤销历史，不产生额外投递写请求；确认不明只显示待核实，不显示成功、不提供重发、不盲目写请求；服务已标已读但响应失败，先显示错误，刷新观察唯一服务端已读结果；服务403后旧消息清空，权限错误明确；服务返回19条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回20条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回21条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回41条，20条页容量；上一页/下一页边界、次页身份与总数一致",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            },
+            {
+              "id": "SUP-01.S03#2",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 own messages and read confirmation",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 delivery states and retry metadata",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 refresh preserves delivered and cancelled history",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 uncertain delivery stays uncertain after refresh",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 lost read acknowledgement recovers from server",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 permission denial clears messages",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 41"
+              ],
+              "expected": "本人消息两条、真实标已读与刷新、英文模板重载；不发送recipientId/角色；NOT_CONFIGURED/PENDING/SENT/FAILED/UNKNOWN/CANCELLED按公开状态显示；失败原因与重试时间可见；刷新后保留已接收与撤销历史，不产生额外投递写请求；确认不明只显示待核实，不显示成功、不提供重发、不盲目写请求；服务已标已读但响应失败，先显示错误，刷新观察唯一服务端已读结果；服务403后旧消息清空，权限错误明确；服务返回19条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回20条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回21条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回41条，20条页容量；上一页/下一页边界、次页身份与总数一致",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        },
+        {
+          "id": "SUP-01.S04",
+          "business_scene_refs": [
+            "S078.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n系统通过实际邮件服务发送提醒，收件箱能收到包含教室和时段的邮件。测试收件成功只证明测试链路，不代表正式邮件已验收。\n\n### 操作步骤与预期结果\n\n1. 独立测试邮件服务和收件箱已配置，正式投递另需真实可用服务。\n2. 系统发送通知事件N1，打开测试收件箱核对。\n3. 能看到真实生成的邮件和业务教室、时段。\n4. 正式服务尚未具备时，仅记录测试链路通过，不称正式投递已验收。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC01）</summary>\n\n- 场景名称：测试收件箱里能真正收到邮件\n- 场景编号：S078.SC01\n\n**对应的业务要求**\n\n- SUP-01.AC3：真实邮件提醒使用可配置的邮件发送服务\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 配置独立测试SMTP/收件箱，生产终验另用可用真实服务\n\n**精确动作**\n\n- 发送逻辑事件N1并在收件箱核对\n\n**结果与约束**\n\n- 真实SMTP产生可观察邮件，内容含业务教室/时段；生产服务未具备时仅标测试链路通过\n\n</details>",
+          "source_path": "spec/specs/S078.md",
+          "source_sha256": "5818cefd31f4a3c7be4bfc9a304f414cf4139c35c114eb5f5c12607600e44d96",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "已配置独立测试邮件服务和收件箱；正式投递验收另需可用的真实服务。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "发送事件N1，打开测试收件箱核对。"
+          ],
+          "expected": [
+            "确实收到包含教室和时段的邮件。生产邮件服务还没有时，只能说测试发送链路通过，不能说正式投递已验收。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/notifications",
+              "status": "existing",
+              "evidence": "frontend/src/modules/notification/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-notifications-page",
+              "status": "missing",
+              "parent": "/notifications",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S04#1",
+              "criterion": 3,
+              "basis": "真实提醒必须使用可配置SMTP",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 own messages and read confirmation",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 delivery states and retry metadata",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 refresh preserves delivered and cancelled history",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 uncertain delivery stays uncertain after refresh",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 lost read acknowledgement recovers from server",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 permission denial clears messages",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 41"
+              ],
+              "expected": "本人消息两条、真实标已读与刷新、英文模板重载；不发送recipientId/角色；NOT_CONFIGURED/PENDING/SENT/FAILED/UNKNOWN/CANCELLED按公开状态显示；失败原因与重试时间可见；刷新后保留已接收与撤销历史，不产生额外投递写请求；确认不明只显示待核实，不显示成功、不提供重发、不盲目写请求；服务已标已读但响应失败，先显示错误，刷新观察唯一服务端已读结果；服务403后旧消息清空，权限错误明确；服务返回19条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回20条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回21条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回41条，20条页容量；上一页/下一页边界、次页身份与总数一致",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        },
+        {
+          "id": "SUP-01.S05",
+          "business_scene_refs": [
+            "S078.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n邮件服务明确拒绝发送后，系统显示失败原因和重试时间；服务恢复后安全重试，状态与实际收件结果一致。\n\n### 操作步骤与预期结果\n\n1. 邮件服务明确拒绝第一次请求，任务不标送达。\n2. 用户查看失败原因和下次重试时间。\n3. 服务恢复后系统再次执行，状态与实际收件一致。\n4. 同一业务事件不增加另一份逻辑通知。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC02）</summary>\n\n- 场景名称：明确发送失败后，可以按计划重试\n- 场景编号：S078.SC02\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- SMTP明确拒绝第一次请求后恢复\n\n**精确动作**\n\n- 查看失败及next_retry并再次运行任务\n\n**结果与约束**\n\n- 首次不标送达，安全重试后状态与收件箱一致；同逻辑事件不多建通知\n\n</details>",
+          "source_path": "spec/specs/S078.md",
+          "source_sha256": "5818cefd31f4a3c7be4bfc9a304f414cf4139c35c114eb5f5c12607600e44d96",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "邮件服务明确拒绝第一次请求，之后恢复。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "查看失败原因和下次重试时间，再运行任务。"
+          ],
+          "expected": [
+            "第一次不标送达；可安全重试后，状态与实际收件一致。同一事件不多建通知。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/notifications",
+              "status": "existing",
+              "evidence": "frontend/src/modules/notification/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-notifications-page",
+              "status": "missing",
+              "parent": "/notifications",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S05#1",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 own messages and read confirmation",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 delivery states and retry metadata",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 refresh preserves delivered and cancelled history",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 uncertain delivery stays uncertain after refresh",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 lost read acknowledgement recovers from server",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 permission denial clears messages",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 41"
+              ],
+              "expected": "本人消息两条、真实标已读与刷新、英文模板重载；不发送recipientId/角色；NOT_CONFIGURED/PENDING/SENT/FAILED/UNKNOWN/CANCELLED按公开状态显示；失败原因与重试时间可见；刷新后保留已接收与撤销历史，不产生额外投递写请求；确认不明只显示待核实，不显示成功、不提供重发、不盲目写请求；服务已标已读但响应失败，先显示错误，刷新观察唯一服务端已读结果；服务403后旧消息清空，权限错误明确；服务返回19条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回20条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回21条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回41条，20条页容量；上一页/下一页边界、次页身份与总数一致",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        },
+        {
+          "id": "SUP-01.S06",
+          "business_scene_refs": [
+            "S078.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n邮件可能已被接收但确认丢失时，投递任务显示待核实，不盲目重发，也不虚称可以保证外部绝不重复。\n\n### 操作步骤与预期结果\n\n1. 外部邮件服务可能已接收，发送方未收到确认。\n2. 用户打开投递任务，看到待核实而非成功。\n3. 系统再次调度时不盲目重发。\n4. 若要求外部严格不重复，仍需投递方防重复能力或人工核对，当前不能凭空保证。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC03）</summary>\n\n- 场景名称：可能已发出却没收到确认时，不盲目重发\n- 场景编号：S078.SC03\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- SMTP可能接收但发送方没获得确认\n\n**精确动作**\n\n- 查看任务并再次调度\n\n**结果与约束**\n\n- 显示待核实而非成功，不盲重发；严格外部恰一次依赖提供方幂等或人工核对，不虚构保证\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S078\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-01、M1-05\n- 有关业务功能：[S062 查看站内消息，避免重复通知和过时提醒](S062.md)。\n- 需要的外部业务条件：可用的正式邮件服务。\n- 相关业务规则：[P13](../policies.md#p13)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S078.md",
+          "source_sha256": "5818cefd31f4a3c7be4bfc9a304f414cf4139c35c114eb5f5c12607600e44d96",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "邮件服务可能已经接收，但发送方没有收到确认。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "打开投递任务查看，再运行调度。"
+          ],
+          "expected": [
+            "显示待核实，不能显示成功或盲目再发。若要保证外部绝不重复，需要投递方防重能力或人工核对，不能凭空作保证。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/notifications",
+              "status": "existing",
+              "evidence": "frontend/src/modules/notification/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-notifications-page",
+              "status": "missing",
+              "parent": "/notifications",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-01.S06#1",
+              "criterion": 2,
+              "basis": "邮件失败可重试并显示投递结果，不伪称已送达",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 own messages and read confirmation",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 delivery states and retry metadata",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 refresh preserves delivered and cancelled history",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 uncertain delivery stays uncertain after refresh",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 lost read acknowledgement recovers from server",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 permission denial clears messages",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-01 pagination 41"
+              ],
+              "expected": "本人消息两条、真实标已读与刷新、英文模板重载；不发送recipientId/角色；NOT_CONFIGURED/PENDING/SENT/FAILED/UNKNOWN/CANCELLED按公开状态显示；失败原因与重试时间可见；刷新后保留已接收与撤销历史，不产生额外投递写请求；确认不明只显示待核实，不显示成功、不提供重发、不盲目写请求；服务已标已读但响应失败，先显示错误，刷新观察唯一服务端已读结果；服务403后旧消息清空，权限错误明确；服务返回19条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回20条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回21条，20条页容量；上一页/下一页边界、次页身份与总数一致；服务返回41条，20条页容量；上一页/下一页边界、次页身份与总数一致",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        }
+      ]
+    },
+    {
+      "id": "SUP-02",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          1,
+          2
+        ],
+        "note": "由任务书约束推导，属于需验收的设计决策"
+      },
+      "acceptance": [
+        "记录操作者、对象、来源、结果和时间",
+        "不记录密码、Cookie、签名密钥或整份敏感请求",
+        "只有有权限的人可以查询，支持追踪ID"
+      ],
+      "scenarios": [
+        {
+          "id": "SUP-02.S01",
+          "business_scene_refs": [
+            "S063.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n获授权的人查询操作记录时，既能查到成功审批，也能查到越权失败，记录能串起操作者、对象和结果。\n\n### 操作步骤与预期结果\n\n1. 一次审批成功和一次无权操作失败均带追踪编号。\n2. 系统通过公开事件接口保存两次记录。\n3. 授权查询可看到操作者、对象、来源、结果、时间和追踪编号，失败安全操作不会漏记。\n\n<details>\n<summary>场景编号与精确规则补充（S063.SC01）</summary>\n\n- 场景名称：成功操作和越权失败都能追查\n- 场景编号：S063.SC01\n\n**对应的业务要求**\n\n- SUP-02.AC1：保存谁对什么对象做了什么、来源、结果和时间\n- SUP-02.AC3：只有获权限的人能查，并可用追踪编号找到相关操作\n\n**精确条件**\n\n- 一次成功审批和一次失败越权请求各有trace\n\n**精确动作**\n\n- 通过公开事件接口记录并查询授权审计\n\n**结果与约束**\n\n- 每项含操作者、对象/来源、结果、时间和trace；不因操作失败而漏记安全结果\n\n</details>",
+          "source_path": "spec/specs/S063.md",
+          "source_sha256": "05daf7a9c962e246cd0295b71e7afaf42fa5fe119accaab71a59c720f461138c",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "一次审批成功、一次无权操作失败，两次都有追踪编号。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "通过公开接口记录，再由获授权的人查询操作记录。"
+          ],
+          "expected": [
+            "每项能看到谁操作、操作哪个对象、来源、结果、时间和追踪编号。不能因为操作失败就漏掉安全记录。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/audit",
+              "status": "existing",
+              "evidence": "frontend/src/modules/audit/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-audit-page",
+              "status": "missing",
+              "parent": "/audit",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-02.S01#1",
+              "criterion": 1,
+              "basis": "记录操作者、对象、来源、结果和时间",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 trace and source filters expose trusted results",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 safe summaries omit secret request fields",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 unauthorized role never fetches audit",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 server denial removes stale audit",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 41"
+              ],
+              "expected": "成功与拒绝事件完整显示操作者/对象/来源/结果/时间/trace；筛选使用公开GET参数；业务摘要仅显示批准安全字段，不显示密码、Cookie、密钥、原始请求或未知字段；ADMIN名字无权限不读取；USER名字有audit:read可以查询；服务403后清除先前审计，显示拒绝与可恢复刷新；服务返回19条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回20条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回21条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回41条，20条页容量；翻页、数量、重复事件不由前端新增",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            },
+            {
+              "id": "SUP-02.S01#2",
+              "criterion": 3,
+              "basis": "只有有权限的人可以查询，支持追踪ID",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 trace and source filters expose trusted results",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 safe summaries omit secret request fields",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 unauthorized role never fetches audit",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 server denial removes stale audit",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 41"
+              ],
+              "expected": "成功与拒绝事件完整显示操作者/对象/来源/结果/时间/trace；筛选使用公开GET参数；业务摘要仅显示批准安全字段，不显示密码、Cookie、密钥、原始请求或未知字段；ADMIN名字无权限不读取；USER名字有audit:read可以查询；服务403后清除先前审计，显示拒绝与可恢复刷新；服务返回19条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回20条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回21条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回41条，20条页容量；翻页、数量、重复事件不由前端新增",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        },
+        {
+          "id": "SUP-02.S02",
+          "business_scene_refs": [
+            "S063.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n系统记录关键操作时只保存必要业务摘要，不把密码、登录凭据、签名密钥或整份敏感请求写进日志。\n\n### 操作步骤与预期结果\n\n1. 隔离示例请求同时包含普通业务字段、密码、登录凭据和签名密钥。\n2. 系统记录这次操作。\n3. 查询实际保存内容和日志，敏感值不存在，只留必要业务摘要，不原样复制请求。\n\n<details>\n<summary>场景编号与精确规则补充（S063.SC02）</summary>\n\n- 场景名称：日志里不能出现密码、登录凭据或密钥\n- 场景编号：S063.SC02\n\n**对应的业务要求**\n\n- SUP-02.AC2：不保存密码、登录凭据、签名密钥或整份敏感请求\n\n**精确条件**\n\n- 隔离请求含密码、Cookie、签名键及普通业务字段\n\n**精确动作**\n\n- 写审计并检索实际持久记录/日志\n\n**结果与约束**\n\n- 敏感值不存在；仅保留必要业务摘要，不复制整份敏感请求\n\n</details>",
+          "source_path": "spec/specs/S063.md",
+          "source_sha256": "05daf7a9c962e246cd0295b71e7afaf42fa5fe119accaab71a59c720f461138c",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "在隔离测试请求中放入密码、登录凭据、签名密钥和普通业务字段。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "执行记录操作，再检查实际保存内容和日志。"
+          ],
+          "expected": [
+            "搜不到这些敏感值，只保留必要的业务摘要，不原样保存整份敏感请求。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/audit",
+              "status": "existing",
+              "evidence": "frontend/src/modules/audit/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-audit-page",
+              "status": "missing",
+              "parent": "/audit",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-02.S02#1",
+              "criterion": 2,
+              "basis": "不记录密码、Cookie、签名密钥或整份敏感请求",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 trace and source filters expose trusted results",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 safe summaries omit secret request fields",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 unauthorized role never fetches audit",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 server denial removes stale audit",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 41"
+              ],
+              "expected": "成功与拒绝事件完整显示操作者/对象/来源/结果/时间/trace；筛选使用公开GET参数；业务摘要仅显示批准安全字段，不显示密码、Cookie、密钥、原始请求或未知字段；ADMIN名字无权限不读取；USER名字有audit:read可以查询；服务403后清除先前审计，显示拒绝与可恢复刷新；服务返回19条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回20条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回21条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回41条，20条页容量；翻页、数量、重复事件不由前端新增",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        },
+        {
+          "id": "SUP-02.S03",
+          "business_scene_refs": [
+            "S063.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n同一事件重复上报只保存一份操作记录。没有查询权限的用户即使直接请求，也不能读取这些记录。\n\n### 操作步骤与预期结果\n\n1. 同一事件编号被重试，user1没有操作记录权限。\n2. 系统再次接收事件，仍只有一份逻辑记录。\n3. user1查询被拒绝，获授权admin1只能读取权限范围，不仅是在前端隐藏入口。\n\n<details>\n<summary>场景编号与精确规则补充（S063.SC03）</summary>\n\n- 场景名称：一件事重复上报只记一次，没有权限的人不能查\n- 场景编号：S063.SC03\n\n**对应的业务要求**\n\n- SUP-02.AC3：只有获权限的人能查，并可用追踪编号找到相关操作\n\n**精确条件**\n\n- 同一event_key重试，user1无审计权限\n\n**精确动作**\n\n- 重放事件后由user1/admin1查询\n\n**结果与约束**\n\n- 只有一个逻辑审计事件；user1拒绝，授权管理员按范围查询，不靠前端隐藏\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S063\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-02\n- 有关业务功能：[S007 所有功能都按当前登录人的身份和权限处理](S007.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S063.md",
+          "source_sha256": "05daf7a9c962e246cd0295b71e7afaf42fa5fe119accaab71a59c720f461138c",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "准备同一事件编号的重试，user1没有操作记录查询权限。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "重复发送这个事件，再分别用user1和获授权的admin1查询。"
+          ],
+          "expected": [
+            "系统只有一份对应事件；user1被拒绝，管理员只查授权范围。不只是把前端入口藏起来。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/audit",
+              "status": "existing",
+              "evidence": "frontend/src/modules/audit/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-audit-page",
+              "status": "missing",
+              "parent": "/audit",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-02.S03#1",
+              "criterion": 3,
+              "basis": "只有有权限的人可以查询，支持追踪ID",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 trace and source filters expose trusted results",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 safe summaries omit secret request fields",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 unauthorized role never fetches audit",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 server denial removes stale audit",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 19",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 20",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 21",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-02 pagination 41"
+              ],
+              "expected": "成功与拒绝事件完整显示操作者/对象/来源/结果/时间/trace；筛选使用公开GET参数；业务摘要仅显示批准安全字段，不显示密码、Cookie、密钥、原始请求或未知字段；ADMIN名字无权限不读取；USER名字有audit:read可以查询；服务403后清除先前审计，显示拒绝与可恢复刷新；服务返回19条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回20条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回21条，20条页容量；翻页、数量、重复事件不由前端新增；服务返回41条，20条页容量；翻页、数量、重复事件不由前端新增",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        }
+      ]
+    },
+    {
+      "id": "SUP-03",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "教室座位预约、签到、违约与利用率有明确计算口径",
+        "管理员权限受控，空数据不显示虚构统计",
+        "来自真实业务查询/公开接口，不读其他模块私有库"
+      ],
+      "scenarios": [
+        {
+          "id": "SUP-03.S01",
+          "business_scene_refs": [
+            "S064.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n管理员查询预约占用率时，系统按预约座位分钟除以可服务总容量计算，示例结果为37.5%，不是传感器实际入座率。\n\n### 操作步骤与预期结果\n\n1. R101两座08:00—12:00开放，无停用或维修，总容量480座位分钟。\n2. 个人预约A01的09:00—10:00占60座位分钟，整室10:00—11:00占120座位分钟。\n3. 管理员打开统计页查询该区间，显示180÷480=37.5%，可查计算来源。\n4. 不能把已有预约再从分母扣除，也不将结果说成传感器实际入座率。\n\n<details>\n<summary>场景编号与精确规则补充（S064.SC01）</summary>\n\n- 场景名称：用清楚的例子核对预约占用率\n- 场景编号：S064.SC01\n\n**对应的业务要求**\n\n- SUP-03.AC1：预约、签到、违约和利用率都说明怎么算\n\n**精确条件**\n\n- R101两座08:00—12:00可服务480座位分钟；M1占A01的09:00—10:00为60座位分钟，M2占全室10:00—11:00为120座位分钟，无停用/维修\n\n**精确动作**\n\n- 查询该区间预约占用率\n\n**结果与约束**\n\n- 返回180/480=37.5%；来源可回查，不能把已有预约从分母再次扣除或称传感器实际入座率\n\n</details>",
+          "source_path": "spec/specs/S064.md",
+          "source_sha256": "474bb9daa096fab8b57861de64fbe64feca65a579a6d791b9dd186e41d9d7b81",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "R101有两个座位，08:00—12:00共可用480个座位分钟。A01被个人预约09:00—10:00，共60分钟；整室被订10:00—11:00，共120个座位分钟。没有停用或维修。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "打开统计页面，查询这间教室这段时间的预约占用率。"
+          ],
+          "expected": [
+            "显示180÷480=37.5%，计算来源能查到。不能把已预约时长又从总容量扣掉，也不能把这个数说成传感器测到的实际入座率。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/statistics",
+              "status": "existing",
+              "evidence": "frontend/src/modules/statistics/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-statistics-page",
+              "status": "missing",
+              "parent": "/statistics",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-03.S01#1",
+              "criterion": 1,
+              "basis": "教室座位预约、签到、违约与利用率有明确计算口径",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 occupancy and outcome cohorts use aggregates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 zero capacity and empty cohort keep null rates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 pending and incomplete history keep null outcomes",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 source failure clears previous statistics",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 permission is independent of role name",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 room and interval filters preserve scope",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 English labels preserve source values"
+              ],
+              "expected": "10800/28800秒显示180/480座位分钟和37.5%；同批1签到/1违约各50%，提前取消数单列；真实0容量显示无可用容量，null比例为不适用，不造100%或无穷大；待结算时签到与违约率空值；历史不完整时容量/占用率不可计算并显示可用起点；上游503不保留旧汇总、不改成0；保留查询条件可重试恢复；USER+statistics:read可查，ADMIN无此权限不发查询；获资源读取权限才加载教室选项，提交from/to/asOf/roomId完全一致；不包含无关用户或角色字段；语言切换后标题/口径/状态与数值格式对应，不改服务端汇总来源",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        },
+        {
+          "id": "SUP-03.S02",
+          "business_scene_refs": [
+            "S064.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n签到率和违约率使用同一批已到截止的预约，提前取消不计入；完全没有可用容量时显示无可用容量。\n\n### 操作步骤与预期结果\n\n1. 已到截止记录含1笔签到、1笔未签到违约、1笔开始前取消。\n2. 管理员查询签到率与违约率，两者均为50%，提前取消不进入分母。\n3. 再查无可用容量时段，页面显示无可用容量，不显示计算错误或编造100%。\n\n<details>\n<summary>场景编号与精确规则补充（S064.SC02）</summary>\n\n- 场景名称：签到和违约用同一批已到截止的预约计算\n- 场景编号：S064.SC02\n\n**对应的业务要求**\n\n- SUP-03.AC1：预约、签到、违约和利用率都说明怎么算\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n\n**精确条件**\n\n- 已到截止的队列含一次签到、一次未签到违约、一次提前取消\n\n**精确动作**\n\n- 查询签到率与违约率；再查零容量区间\n\n**结果与约束**\n\n- 前两项各50%，提前取消不入分母；零容量显示无可用容量，不是NaN/编造100%\n\n</details>",
+          "source_path": "spec/specs/S064.md",
+          "source_sha256": "474bb9daa096fab8b57861de64fbe64feca65a579a6d791b9dd186e41d9d7b81",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "到签到截止的记录中，有1笔已签到、1笔未签到违约、1笔开始前取消。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "查询签到率和违约率。",
+            "再查询一个完全没有可用容量的时间段。"
+          ],
+          "expected": [
+            "签到率和违约率各为50%，提前取消不计入。没有容量时显示无可用容量，不能显示计算错误或编造100%。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/statistics",
+              "status": "existing",
+              "evidence": "frontend/src/modules/statistics/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-statistics-page",
+              "status": "missing",
+              "parent": "/statistics",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-03.S02#1",
+              "criterion": 1,
+              "basis": "教室座位预约、签到、违约与利用率有明确计算口径",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 occupancy and outcome cohorts use aggregates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 zero capacity and empty cohort keep null rates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 pending and incomplete history keep null outcomes",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 source failure clears previous statistics",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 permission is independent of role name",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 room and interval filters preserve scope",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 English labels preserve source values"
+              ],
+              "expected": "10800/28800秒显示180/480座位分钟和37.5%；同批1签到/1违约各50%，提前取消数单列；真实0容量显示无可用容量，null比例为不适用，不造100%或无穷大；待结算时签到与违约率空值；历史不完整时容量/占用率不可计算并显示可用起点；上游503不保留旧汇总、不改成0；保留查询条件可重试恢复；USER+statistics:read可查，ADMIN无此权限不发查询；获资源读取权限才加载教室选项，提交from/to/asOf/roomId完全一致；不包含无关用户或角色字段；语言切换后标题/口径/状态与数值格式对应，不改服务端汇总来源",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            },
+            {
+              "id": "SUP-03.S02#2",
+              "criterion": 2,
+              "basis": "管理员权限受控，空数据不显示虚构统计",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 occupancy and outcome cohorts use aggregates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 zero capacity and empty cohort keep null rates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 pending and incomplete history keep null outcomes",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 source failure clears previous statistics",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 permission is independent of role name",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 room and interval filters preserve scope",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 English labels preserve source values"
+              ],
+              "expected": "10800/28800秒显示180/480座位分钟和37.5%；同批1签到/1违约各50%，提前取消数单列；真实0容量显示无可用容量，null比例为不适用，不造100%或无穷大；待结算时签到与违约率空值；历史不完整时容量/占用率不可计算并显示可用起点；上游503不保留旧汇总、不改成0；保留查询条件可重试恢复；USER+statistics:read可查，ADMIN无此权限不发查询；获资源读取权限才加载教室选项，提交from/to/asOf/roomId完全一致；不包含无关用户或角色字段；语言切换后标题/口径/状态与数值格式对应，不改服务端汇总来源",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        },
+        {
+          "id": "SUP-03.S03",
+          "business_scene_refs": [
+            "S064.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n统计页只向获授权用户提供真实汇总数据，空数据不编造，取数通过公开接口而不是直接访问别的模块数据库。\n\n### 操作步骤与预期结果\n\n1. user1没有统计权限，管理员有，各模块数据库账号不共享。\n2. user1查询统计被拒绝，管理员可查看授权结果。\n3. 结果来自资源和预约的公开查询及真实记录，不直连他人私库。\n4. 没有数据时显示0或不适用，不显示编造数字。\n\n<details>\n<summary>场景编号与精确规则补充（S064.SC03）</summary>\n\n- 场景名称：有权限才能看统计，数据来自真实业务\n- 场景编号：S064.SC03\n\n**对应的业务要求**\n\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n- SUP-03.AC3：从真实业务查询和公开接口取得，不读别的模块私有库\n\n**精确条件**\n\n- user1无统计权限；管理员有权限，模块库账号互不共享\n\n**精确动作**\n\n- 分别查询统计并追踪取数请求\n\n**结果与约束**\n\n- 普通用户拒绝；管理员结果来自资源/预约公开查询与实际记录，空数据为0或不适用，不直读别域私库\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S064\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-03\n- 有关业务功能：[S020 查清座位为什么被占用，并避免重复操作](S020.md)、[S024 查询座位时，一起检查预约、维修和使用资格](S024.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)、[S033 查看我的预约历史，并重新选择预约](S033.md)。\n- 相关业务规则：[P08](../policies.md#p08)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S064.md",
+          "source_sha256": "474bb9daa096fab8b57861de64fbe64feca65a579a6d791b9dd186e41d9d7b81",
+          "covers": [
+            2,
+            3
+          ],
+          "preconditions": [
+            "user1没有统计权限，管理员有；各模块不共享数据库账号。",
+            "实际Vue页面与真实Chrome，loopback公开HTTP契约夹具；不冒充真实后端或外部投递"
+          ],
+          "actions": [
+            "分别查询统计；开发者查看统计取数的请求。"
+          ],
+          "expected": [
+            "普通用户被拒绝，管理员结果来自资源、预约的公开查询和真实记录。无数据时显示0或不适用，不直连别的模块私有数据库。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/statistics",
+              "status": "existing",
+              "evidence": "frontend/src/modules/statistics/routes.ts已声明入口，仅加载公共FeaturePage占位"
+            },
+            {
+              "kind": "component",
+              "key": "data-statistics-page",
+              "status": "missing",
+              "parent": "/statistics",
+              "evidence": "完整源码目录仅routes.ts，无业务页面/API/字典；已排除只因入口采样缺失"
+            }
+          ],
+          "cells": [
+            {
+              "id": "SUP-03.S03#1",
+              "criterion": 2,
+              "basis": "管理员权限受控，空数据不显示虚构统计",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 occupancy and outcome cohorts use aggregates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 zero capacity and empty cohort keep null rates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 pending and incomplete history keep null outcomes",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 source failure clears previous statistics",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 permission is independent of role name",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 room and interval filters preserve scope",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 English labels preserve source values"
+              ],
+              "expected": "10800/28800秒显示180/480座位分钟和37.5%；同批1签到/1违约各50%，提前取消数单列；真实0容量显示无可用容量，null比例为不适用，不造100%或无穷大；待结算时签到与违约率空值；历史不完整时容量/占用率不可计算并显示可用起点；上游503不保留旧汇总、不改成0；保留查询条件可重试恢复；USER+statistics:read可查，ADMIN无此权限不发查询；获资源读取权限才加载教室选项，提交from/to/asOf/roomId完全一致；不包含无关用户或角色字段；语言切换后标题/口径/状态与数值格式对应，不改服务端汇总来源",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            },
+            {
+              "id": "SUP-03.S03#2",
+              "criterion": 3,
+              "basis": "来自真实业务查询/公开接口，不读其他模块私有库",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 occupancy and outcome cohorts use aggregates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 zero capacity and empty cohort keep null rates",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 pending and incomplete history keep null outcomes",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 source failure clears previous statistics",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 permission is independent of role name",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 room and interval filters preserve scope",
+                "/workspace/frontend/tests/modules/support/support.browser.test.ts::SUP-03 English labels preserve source values"
+              ],
+              "expected": "10800/28800秒显示180/480座位分钟和37.5%；同批1签到/1违约各50%，提前取消数单列；真实0容量显示无可用容量，null比例为不适用，不造100%或无穷大；待结算时签到与违约率空值；历史不完整时容量/占用率不可计算并显示可用起点；上游503不保留旧汇总、不改成0；保留查询条件可重试恢复；USER+statistics:read可查，ADMIN无此权限不发查询；获资源读取权限才加载教室选项，提交from/to/asOf/roomId完全一致；不包含无关用户或角色字段；语言切换后标题/口径/状态与数值格式对应，不改服务端汇总来源",
+              "sample": "真实Chrome加载实际App/路由/本域Vue；有状态loopback API夹具，已授权本层隔离验证。集合样本19、20、21、41；两个可区分收件人/事件；SMTP状态不代替真实SMTP投递",
+              "observation": "实际DOM数据标记、原生表单与按钮、语言选择、HTTP方法/参数/CSRF/次数；请求失败后DOM与恢复结果；源码与网络无service-key/他域库",
+              "comparison": "精确文本、实体ID/时间/状态；server确认后才改已读；完整查询参数；null不转0；翻页身份集合与无多余发送请求。后端持久化/SMTP实际调用另有独立证据，不把fixture等同整链"
+            }
+          ],
+          "layer_scope": "本层验证资源与业务结果呈现、权限拒绝、交互及双语；持久化原子性、事件生成及真实SMTP由既有后端与最终联合验收分别验证"
+        }
+      ]
+    },
+    {
+      "id": "AGT-01",
+      "source": {
+        "kind": "optional",
+        "pdf_pages": [
+          4,
+          5
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "通过M1/M2/M3公开接口真实调用主要操作",
+        "不确定时间/地点时追问，敏感操作按实际身份授权",
+        "建议DSH插件，安装配置进入流水线；缺真实模型凭据不能伪称完成"
+      ],
+      "scenarios": []
+    }
+  ],
+  "source_snapshots": [
+    {
+      "path": "spec/requirements.json",
+      "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631",
+      "requirement_ids": [
+        "SUP-01",
+        "SUP-02",
+        "SUP-03",
+        "AGT-01"
+      ],
+      "text": "[\n  {\n    \"id\": \"SUP-01\",\n    \"module\": \"M06\",\n    \"title\": \"站内通知和真实邮件适配\",\n    \"source\": {\n      \"kind\": \"explicit\",\n      \"pdf_pages\": [\n        1,\n        6\n      ],\n      \"note\": \"任务书明确要求\"\n    },\n    \"acceptance\": [\n      \"站内消息按收件人隔离、已读幂等\",\n      \"邮件失败可重试并显示投递结果，不伪称已送达\",\n      \"真实提醒必须使用可配置SMTP\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [\n      \"SMTP_PROVIDER\"\n    ],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": []\n  },\n  {\n    \"id\": \"SUP-02\",\n    \"module\": \"M06\",\n    \"title\": \"关键操作持久审计\",\n    \"source\": {\n      \"kind\": \"derived\",\n      \"pdf_pages\": [\n        1,\n        2\n      ],\n      \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n    },\n    \"acceptance\": [\n      \"记录操作者、对象、来源、结果和时间\",\n      \"不记录密码、Cookie、签名密钥或整份敏感请求\",\n      \"只有有权限的人可以查询，支持追踪ID\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": []\n  },\n  {\n    \"id\": \"SUP-03\",\n    \"module\": \"M06\",\n    \"title\": \"运营统计\",\n    \"source\": {\n      \"kind\": \"explicit\",\n      \"pdf_pages\": [\n        6\n      ],\n      \"note\": \"任务书明确要求\"\n    },\n    \"acceptance\": [\n      \"教室座位预约、签到、违约与利用率有明确计算口径\",\n      \"管理员权限受控，空数据不显示虚构统计\",\n      \"来自真实业务查询/公开接口，不读其他模块私有库\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": []\n  },\n  {\n    \"id\": \"AGT-01\",\n    \"module\": \"M06\",\n    \"title\": \"可选自然语言业务代理\",\n    \"source\": {\n      \"kind\": \"optional\",\n      \"pdf_pages\": [\n        4,\n        5\n      ],\n      \"note\": \"任务书明确要求\"\n    },\n    \"acceptance\": [\n      \"通过M1/M2/M3公开接口真实调用主要操作\",\n      \"不确定时间/地点时追问，敏感操作按实际身份授权\",\n      \"建议DSH插件，安装配置进入流水线；缺真实模型凭据不能伪称完成\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [\n      \"LLM_PROVIDER\",\n      \"DSH_PLUGIN_RUNTIME\"\n    ],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": []\n  }\n]",
+      "kind": "approved_catalog_full_values"
+    }
+  ],
+  "plan_snapshots": [
+    {
+      "path": "spec/specs/S062.md",
+      "sha256": "bd1a3c29ca613a1c560617fd6f26f05ce87da248b98bdb624cedda33e1d210b0",
+      "text": "# 查看站内消息，避免重复通知和过时提醒\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s062sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在消息页面只能看本人消息。重复标已读不产生新记录，切换中英文后消息模板和状态有对应文字。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有站内消息，user1打开消息页面。\n2. user1读取自己的消息并重复标为已读，系统仍只保留原消息及已读结果。\n3. 尝试查询user2的消息，被拒绝。\n4. 切换中文和英文，系统消息模板和状态按当前语言显示。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC01）</summary>\n\n- 场景名称：只看自己的消息，重复标已读不多建记录\n- 场景编号：S062.SC01\n\n**对应的业务要求**\n\n- SUP-01.AC1：每人只看自己的站内消息，重复已读不多建记录\n\n**精确条件**\n\n- user1/user2各有站内消息\n\n**精确动作**\n\n- user1读取并重复已读，再请求user2消息\n\n**结果与约束**\n\n- 只返回本人；重复已读不产生第二份记录；越权拒绝，消息系统模板/状态支持当前中英字典\n\n</details>\n\n<a id=\"s062sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n通知事件重复到达时，站内只生成一份消息和待投递任务。未配置邮件服务时不能显示邮件已送达。\n\n### 操作步骤与预期结果\n\n1. 业务反复发送相同事件N1，真实邮件服务尚未配置。\n2. 系统接收事件，用户打开站内消息，可以查到一份对应通知。\n3. 查看邮件待办，只建立一份待投递任务，不标送达。\n4. 邮件服务缺失不妨碍站内通知这一独立功能使用。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC02）</summary>\n\n- 场景名称：没配邮件服务时，站内有消息也不能说邮件已送达\n- 场景编号：S062.SC02\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- 业务重复投递逻辑事件N1，真实SMTP尚未配置\n\n**精确动作**\n\n- 接收并查询通知/投递任务\n\n**结果与约束**\n\n- 只创建一份逻辑通知和待投递任务，站内可查；不显示邮件已送达；可继续业务独立开发\n\n</details>\n\n<a id=\"s062sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约取消后，尚未发送的提醒一起撤销；已经送达的历史保留，不把过去投递伪装成从未发生。\n\n### 操作步骤与预期结果\n\n1. 提前提醒仍等待发送，系统收到预约取消事件。\n2. 处理取消后，再执行提醒任务。\n3. 待发送提醒已撤销，不再投递邮件。\n4. 已送达通知仍保留历史记录，不删除或改成从未发送。\n\n<details>\n<summary>场景编号与精确规则补充（S062.SC03）</summary>\n\n- 场景名称：预约取消后，尚未发送的提醒也要取消\n- 场景编号：S062.SC03\n\n**对应的业务要求**\n\n- SUP-01.AC1：每人只看自己的站内消息，重复已读不多建记录\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- 预约提前提醒任务尚PENDING，收到取消事件\n\n**精确动作**\n\n- 处理取消后再次执行调度\n\n**结果与约束**\n\n- 待发送提醒取消且不会邮件投递；已经送达的历史不删除，不伪装从未投递\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S062\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-01\n- 有关业务功能：[S007 所有功能都按当前登录人的身份和权限处理](S007.md)。\n- 相关业务规则：[P13](../policies.md#p13)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S078.md",
+      "sha256": "5818cefd31f4a3c7be4bfc9a304f414cf4139c35c114eb5f5c12607600e44d96",
+      "text": "# 实际发送邮件，失败可重试，结果不明就提示待核实\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s078sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n系统通过实际邮件服务发送提醒，收件箱能收到包含教室和时段的邮件。测试收件成功只证明测试链路，不代表正式邮件已验收。\n\n### 操作步骤与预期结果\n\n1. 独立测试邮件服务和收件箱已配置，正式投递另需真实可用服务。\n2. 系统发送通知事件N1，打开测试收件箱核对。\n3. 能看到真实生成的邮件和业务教室、时段。\n4. 正式服务尚未具备时，仅记录测试链路通过，不称正式投递已验收。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC01）</summary>\n\n- 场景名称：测试收件箱里能真正收到邮件\n- 场景编号：S078.SC01\n\n**对应的业务要求**\n\n- SUP-01.AC3：真实邮件提醒使用可配置的邮件发送服务\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 配置独立测试SMTP/收件箱，生产终验另用可用真实服务\n\n**精确动作**\n\n- 发送逻辑事件N1并在收件箱核对\n\n**结果与约束**\n\n- 真实SMTP产生可观察邮件，内容含业务教室/时段；生产服务未具备时仅标测试链路通过\n\n</details>\n\n<a id=\"s078sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n邮件服务明确拒绝发送后，系统显示失败原因和重试时间；服务恢复后安全重试，状态与实际收件结果一致。\n\n### 操作步骤与预期结果\n\n1. 邮件服务明确拒绝第一次请求，任务不标送达。\n2. 用户查看失败原因和下次重试时间。\n3. 服务恢复后系统再次执行，状态与实际收件一致。\n4. 同一业务事件不增加另一份逻辑通知。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC02）</summary>\n\n- 场景名称：明确发送失败后，可以按计划重试\n- 场景编号：S078.SC02\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- SMTP明确拒绝第一次请求后恢复\n\n**精确动作**\n\n- 查看失败及next_retry并再次运行任务\n\n**结果与约束**\n\n- 首次不标送达，安全重试后状态与收件箱一致；同逻辑事件不多建通知\n\n</details>\n\n<a id=\"s078sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n邮件可能已被接收但确认丢失时，投递任务显示待核实，不盲目重发，也不虚称可以保证外部绝不重复。\n\n### 操作步骤与预期结果\n\n1. 外部邮件服务可能已接收，发送方未收到确认。\n2. 用户打开投递任务，看到待核实而非成功。\n3. 系统再次调度时不盲目重发。\n4. 若要求外部严格不重复，仍需投递方防重复能力或人工核对，当前不能凭空保证。\n\n<details>\n<summary>场景编号与精确规则补充（S078.SC03）</summary>\n\n- 场景名称：可能已发出却没收到确认时，不盲目重发\n- 场景编号：S078.SC03\n\n**对应的业务要求**\n\n- SUP-01.AC2：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- SMTP可能接收但发送方没获得确认\n\n**精确动作**\n\n- 查看任务并再次调度\n\n**结果与约束**\n\n- 显示待核实而非成功，不盲重发；严格外部恰一次依赖提供方幂等或人工核对，不虚构保证\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S078\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-01、M1-05\n- 有关业务功能：[S062 查看站内消息，避免重复通知和过时提醒](S062.md)。\n- 需要的外部业务条件：可用的正式邮件服务。\n- 相关业务规则：[P13](../policies.md#p13)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S063.md",
+      "sha256": "05daf7a9c962e246cd0295b71e7afaf42fa5fe119accaab71a59c720f461138c",
+      "text": "# 保存关键操作记录，并隐藏密码和密钥\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s063sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n获授权的人查询操作记录时，既能查到成功审批，也能查到越权失败，记录能串起操作者、对象和结果。\n\n### 操作步骤与预期结果\n\n1. 一次审批成功和一次无权操作失败均带追踪编号。\n2. 系统通过公开事件接口保存两次记录。\n3. 授权查询可看到操作者、对象、来源、结果、时间和追踪编号，失败安全操作不会漏记。\n\n<details>\n<summary>场景编号与精确规则补充（S063.SC01）</summary>\n\n- 场景名称：成功操作和越权失败都能追查\n- 场景编号：S063.SC01\n\n**对应的业务要求**\n\n- SUP-02.AC1：保存谁对什么对象做了什么、来源、结果和时间\n- SUP-02.AC3：只有获权限的人能查，并可用追踪编号找到相关操作\n\n**精确条件**\n\n- 一次成功审批和一次失败越权请求各有trace\n\n**精确动作**\n\n- 通过公开事件接口记录并查询授权审计\n\n**结果与约束**\n\n- 每项含操作者、对象/来源、结果、时间和trace；不因操作失败而漏记安全结果\n\n</details>\n\n<a id=\"s063sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n系统记录关键操作时只保存必要业务摘要，不把密码、登录凭据、签名密钥或整份敏感请求写进日志。\n\n### 操作步骤与预期结果\n\n1. 隔离示例请求同时包含普通业务字段、密码、登录凭据和签名密钥。\n2. 系统记录这次操作。\n3. 查询实际保存内容和日志，敏感值不存在，只留必要业务摘要，不原样复制请求。\n\n<details>\n<summary>场景编号与精确规则补充（S063.SC02）</summary>\n\n- 场景名称：日志里不能出现密码、登录凭据或密钥\n- 场景编号：S063.SC02\n\n**对应的业务要求**\n\n- SUP-02.AC2：不保存密码、登录凭据、签名密钥或整份敏感请求\n\n**精确条件**\n\n- 隔离请求含密码、Cookie、签名键及普通业务字段\n\n**精确动作**\n\n- 写审计并检索实际持久记录/日志\n\n**结果与约束**\n\n- 敏感值不存在；仅保留必要业务摘要，不复制整份敏感请求\n\n</details>\n\n<a id=\"s063sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n同一事件重复上报只保存一份操作记录。没有查询权限的用户即使直接请求，也不能读取这些记录。\n\n### 操作步骤与预期结果\n\n1. 同一事件编号被重试，user1没有操作记录权限。\n2. 系统再次接收事件，仍只有一份逻辑记录。\n3. user1查询被拒绝，获授权admin1只能读取权限范围，不仅是在前端隐藏入口。\n\n<details>\n<summary>场景编号与精确规则补充（S063.SC03）</summary>\n\n- 场景名称：一件事重复上报只记一次，没有权限的人不能查\n- 场景编号：S063.SC03\n\n**对应的业务要求**\n\n- SUP-02.AC3：只有获权限的人能查，并可用追踪编号找到相关操作\n\n**精确条件**\n\n- 同一event_key重试，user1无审计权限\n\n**精确动作**\n\n- 重放事件后由user1/admin1查询\n\n**结果与约束**\n\n- 只有一个逻辑审计事件；user1拒绝，授权管理员按范围查询，不靠前端隐藏\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S063\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-02\n- 有关业务功能：[S007 所有功能都按当前登录人的身份和权限处理](S007.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S064.md",
+      "sha256": "474bb9daa096fab8b57861de64fbe64feca65a579a6d791b9dd186e41d9d7b81",
+      "text": "# 管理员查看预约、签到和违约统计\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s064sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n管理员查询预约占用率时，系统按预约座位分钟除以可服务总容量计算，示例结果为37.5%，不是传感器实际入座率。\n\n### 操作步骤与预期结果\n\n1. R101两座08:00—12:00开放，无停用或维修，总容量480座位分钟。\n2. 个人预约A01的09:00—10:00占60座位分钟，整室10:00—11:00占120座位分钟。\n3. 管理员打开统计页查询该区间，显示180÷480=37.5%，可查计算来源。\n4. 不能把已有预约再从分母扣除，也不将结果说成传感器实际入座率。\n\n<details>\n<summary>场景编号与精确规则补充（S064.SC01）</summary>\n\n- 场景名称：用清楚的例子核对预约占用率\n- 场景编号：S064.SC01\n\n**对应的业务要求**\n\n- SUP-03.AC1：预约、签到、违约和利用率都说明怎么算\n\n**精确条件**\n\n- R101两座08:00—12:00可服务480座位分钟；M1占A01的09:00—10:00为60座位分钟，M2占全室10:00—11:00为120座位分钟，无停用/维修\n\n**精确动作**\n\n- 查询该区间预约占用率\n\n**结果与约束**\n\n- 返回180/480=37.5%；来源可回查，不能把已有预约从分母再次扣除或称传感器实际入座率\n\n</details>\n\n<a id=\"s064sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n签到率和违约率使用同一批已到截止的预约，提前取消不计入；完全没有可用容量时显示无可用容量。\n\n### 操作步骤与预期结果\n\n1. 已到截止记录含1笔签到、1笔未签到违约、1笔开始前取消。\n2. 管理员查询签到率与违约率，两者均为50%，提前取消不进入分母。\n3. 再查无可用容量时段，页面显示无可用容量，不显示计算错误或编造100%。\n\n<details>\n<summary>场景编号与精确规则补充（S064.SC02）</summary>\n\n- 场景名称：签到和违约用同一批已到截止的预约计算\n- 场景编号：S064.SC02\n\n**对应的业务要求**\n\n- SUP-03.AC1：预约、签到、违约和利用率都说明怎么算\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n\n**精确条件**\n\n- 已到截止的队列含一次签到、一次未签到违约、一次提前取消\n\n**精确动作**\n\n- 查询签到率与违约率；再查零容量区间\n\n**结果与约束**\n\n- 前两项各50%，提前取消不入分母；零容量显示无可用容量，不是NaN/编造100%\n\n</details>\n\n<a id=\"s064sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n统计页只向获授权用户提供真实汇总数据，空数据不编造，取数通过公开接口而不是直接访问别的模块数据库。\n\n### 操作步骤与预期结果\n\n1. user1没有统计权限，管理员有，各模块数据库账号不共享。\n2. user1查询统计被拒绝，管理员可查看授权结果。\n3. 结果来自资源和预约的公开查询及真实记录，不直连他人私库。\n4. 没有数据时显示0或不适用，不显示编造数字。\n\n<details>\n<summary>场景编号与精确规则补充（S064.SC03）</summary>\n\n- 场景名称：有权限才能看统计，数据来自真实业务\n- 场景编号：S064.SC03\n\n**对应的业务要求**\n\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n- SUP-03.AC3：从真实业务查询和公开接口取得，不读别的模块私有库\n\n**精确条件**\n\n- user1无统计权限；管理员有权限，模块库账号互不共享\n\n**精确动作**\n\n- 分别查询统计并追踪取数请求\n\n**结果与约束**\n\n- 普通用户拒绝；管理员结果来自资源/预约公开查询与实际记录，空数据为0或不适用，不直读别域私库\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S064\n- 业务分组：通知、统计与助手\n- 范围：核心业务\n- 对应要求：SUP-03\n- 有关业务功能：[S020 查清座位为什么被占用，并避免重复操作](S020.md)、[S024 查询座位时，一起检查预约、维修和使用资格](S024.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)、[S033 查看我的预约历史，并重新选择预约](S033.md)。\n- 相关业务规则：[P08](../policies.md#p08)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    }
+  ],
+  "boundary": {
+    "version": "3ce25e8dfdd279c4613e23c2cd58bcbcc393c56a",
+    "pages": [
+      {
+        "key": "/notifications",
+        "status": "existing_route_placeholder",
+        "source": "frontend/src/modules/notification/routes.ts"
+      },
+      {
+        "key": "/audit",
+        "status": "existing_route_placeholder",
+        "source": "frontend/src/modules/audit/routes.ts"
+      },
+      {
+        "key": "/statistics",
+        "status": "existing_route_placeholder",
+        "source": "frontend/src/modules/statistics/routes.ts"
+      }
+    ],
+    "components": [
+      {
+        "key": "shared:FeaturePage",
+        "source": "frontend/src/shared/pages/FeaturePage.vue",
+        "observation": "只有静态占位，无业务列表/请求/表单"
+      }
+    ],
+    "runtime": "133项无重复ID现有测试通过；全151原始PASS报告有公共重复ID而拒收，完整原始证据保留，不算有效收据",
+    "data_sources": [
+      "本人Cookie会话与CSRF",
+      "GET /api/notifications, POST /api/notifications/{id}/read",
+      "GET /api/audit",
+      "GET /api/statistics",
+      "只有公开HTTP，无service-key/他域数据库"
+    ]
+  },
+  "issues": [
+    {
+      "id": "U01",
+      "type": "UNRESOLVED",
+      "status": "已记录外部受阻",
+      "requirement": "AGT-01",
+      "description": "真实模型、DSH运行授权及公开代理契约缺失，已登记workflow external受阻"
+    },
+    {
+      "id": "A01",
+      "type": "ATTRIBUTION",
+      "status": "已确认",
+      "description": "用户授权用workflow继续六人开发；按冻结Web浏览器协议使用真实Chrome+loopback响应，仅证明UI，不替代真实跨服务/外部SMTP",
+      "source": "用户全功能六人workflow指令；skills/campus-test/references/web-adapter.md；后端联合HTTP验证报告"
+    },
+    {
+      "id": "U02",
+      "type": "UNRESOLVED",
+      "status": "联合验收待办",
+      "description": "SMTP可配置真实发送已有后端本地测试邮箱实证；前端展示公开投递结果且不开放内部投递接口；正式公网SMTP最终送达仍缺供应商，不将SENT称作外部收件箱送达"
+    }
+  ]
+}

@@ -4,8 +4,8 @@ export type WorkspaceRoute = RouteRecordSingleView & {
   name: string
   meta: {
     titleKey: string
-    permission: string
+    permission?: string
     navigation?: boolean
-    roles?: readonly string[]
+    anyPermissions?: readonly string[]
   }
 }

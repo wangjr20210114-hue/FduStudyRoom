@@ -5,32 +5,32 @@
   "source_snapshots": [
     {
       "path": "spec/requirements.json",
-      "sha256": "2d81f4d10992e69130b1bbb4201da8a913415466e563cc977831b1a87493cb4e",
+      "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631",
       "requirement_ids": [
-        "IAM-02"
+        "IAM-05"
       ],
       "text": {
-        "id": "IAM-02",
+        "id": "IAM-05",
         "module": "M01",
-        "title": "可配置角色和权限",
+        "title": "身份与权限公开校验契约",
         "source": {
-          "kind": "explicit",
+          "kind": "derived",
           "pdf_pages": [
-            5
+            2,
+            4
           ],
-          "note": "任务书明确要求"
+          "note": "由任务书约束推导，属于需验收的设计决策"
         },
         "acceptance": [
-          "可新增角色并授予权限；停用角色生效",
-          "前后端拒绝越权，不能只按三种固定角色名授权业务"
+          "流程服务通过服务端网络确认身份",
+          "不信任前端的用户ID、角色或业务资格",
+          "调用有超时，失败拒绝敏感操作"
         ],
         "layers": [
-          "backend",
-          "frontend"
+          "backend"
         ],
         "baseline_status": {
-          "backend": "pending",
-          "frontend": "pending"
+          "backend": "pending"
         },
         "external_dependencies": [],
         "verification": {
@@ -43,252 +43,262 @@
         "integration_dependencies": []
       },
       "kind": "canonical_catalogue"
+    },
+    {
+      "path": "docs/workflow/round3-contracts-and-work-orders.md",
+      "sha256": "c1848312903d266392a10dd8a3fdc38d7759c679d2689be816254c36e14759cf",
+      "text": "# 六人完整功能开发工作单\n\n本轮接续已上线的 c369a01，使用 a—f 六个本机缓冲站身份。先完成剩余后端，再完成各域前端；保持独立工作树、容器、需求分析、TDD、变异、回归和收件。已验证项核对证据后跳过。新交付的人工验收独立进行，不沿用上轮仅六项后端的验收结论。\n\n## 分工\n\n| 身份 | 领域 | 剩余后端 | 剩余前端 |\n| --- | --- | --- | --- |\n| a | 账号和设置 | IAM-03/04/05/07 | IAM-02/03/04/07 |\n| b | 教室、座位、占用 | RES-01/02/03/04/05/06；RES-08真实数据源受阻 | RES-01/02/03/04/05/07；RES-08显示未接入 |\n| c | 个人预约和签到 | M1-01/02/03/04/05/07/08 | M1-01/02/03/04/05/07/08 |\n| d | 整室申请和审批 | M2-01/03/04/05/06 | M2-01至05 |\n| e | 报修和维修 | M3-01/02/03/04/05/07 | M3-01至07 |\n| f | 通知、审计、统计 | SUP-02/03/04；AGT-01外部模型受阻 | SUP-01/02/03；AGT-01如实显示配置缺口 |\n\nIAM-01/06前后端已验收；IAM-02、RES-07、M1-06、M2-02、M3-06、SUP-01后端已在上一轮验证。邮箱验证原有S081由M01负责账户状态，登记IAM-07；邮件瞬时投递由M06负责，登记SUP-04/S082。旧SUP-01的验收历史不改写成覆盖邮箱验证。\n\n## 已确认的规则\n\n用户于2026-11-15明确确认P02–P09、P12，审批默认60分钟、维修默认120分钟，可由管理员调整。其他默认值为最长预约4小时、提前15分钟提醒、开始后10分钟提醒、15分钟未签到取消。设置整组原子更新且校验；业务创建或派单时保留截止时间快照，改设置不追溯改旧单。\n\n统计按P08。停用/维修从实际生效时刻截断可服务窗口，恢复起重新开放，不追溯整段失效。释放生效时间是资源模块成功持久应用的服务器时刻。容量与实际保留占用按[from,to)、asOf和历史可服务窗口取交集；先取消后开始的占用为0。未知历史明确显示不可计算，不能拿当前active状态伪造历史。\n\n## 公开接口\n\n所有内部接口使用X-Service-Key，普通页面不持有该密钥。公共IdentityPrincipal保持原结构，各域不读他域私有表。\n\n### 账号、资格和参数\n\n- GET /internal/identity/users/{id}/eligibility：userId、enabled、role、permissions、departmentCode、canApplyRoom、authVersion；停用用户或角色返回enabled=false且没有有效权限。\n- GET /internal/identity/users/{id}/notification-email：userId、enabled、email、verified，仅可信服务可查。资格字段只由管理员维护。\n- GET /internal/system/settings：version、maxReservationHours、beforeStartReminderMinutes、afterStartReminderMinutes、checkinDeadlineMinutes、approvalTtlMinutes、repairSlaMinutes。\n- 管理员GET/PUT /api/admin/settings（PUT带expectedVersion），GET /api/admin/settings/history；所有数值正整数且开始后提醒早于签到截止，整组更新版本+1并留痕。\n- 系统设置与历史归iam，使用本模块新增迁移，不写resource表。\n\n### 资源\n\n- GET/POST /api/resources/rooms，GET/PUT /api/resources/rooms/{id}；GET/POST /api/resources/rooms/{id}/seats，PUT /api/resources/seats/{id}；写入带expectedVersion。\n- POST /internal/resources/allocations：operationId、sourceModule(M1/M2)、sourceId、sourceVersion、roomId、seatId(M1必需)、userId(M1必需)、startsAt、endsAt；M2全室原子占用。\n- POST /internal/resources/releases：operationId、sourceModule、sourceId、sourceVersion。\n- PUT /internal/resources/restrictions/{sourceId}：operationId、sourceVersion、roomId、active，归M3维修限制。\n- GET /internal/resources/availability、/capacity、/sources/{sourceModule}/{sourceId}；搜索参数startsAt、endsAt、userId、campus、building、hasSocket。\n- 首次写入201、幂等重放200，400非法格式、403资格不符、404主数据不存在、409冲突/旧版本/同键异参数、503必要依赖不可用。\n- 本域追加resource_operations来源版本/操作指纹和历史，保留整室教室级来源范围。新建/启用座位不能绕过整室占用；先释放的墓碑不能被旧消息复活。\n- 公共V3安装PostgreSQL可信btree_gist扩展，本域V2使用它建立座位与用户时间范围排斥约束；不修改已发布V1。\n\n### 通知、审计和统计\n\n- 现有POST /internal/notifications/events沿用已发布契约。\n- POST /internal/audit/events：eventKey、sourceService、actorId(系统任务可空)、action、sourceModule、sourceId、success、occurredAt、traceId、受限beforeData/afterData。首次201、相同键同内容200、异内容409；成功变更与待发审计同事务，越权失败也留安全记录。\n- GET /api/audit：audit:read鉴权、分页、traceId/sourceModule/sourceId筛选；不新增组织树或院系范围。\n- GET /internal/resources/statistics?from&to&asOf&roomId：capacitySeatSeconds、occupiedSeatSeconds、occupiedM1SeatSeconds、occupiedM2SeatSeconds、confirmedBookingCount、confirmedM1BookingCount、confirmedM2BookingCount、algorithm、historyAvailableFrom、historyComplete。占用数按来源ID去重且与有效窗口正交集；historyComplete=false不伪装为0。\n- GET /internal/reservations/statistics使用同一时间/教室范围：checkedInCount、noShowCount、排除数及来源说明；只纳入已到签到截止的队列，排除开始前取消和系统维修终结。\n- GET /api/statistics由f通过HTTP合并，statistics:read鉴权；来源失败、历史不足、0容量分别表达，不能补造0或NaN。\n\n### 邮箱验证\n\n- POST /internal/notifications/verification-email：operationId(UUID)、userId(UUID)、email、token、expiresAt，X-Service-Key；不接收URL、subject、body或locale。\n- f用受信origin生成/account#verify-email=...，固定双语模板。a本人页面读取fragment后立即清URL，再仅通过POST body验证。\n- 回执operationId、status、duplicate、retryable、nextRetryAt、errorCode。status为ACCEPTED/FAILED/NOT_CONFIGURED/UNKNOWN；ACCEPTED只表示SMTP接收，不称最终送达。\n- 200表示确定状态或重复，202表示UNKNOWN，400仅非法DTO，401密钥无效，409同键异参数。配置缺失返回NOT_CONFIGURED；过期未发为FAILED不可重试。\n- f发送前持久提交UNKNOWN；相同ID的ACCEPTED/UNKNOWN仅回读不重发。只有确定失败或未配置、尚未过期且到nextRetryAt，才允许同ID同参数重试。a超时保留原ID。\n- a仅持久nonce/hash等并从受保护密钥重建令牌；f仅存规范化请求指纹和安全回执，不存邮箱、token、URL或整封正文。禁止令牌进入日志或普通通知表。\n\n## 权限\n\n新增动作由a统一登记；其他领域只使用权限，不写IAM。沿用USER、MAINTAINER、SYSTEM_ADMIN，支持自定义角色。\n\n| 默认范围 | 权限 |\n| --- | --- |\n| 三角色，另检查本人/被派/申请资格 | resource:rooms:read；reservation:read/create/cancel/checkin；approval:read/apply；repair:report/history:read；notification:read |\n| MAINTAINER和SYSTEM_ADMIN，另检查实际被派人员 | repair:maintain |\n| SYSTEM_ADMIN | reservation:admin-cancel；reservation:admin-read；approval:decide；approval:flow:read；approval:flow:write；approval:admin-cancel；repair:assign/accept/evaluate/admin-cancel；audit:read；statistics:read；identity:settings:read/write |\n\n原权限不删除；角色名不能代替对象归属与权限检查。IAM的已有管理权限和b签到码权限继续沿用。\n\n## 浏览器与交付\n\n真实浏览器测试复用frontend/tests/shared/browser.ts，业务测试加载真实产品组件或路由；API fixture只隔离数据来源。Vitest原生JSON通过现有record --kind e2e保存，不新增依赖/锁文件。纯SSR或假页面不能报UI通过。各域全部本层TDD/变异/回归通过再收件，前后端真实联调在协调QA环境单独验。\n\n本轮submit --no-github先自动收件，协调人保留同一差异并统一安排导出推送，避免半成品快照轮流覆盖体验站。所有GitHub推送仍按既有CI和站点规则执行；Gitee新交付仍须真人验收和独立CI，不沿用上一轮的验收。Git冲突由人处理，不自动合并main。\n\n## 当前基线证据\n\n公共工具117项（116通过、1项Windows专用在Linux跳过）；后端81/81；浏览器基础4/4、独立破坏观察值检出1个业务断言失败、类型检查通过；btree_gist在非超级用户数据库所有者下真实安装，重叠范围插入产生23P01。详情保存在本轮private目录。正式业务实现仍须各自完整需求收据，不能复用这些基线检查冒充功能完成。\n",
+      "kind": "approved_work_order"
+    },
+    {
+      "registered_path": "docs/sources/task-book.pdf",
+      "actual_local_path": "C:\\Users\\wangjr\\Desktop\\Pj-任务书(2)(2).pdf",
+      "actual_exists": true,
+      "kind": "original_pdf_metadata",
+      "pages": [
+        2,
+        4
+      ],
+      "note": "IAM-05是已批准派生需求，不把派生验收冒称PDF逐字原文；注册仓库位置当前缺失。",
+      "sha256": "e34ad2d40cb60d6c583bae73eeaed8391d91b6c1f171fa9f046eb9f83b2e8221"
+    }
+  ],
+  "plan_snapshots": [
+    {
+      "path": "spec/specs/S007.md",
+      "sha256": "cada6d7d6d427e3a28b880c6493a1295bf17d8380975f13bbec9cf812ba11b91",
+      "text": "# 所有功能都按当前登录人的身份和权限处理\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s007sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在预约和报修等不同功能之间操作时，系统始终识别当前登录人，并按该账号真实权限处理。\n\n### 操作步骤与预期结果\n\n1. user1登录，并拥有当前操作所需权限。\n2. 用户打开自己的预约或报修页面，执行一项获授权操作。\n3. 系统始终识别为user1，使用该账号实际权限，不因进入另一个功能就换成其他身份。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC01）</summary>\n\n- 场景名称：在不同功能中都识别为当前登录人\n- 场景编号：S007.SC01\n\n**对应的业务要求**\n\n- IAM-05.AC1：流程服务通过真实网络向身份服务确认当前用户\n\n**精确条件**\n\n- user1会话有效，两服务隔离启动\n\n**精确动作**\n\n- 从流程服务携会话调用身份公开端点\n\n**结果与约束**\n\n- 网络响应中的用户、权限和版本决定调用结果；不读资源服务私有账号表\n\n</details>\n\n<a id=\"s007sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n普通用户在请求里把自己写成管理员，也不能审批或派单，系统仍使用真实登录身份判断权限。\n\n### 操作步骤与预期结果\n\n1. user1登录，且没有审批权限。\n2. 在提交给流程服务的请求中，把用户写成admin1，角色写成系统管理员。\n3. 系统仍按user1检查并拒绝操作，不产生审批或派单记录。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC02）</summary>\n\n- 场景名称：普通用户把请求里的名字改成管理员也没有用\n- 场景编号：S007.SC02\n\n**对应的业务要求**\n\n- IAM-05.AC2：不相信页面自己填写的用户编号、角色和资格\n\n**精确条件**\n\n- user1无审批权限\n\n**精确动作**\n\n- 向流程服务请求体填写admin1及SYSTEM_ADMIN\n\n**结果与约束**\n\n- 仍以user1身份拒绝；没有审批或派单写入\n\n</details>\n\n<a id=\"s007sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n审批或派单时，如果系统无法及时确认当前身份，就返回明确失败，不继续修改业务，也不无限等待。\n\n### 操作步骤与预期结果\n\n1. 身份查询未能在约定时间内返回。\n2. 用户提交审批或派单操作。\n3. 系统在设置的最长等待时间内返回可说明原因的失败结果。\n4. 系统不相信页面自报身份，也不改用旧的宽松权限继续写入数据。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC03）</summary>\n\n- 场景名称：查不到身份时，不继续审批或派单\n- 场景编号：S007.SC03\n\n**对应的业务要求**\n\n- IAM-05.AC3：查询有最长等待时间，失败时不继续敏感操作\n\n**精确条件**\n\n- 测试代理将身份响应延迟到契约超时之后\n\n**精确动作**\n\n- 发起审批或派单写请求\n\n**结果与约束**\n\n- 在配置超时内返回可诊断失败；不以缓存的宽权限或前端身份继续写入\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S007\n- 业务分组：账号与权限\n- 范围：核心业务\n- 对应要求：IAM-05\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S004 管理员配置角色和可以使用的功能](S004.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+      "kind": "business_scenario_original",
+      "non_scenario_reference": "文件首段背景说明与末尾功能分类/共用说明保留全文，实现时参考，不新增批准验收。"
     }
   ],
   "boundary": {
-    "identity": "Actual password login, Cookie and CSRF; test-generated isolated local accounts only",
-    "backend": "Existing IAM JDBC tables and dynamic permissions; role write endpoints missing by source inspection",
+    "pages": [],
+    "components": [],
+    "scope": "IAM-05仅backend，浏览器界面不在本工作单；只证明后端公开HTTP认证链。",
+    "data": [
+      {
+        "key": "identity-http",
+        "fact": "现有账号密码/Cookie/CSRF与角色资格API源码和公开契约齐备，当前冻结M01 7类37项基线真实通过，run91b4eb0a-122b-4243-b7d7-534daf35000b。新测试用户/角色全部通过HTTP创建。"
+      },
+      {
+        "key": "workflow-provider",
+        "fact": "Stage1从ctx.base自动构建的只读workflow.jar与manifest存在，source/base/image/JAR SHA在私有fixture.local；独立本人PG frozen_workflow_fixture。"
+      },
+      {
+        "key": "network",
+        "fact": "本轮计划启动真实独立workflow JVM并经本次loopback透明代理调用当前M01，不导入workflow实现、不用跨域SQL、只HTTP观察前后状态。"
+      }
+    ],
     "unverified": [
-      "Frontend pages are a separate frontend work order; classroom operation will be checked in integrated branch using public resource API"
+      {
+        "key": "workflow-http-at-requirements-time",
+        "attempted": "已完成Stage1/provider ZIP/hash就绪与原M01基线；新黑盒操作尚未执行，运行证据由后续收据填入，不在固定analysis写成功。",
+        "impact": "待完整7组API测试核验。"
+      }
     ]
   },
   "requirements": [
     {
-      "id": "IAM-02",
+      "id": "IAM-05",
       "source": {
-        "kind": "explicit",
+        "kind": "derived",
         "pdf_pages": [
-          5
+          2,
+          4
         ],
-        "note": "任务书明确要求"
+        "note": "由任务书约束推导，属于需验收的设计决策"
       },
       "acceptance": [
-        "可新增角色并授予权限；停用角色生效",
-        "前后端拒绝越权，不能只按三种固定角色名授权业务"
+        "流程服务通过服务端网络确认身份",
+        "不信任前端的用户ID、角色或业务资格",
+        "调用有超时，失败拒绝敏感操作"
       ],
       "scenarios": [
         {
-          "id": "IAM-02.S01",
+          "id": "IAM-05.S01",
           "covers": [
             1
           ],
           "preconditions": [
-            "管理员已登录且有角色管理权限"
+            "user1已经登录，并具备当前操作所需权限。"
           ],
           "actions": [
-            "新增自定义角色，只授予勾选权限；通过用户管理接口分配角色"
+            "打开自己的预约或报修页面，执行一项获授权操作。"
           ],
           "expected": [
-            "数据库保存角色和准确权限，自定义角色可用已授予功能"
+            "系统始终按当前登录的user1及其实际权限处理，不因进入不同功能就换成其他身份。"
           ],
           "depends_on": [],
           "business_scene_refs": [
-            "S004.SC01"
+            "S007.SC01"
           ],
-          "original_text": "## 场景一\n\n### 场景概述\n\n管理员新增“教室管理员”角色，只为它勾选查看和维护教室的权限。保存后该角色可分配给账号，但不会同时获得未勾选的管理功能。\n\n### 操作步骤与预期结果\n\n1. admin1打开角色管理页面，点击新增角色。\n2. 管理员填写ROOM_MANAGER，并只勾选查看教室和维护教室，点击保存。\n3. 系统保存该角色并允许分配给账号。\n4. 使用该角色的账号不能操作未授予的系统设置或审批功能。\n\n<details>\n<summary>场景编号与精确规则补充（S004.SC01）</summary>\n\n- 场景名称：新增角色时，只给它选中的功能\n- 场景编号：S004.SC01\n\n**对应的业务要求**\n\n- IAM-02.AC1：可以新增角色并勾选允许的功能，停用后实际生效\n\n**精确条件**\n\n- admin1有角色管理权限\n\n**精确动作**\n\n- 创建角色ROOM_MANAGER，只授予教室读取和维护权限\n\n**结果与约束**\n\n- 角色保存后可被分配；权限列表不隐含系统设置或审批权限\n\n</details>",
-          "source_path": "spec/specs/S004.md",
-          "source_sha256": "c7502d3e5a96953f1659509366d118797ee2ed84572c10b7dce57ae145b8cfe5",
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n用户在预约和报修等不同功能之间操作时，系统始终识别当前登录人，并按该账号真实权限处理。\n\n### 操作步骤与预期结果\n\n1. user1登录，并拥有当前操作所需权限。\n2. 用户打开自己的预约或报修页面，执行一项获授权操作。\n3. 系统始终识别为user1，使用该账号实际权限，不因进入另一个功能就换成其他身份。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC01）</summary>\n\n- 场景名称：在不同功能中都识别为当前登录人\n- 场景编号：S007.SC01\n\n**对应的业务要求**\n\n- IAM-05.AC1：流程服务通过真实网络向身份服务确认当前用户\n\n**精确条件**\n\n- user1会话有效，两服务隔离启动\n\n**精确动作**\n\n- 从流程服务携会话调用身份公开端点\n\n**结果与约束**\n\n- 网络响应中的用户、权限和版本决定调用结果；不读资源服务私有账号表\n\n</details>\n\n",
+          "source_path": "spec/specs/S007.md",
+          "source_sha256": "cada6d7d6d427e3a28b880c6493a1295bf17d8380975f13bbec9cf812ba11b91",
           "objects": [
             {
               "kind": "api",
-              "key": "/api/admin/roles",
+              "key": "/internal/auth/introspect",
               "status": "existing",
-              "evidence": "AccountAdminController currently lists roles but has no creation, permission replacement or disabling endpoints"
-            },
-            {
-              "kind": "api",
-              "key": "/api/admin/permissions",
-              "status": "missing",
-              "evidence": "Read all identity/api controller mappings: no permission catalogue endpoint exists"
-            },
-            {
-              "kind": "table",
-              "key": "iam.roles,iam.permissions,iam.role_permissions,iam.users",
-              "status": "existing",
-              "evidence": "db/migration/V1__identity_schema.sql; IAM owns these tables"
+              "evidence": "contracts/openapi/identity.yaml及identity/api/AuthController.java声明当前服务认证/真实Bearer端点；37项原有身份测试基线通过。workflow实际链路由本轮7组测试核验，不继承旧missing判断。"
             }
           ],
           "cells": [
             {
-              "id": "IAM-02.S01#1",
+              "id": "IAM-05.S01#1",
               "criterion": 1,
-              "basis": "可新增角色并授予权限；停用角色生效",
+              "basis": "流程服务通过服务端网络确认身份",
               "kind": "api",
-              "expected": "创建并分配自定义角色；只保存选中权限",
-              "sample": "PG fixtures + real HTTP admin role creation and account access update",
-              "observation": "POST /api/admin/roles; iam.role_permissions; /api/auth/me",
-              "comparison": "HTTP 201, exact role/permission sets and assigned role",
+              "expected": "常规：两个真实登录用户经身份HTTP确认，只能看到本人的报修详情，返回reporterId精确为本人，读他人记录403。",
+              "sample": "本人PG中新HTTP注册user1/user2，真实房间、各自报修；workflow冻结JAR独立JVM；代理PASS只转发实际M01。",
+              "observation": "代理实际introspect请求计数、公开GET报修detail.reporterId/id、跨用户HTTP403。",
+              "comparison": "精确匹配当前会话用户及对象ID；代理至少一次实际成功转发；不以存在性或日志文本替代身份断言。",
               "test_ids": [
-                "com.campus.identity.api.RoleManagementHttpTest#canCreateRoleWithExactPermissionsAndAssignIt"
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#workflowUsesCurrentIdentityForOwnRepairRecords"
               ]
             },
             {
-              "id": "IAM-02.S01#2",
+              "id": "IAM-05.S01#2",
               "criterion": 1,
-              "basis": "可新增角色并授予权限；停用角色生效",
+              "basis": "流程服务通过服务端网络确认身份",
               "kind": "api",
-              "expected": "未知权限不得部分创建角色",
-              "sample": "isolated DB role count then real POST unknown permission",
-              "observation": "HTTP status and role count",
-              "comparison": "400; count unchanged",
+              "expected": "撤权：已被workflow认可的权限在M01改动后，旧Bearer直接introspect401、workflow旧会话401，新低权限会话敏感写403；停用后拒绝旧会话和新登录。",
+              "sample": "HTTP授予测试账号系统管理员后先成功访问；再用真实管理员HTTP降为USER/停用，旧Cookie只在内存保留。",
+              "observation": "M01直接HTTP内省、workflow公开配置读取/写入、前后配置版本和内容。",
+              "comparison": "401/403精确值；当前authVersion变更前后公开值；被拒绝写入前后业务快照相等。",
               "test_ids": [
-                "com.campus.identity.api.RoleManagementHttpTest#rejectsUnknownPermissionWithoutPartialRole"
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#revocationReachesWorkflowWithoutTrustingOldSession"
               ]
             },
             {
-              "id": "IAM-02.S01#3",
+              "id": "IAM-05.S01#3",
               "criterion": 1,
-              "basis": "可新增角色并授予权限；停用角色生效",
+              "basis": "流程服务通过服务端网络确认身份",
               "kind": "api",
-              "expected": "权限目录包含六模块公开权限",
-              "sample": "admin authenticated actual HTTP",
-              "observation": "GET /api/admin/permissions codes",
-              "comparison": "200 and full required code set",
+              "expected": "服务认证：正确键+当前真实Bearer返回本人；缺/错键、缺/坏Bearer精确401；代理只将一次服务键改错并转发到真实M01，workflow也401。",
+              "sample": "当前真实登录Cookie取Bearer，不用TokenService伪造；独立无Cookie内部客户端；错键为本次自造负输入。",
+              "observation": "公开POST /internal/auth/introspect返回CurrentUser/error、workflow受保护GET、代理真实上游状态与计数。",
+              "comparison": "正例身份/权限/版本精确匹配；全部负例401；实际错误服务键由真实M01拒绝，无假身份响应。",
               "test_ids": [
-                "com.campus.identity.api.RoleManagementHttpTest#permissionCatalogueContainsPublishedModuleCodes"
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#publicIntrospectionRequiresServiceKeyAndCurrentBearer"
               ]
             }
           ]
         },
         {
-          "id": "IAM-02.S02",
+          "id": "IAM-05.S02",
           "covers": [
             2
           ],
           "preconditions": [
-            "普通账号没有管理权限"
+            "user1没有审批权限。"
           ],
           "actions": [
-            "使用真实 Cookie 会话直接调用管理 API"
+            "开发者以user1登录，把发给流程服务的请求中的用户和角色填写为admin1和系统管理员。"
           ],
           "expected": [
-            "HTTP 拒绝且数据未变化，权限判断不依赖固定角色名称"
+            "后端仍按user1检查权限并拒绝操作，不增加审批或派单记录。"
           ],
           "depends_on": [],
           "business_scene_refs": [
-            "S004.SC02"
+            "S007.SC02"
           ],
-          "original_text": "## 场景二\n\n### 场景概述\n\n没有教室维护权限的普通用户，既不能从页面修改教室，也不能通过直接发送请求绕过权限检查。\n\n### 操作步骤与预期结果\n\n1. user1登录后尝试打开教室管理入口，页面不允许执行维护操作。\n2. user1直接提交修改教室的请求，后端仍按真实权限拒绝。\n3. 教室资料和账号权限保持原样，不因绕开页面而发生变化。\n\n<details>\n<summary>场景编号与精确规则补充（S004.SC02）</summary>\n\n- 场景名称：没有权限的人，改网址或直接发请求也不能修改教室\n- 场景编号：S004.SC02\n\n**对应的业务要求**\n\n- IAM-02.AC2：页面和后端都检查实际权限，不能只认3个固定角色名称\n\n**精确条件**\n\n- user1无教室维护权限\n\n**精确动作**\n\n- 尝试打开管理入口并直接提交教室修改请求\n\n**结果与约束**\n\n- 入口不可执行；API拒绝，教室数据及权限不变\n\n</details>",
-          "source_path": "spec/specs/S004.md",
-          "source_sha256": "c7502d3e5a96953f1659509366d118797ee2ed84572c10b7dce57ae145b8cfe5",
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n普通用户在请求里把自己写成管理员，也不能审批或派单，系统仍使用真实登录身份判断权限。\n\n### 操作步骤与预期结果\n\n1. user1登录，且没有审批权限。\n2. 在提交给流程服务的请求中，把用户写成admin1，角色写成系统管理员。\n3. 系统仍按user1检查并拒绝操作，不产生审批或派单记录。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC02）</summary>\n\n- 场景名称：普通用户把请求里的名字改成管理员也没有用\n- 场景编号：S007.SC02\n\n**对应的业务要求**\n\n- IAM-05.AC2：不相信页面自己填写的用户编号、角色和资格\n\n**精确条件**\n\n- user1无审批权限\n\n**精确动作**\n\n- 向流程服务请求体填写admin1及SYSTEM_ADMIN\n\n**结果与约束**\n\n- 仍以user1身份拒绝；没有审批或派单写入\n\n</details>\n\n",
+          "source_path": "spec/specs/S007.md",
+          "source_sha256": "cada6d7d6d427e3a28b880c6493a1295bf17d8380975f13bbec9cf812ba11b91",
           "objects": [
             {
               "kind": "api",
-              "key": "/api/admin/roles",
+              "key": "/internal/auth/introspect",
               "status": "existing",
-              "evidence": "AccountAdminController currently lists roles but has no creation, permission replacement or disabling endpoints"
-            },
-            {
-              "kind": "api",
-              "key": "/api/admin/permissions",
-              "status": "missing",
-              "evidence": "Read all identity/api controller mappings: no permission catalogue endpoint exists"
-            },
-            {
-              "kind": "table",
-              "key": "iam.roles,iam.permissions,iam.role_permissions,iam.users",
-              "status": "existing",
-              "evidence": "db/migration/V1__identity_schema.sql; IAM owns these tables"
+              "evidence": "contracts/openapi/identity.yaml及identity/api/AuthController.java声明当前服务认证/真实Bearer端点；37项原有身份测试基线通过。workflow实际链路由本轮7组测试核验，不继承旧missing判断。"
             }
           ],
           "cells": [
             {
-              "id": "IAM-02.S02#1",
+              "id": "IAM-05.S02#1",
               "criterion": 2,
-              "basis": "前后端拒绝越权，不能只按三种固定角色名授权业务",
+              "basis": "不信任前端的用户ID、角色或业务资格",
               "kind": "api",
-              "expected": "普通用户越权写角色被拒绝且数据不变",
-              "sample": "registered ordinary user and existing role fixtures",
-              "observation": "POST/PATCH protected role APIs and DB count",
-              "comparison": "403; role state and count unchanged",
+              "expected": "常规越权拒绝：无审批/派单权限的USER即使自报admin用户ID、SYSTEM_ADMIN和伪造身份头，配置写及派单写均403，原业务版本/归属/历史不变。",
+              "sample": "HTTP准备真实待派报修和有效维修候选；普通USER带真实有效CSRF；配置写体夹带身份/角色，派单合法体夹带伪造头。",
+              "observation": "真实admin公开GET配置、报修detail/history；写响应status/code/trace。",
+              "comparison": "权限拒绝403，前后配置和工单/业务历史相等；拒绝审计可变化但不算业务变更。",
               "test_ids": [
-                "com.campus.identity.api.RoleManagementHttpTest#ordinaryUserCannotManageRolesOrChangeData"
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#forgedActorAndRoleCannotApproveOrAssign"
               ]
             },
             {
-              "id": "IAM-02.S02#2",
+              "id": "IAM-05.S02#2",
               "criterion": 2,
-              "basis": "前后端拒绝越权，不能只按三种固定角色名授权业务",
+              "basis": "不信任前端的用户ID、角色或业务资格",
               "kind": "api",
-              "expected": "自定义角色按实际权限访问接口",
-              "sample": "isolated custom role with identity:roles:read only",
-              "observation": "GET /api/admin/roles and /api/admin/users",
-              "comparison": "roles 200; users 403",
+              "expected": "资格不接受自报：真实canApplyRoom=false时正常形状申请403，夹带canApplyRoom/departmentCode/applicantId等未知字段的请求400；本人申请列表没有本次唯一用途记录，M01资格仍为false。",
+              "sample": "本人HTTP注册USER，真实房间和两名不同非申请人的真实审批人；通过M01受信eligibility HTTP确认false。",
+              "observation": "workflow申请响应、本人公开申请列表、M01公开eligibility响应。",
+              "comparison": "分别精确403与400；唯一用途未出现、列表返回结构必须是可观察列表，不能把解析失败当空；资格前后false。",
               "test_ids": [
-                "com.campus.identity.api.RoleManagementHttpTest#customRoleUsesGrantedPermissionRatherThanRoleName"
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#forgedEligibilityCannotCreateAnApproval"
               ]
             }
           ]
         },
         {
-          "id": "IAM-02.S03",
+          "id": "IAM-05.S03",
           "covers": [
-            1,
-            2
+            3
           ],
           "preconditions": [
-            "自定义角色账号已经登录"
+            "测试中让身份查询一直等待，超过约定的最长等待时间。"
           ],
           "actions": [
-            "管理员停用或撤销权限后，旧 Cookie 再请求"
+            "发起一次审批或派单操作。"
           ],
           "expected": [
-            "下一请求拒绝，角色与历史用户引用保留"
+            "在设置的等待时间内返回能说明问题的失败结果，不无限等待。",
+            "不能改用旧的宽松权限或相信页面自报的身份继续修改数据。"
           ],
-          "depends_on": [
-            "IAM-02.S01"
-          ],
+          "depends_on": [],
           "business_scene_refs": [
-            "S004.SC03"
+            "S007.SC03"
           ],
-          "original_text": "## 场景三\n\n### 场景概述\n\n管理员停用一个角色后，已登录的相关账号也不能继续使用该角色修改教室。过去记录中使用过这个角色的信息仍然保留。\n\n### 操作步骤与预期结果\n\n1. 使用ROOM_MANAGER角色的账号已经登录。\n2. 管理员在角色管理页面停用ROOM_MANAGER。\n3. 该账号保持原登录状态，继续尝试修改教室，系统拒绝操作，页面入口随权限更新。\n4. 历史记录中的角色引用仍保留，不因为停用而被删除。\n\n<details>\n<summary>场景编号与精确规则补充（S004.SC03）</summary>\n\n- 场景名称：角色停用后，已经登录的人也不能继续用它修改资料\n- 场景编号：S004.SC03\n\n**对应的业务要求**\n\n- IAM-02.AC1：可以新增角色并勾选允许的功能，停用后实际生效\n- IAM-02.AC2：页面和后端都检查实际权限，不能只认3个固定角色名称\n\n**精确条件**\n\n- ROOM_MANAGER账号已登录\n\n**精确动作**\n\n- admin1停用角色，再使用旧会话修改教室\n\n**结果与约束**\n\n- 写请求被拒绝，入口更新；停用不是删除历史角色引用\n\n</details>",
-          "source_path": "spec/specs/S004.md",
-          "source_sha256": "c7502d3e5a96953f1659509366d118797ee2ed84572c10b7dce57ae145b8cfe5",
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n审批或派单时，如果系统无法及时确认当前身份，就返回明确失败，不继续修改业务，也不无限等待。\n\n### 操作步骤与预期结果\n\n1. 身份查询未能在约定时间内返回。\n2. 用户提交审批或派单操作。\n3. 系统在设置的最长等待时间内返回可说明原因的失败结果。\n4. 系统不相信页面自报身份，也不改用旧的宽松权限继续写入数据。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC03）</summary>\n\n- 场景名称：查不到身份时，不继续审批或派单\n- 场景编号：S007.SC03\n\n**对应的业务要求**\n\n- IAM-05.AC3：查询有最长等待时间，失败时不继续敏感操作\n\n**精确条件**\n\n- 测试代理将身份响应延迟到契约超时之后\n\n**精确动作**\n\n- 发起审批或派单写请求\n\n**结果与约束**\n\n- 在配置超时内返回可诊断失败；不以缓存的宽权限或前端身份继续写入\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S007\n- 业务分组：账号与权限\n- 范围：核心业务\n- 对应要求：IAM-05\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S004 管理员配置角色和可以使用的功能](S004.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "source_path": "spec/specs/S007.md",
+          "source_sha256": "cada6d7d6d427e3a28b880c6493a1295bf17d8380975f13bbec9cf812ba11b91",
           "objects": [
             {
               "kind": "api",
-              "key": "/api/admin/roles",
+              "key": "/internal/auth/introspect",
               "status": "existing",
-              "evidence": "AccountAdminController currently lists roles but has no creation, permission replacement or disabling endpoints"
-            },
-            {
-              "kind": "api",
-              "key": "/api/admin/permissions",
-              "status": "missing",
-              "evidence": "Read all identity/api controller mappings: no permission catalogue endpoint exists"
-            },
-            {
-              "kind": "table",
-              "key": "iam.roles,iam.permissions,iam.role_permissions,iam.users",
-              "status": "existing",
-              "evidence": "db/migration/V1__identity_schema.sql; IAM owns these tables"
+              "evidence": "contracts/openapi/identity.yaml及identity/api/AuthController.java声明当前服务认证/真实Bearer端点；37项原有身份测试基线通过。workflow实际链路由本轮7组测试核验，不继承旧missing判断。"
             }
           ],
           "cells": [
             {
-              "id": "IAM-02.S03#1",
-              "criterion": 1,
-              "basis": "可新增角色并授予权限；停用角色生效",
+              "id": "IAM-05.S03#1",
+              "criterion": 3,
+              "basis": "调用有超时，失败拒绝敏感操作",
               "kind": "api",
-              "expected": "角色停用后旧登录请求拒绝且外键保留",
-              "sample": "custom role assigned to real logged-in account",
-              "observation": "PATCH role enabled; old-cookie /api/admin/users; iam.users.role_id",
-              "comparison": "204;403; same role and user reference",
+              "expected": "身份超时不审批：真实admin预热成功，合法配置写触发已接受的introspect；代理实际延迟8秒，workflow约4秒内503/IDENTITY_UNAVAILABLE；超时前后和迟到200后配置不变，恢复后只有显式重试可改一次版本。",
+              "sample": "独立真实workflow+M01/本人PG；有效CSRF在计时外获取，代理PASS先成功；DELAY只拦一次实际内省。",
+              "observation": "同JVM nanoTime耗时、代理accepted/finished探针及真实上游200、workflow错误trace、公开GET配置连续快照。",
+              "comparison": "固定3–6.5秒业务容差，客户等待10秒；状态503/IDENTITY_UNAVAILABLE；迟到响应后配置不变；显式重试version仅+1。",
               "test_ids": [
-                "com.campus.identity.api.RoleManagementHttpTest#disabledRoleRejectsExistingSessionAndPreservesReferences"
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#delayedIdentityCannotChangeApprovalConfiguration"
               ]
             },
             {
-              "id": "IAM-02.S03#2",
-              "criterion": 2,
-              "basis": "前后端拒绝越权，不能只按三种固定角色名授权业务",
+              "id": "IAM-05.S03#2",
+              "criterion": 3,
+              "basis": "调用有超时，失败拒绝敏感操作",
               "kind": "api",
-              "expected": "撤销权限后旧登录下一请求拒绝",
-              "sample": "custom role with users:read, real login, admin removes permission",
-              "observation": "PUT /api/admin/roles/{id}/permissions; old cookie GET users",
-              "comparison": "204; next request403; /me empty permissions",
+              "expected": "身份超时不派单：已成功读取的真实admin发合法派单时，内省真实延迟超过4秒；返回有界503，迟到200后工单版本/technicianId/状态/业务历史仍原值。",
+              "sample": "真实HTTP报修、真实可派维修员；预热成功、合法CSRF；代理只延迟本次真实内省，不stop服务。",
+              "observation": "同JVM耗时、代理真实accepted/finished与上游状态；公开GET工单detail/history前后。",
+              "comparison": "固定3–6.5秒+503/IDENTITY_UNAVAILABLE；8秒真实延迟结束后重复观察不变，不沿用先前宽权限。",
               "test_ids": [
-                "com.campus.identity.api.RoleManagementHttpTest#permissionRemovalAffectsTheNextRequest"
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#delayedIdentityCannotAssignRepair"
               ]
             }
           ]
@@ -296,5 +306,14 @@
       ]
     }
   ],
-  "issues": []
+  "issues": [],
+  "historical_scope": {
+    "note": "本新冻结workflow只选择IAM-05；旧IAM03/04/07分析与收据保留于批准Git基线及旧a工作树，未改其DRAFT/验收状态。",
+    "previous_requirement_ids": [
+      "IAM-03",
+      "IAM-04",
+      "IAM-05",
+      "IAM-07"
+    ]
+  }
 }

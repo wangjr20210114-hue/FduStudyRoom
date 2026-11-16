@@ -1,0 +1,30 @@
+export default {
+  "refresh": "刷新",
+  "loading": "加载中",
+  "empty": "暂无记录",
+  "previous": "上一页",
+  "next": "下一页",
+  "page": "第",
+  "total": "共",
+  "search": "查询",
+  "title": "操作记录",
+  "trace": "追踪编号",
+  "source": "来源",
+  "object": "对象编号",
+  "actor": "操作人",
+  "anonymous": "未认证",
+  "time": "时间",
+  "all": "全部",
+  "success": "成功",
+  "failure": "失败",
+  "summary": "业务摘要",
+  "before": "变更前",
+  "after": "变更后",
+  "sources": {
+    "M1": "个人预约",
+    "M2": "整教室审批",
+    "M3": "报修维修",
+    "D": "账号与资源",
+    "EXTERNAL": "外部服务"
+  }
+}

@@ -16,6 +16,7 @@
 <script>
 (()=>{
 'use strict';
+const policyStatuses=__POLICY_STATUS_LABELS__;
 const D=JSON.parse(document.getElementById('spec-data').textContent),nodes=D.specifications,by=new Map(nodes.map(n=>[n.id,n])),modules=new Map(D.modules.map(m=>[m.id,m]));
 const criteria=new Map(D.requirements.flatMap(q=>q.criteria.map(c=>[c.ref,c.text]))),policies=new Map(D.policies.map(p=>[p.id,p]));
 const graph=document.getElementById('graph'),detail=document.getElementById('detail'),moduleSelect=document.getElementById('module'),scope=document.getElementById('scope'),search=document.getElementById('search'),jump=document.getElementById('jump');
@@ -50,7 +51,7 @@ function filter(){
 }
 function lines(items,ordered=false){const tag=ordered?'ol':'ul';return `<${tag}>${items.map(x=>`<li>${esc(x)}</li>`).join('')}</${tag}>`;}
 function links(ids){return ids.length?'<ul>'+ids.map(id=>`<li><button type="button" data-select="${id}">${id}</button> ${esc(by.get(id).title)}</li>`).join('')+'</ul>':'<p>无</p>';}
-function policyText(ids){return ids.map(id=>{const p=policies.get(id),status=({proposal_requires_review:'待评审',test_fixture_not_production_default:'场景示例值',existing_baseline_design:'沿用现有设计',external_delivery_limit:'邮件服务能力限制'})[p.status];return `<p><strong>${esc(id)} · ${status}</strong></p><p>${esc(p.rule)}</p><details class="technical"><summary>精确规则补充</summary><p>${esc(p.technical_rule)}</p></details>`;}).join('');}
+function policyText(ids){return ids.map(id=>{const p=policies.get(id),status=policyStatuses[p.status];return `<p><strong>${esc(id)} · ${status}</strong></p><p>${esc(p.rule)}</p><details class="technical"><summary>精确规则补充</summary><p>${esc(p.technical_rule)}</p></details>`;}).join('');}
 function fixtures(){return Object.entries(D.fixtures).map(([key,value])=>`<p><strong>${esc(({clock:'示例时间',accounts:'示例账号',resources:'教室和座位',interval:'默认时段',cleanliness:'示例数据'})[key]||key)}</strong>：${esc(value)}</p>`).join('');}
 function sceneNumber(n){const digits='一二三四五六七八九';if(n<=9)return digits[n-1];if(n===10)return '十';if(n<20)return '十'+digits[n-11];if(n<=99)return digits[Math.floor(n/10)-1]+'十'+(n%10?digits[n%10-1]:'');return String(n);}
 function scene(s,i){const raw=s.technical_reference;return `<details class="scene" id="${s.id.toLowerCase().replace('.','')}" ${i===0?'open':''}><summary>场景${sceneNumber(i+1)}：${esc(s.title)}</summary><h4>场景概述</h4><p class="scene-overview">${esc(s.overview)}</p><h4 class="goal">操作步骤与预期结果</h4><ol class="scenario-steps">${s.steps.map(text=>`<li>${esc(text)}</li>`).join('')}</ol><details class="technical"><summary>场景编号与精确规则补充（${s.id}）</summary><p><strong>对应的业务要求</strong></p>${lines(s.acceptance_refs.map(ref=>ref+'：'+criteria.get(ref)))}<p><strong>条件</strong></p>${lines(raw.preconditions)}<p><strong>动作</strong></p>${lines(raw.actions,true)}<p><strong>结果和约束</strong></p>${lines(raw.expected,true)}</details></details>`;}
@@ -62,7 +63,7 @@ function select(id){
  detail.scrollTop=0;filter();
 }
 function guide(){
- selected='';jump.value='';filter();detail.innerHTML=`<h2>业务规则和场景说明</h2><p>场景说明产品要怎样工作，目前仍是草案。待评审规则没有自动生效。</p><p>${esc(D.reading_style.page_names)}</p><h3>场景里的示例数据</h3>${fixtures()}<h3>相关业务规则</h3>${D.policies.map(p=>`<details class="info-block"><summary>${esc(p.id)} · ${p.status==='proposal_requires_review'?'待评审':'业务规则'}</summary>${policyText([p.id])}</details>`).join('')}`;detail.scrollTop=0;
+ selected='';jump.value='';filter();detail.innerHTML=`<h2>业务规则和场景说明</h2><p>场景说明产品要怎样工作；已确认规则、待确认规则和外部条件分别查看各自状态。</p><p>${esc(D.reading_style.page_names)}</p><h3>场景里的示例数据</h3>${fixtures()}<h3>相关业务规则</h3>${D.policies.map(p=>`<details class="info-block"><summary>${esc(p.id)} · ${esc(policyStatuses[p.status])}</summary>${policyText([p.id])}</details>`).join('')}`;detail.scrollTop=0;
 }
 function coverage(){
  selected='';jump.value='';filter();const covered=new Map();nodes.forEach(n=>n.scenarios.forEach(s=>s.acceptance_refs.forEach(ref=>{if(!covered.has(ref))covered.set(ref,[]);covered.get(ref).push(s.id);}))); 

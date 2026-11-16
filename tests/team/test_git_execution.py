@@ -1,5 +1,10 @@
 """Behavioral regressions for bounded, process-scoped host Git execution."""
 import os
+import contextlib
+import io
+import json
+import shutil
+from types import SimpleNamespace
 from pathlib import Path
 import subprocess
 import sys
@@ -10,6 +15,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools/team"))
 from policy import PolicyError, git
+import recording
 
 
 class GitExecutionTests(unittest.TestCase):
@@ -73,6 +79,49 @@ class GitExecutionTests(unittest.TestCase):
         overlay = Path((checkout / "checkout-overlay.txt").read_text())
         self.assertFalse(overlay.exists(), "Process-only config overlays must disappear after Git returns")
         self.assertEqual(self.global_text, self.global_config.read_text(encoding="utf-8"))
+
+    @unittest.skipUnless(os.name == "nt", "Native Windows Git mutation patch long path regression")
+    def test_mutation_applies_staged_new_migration_at_deep_windows_path(self):
+        # Keep fixture creation short; reproduce the deep path only at the mutation destination.
+        # Match the member host: Windows Git defaults to short paths unless the invocation opts in.
+        self.global_text = self.global_text.replace(chr(9) + 'longpaths = false' + chr(10), '')
+        self.global_config.write_text(self.global_text, encoding='utf-8')
+        location = self.home
+        location.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='mutation-copy-', dir=location) as directory:
+            policy_root = Path(directory) / ('policy-' + 'n' * 50)
+            policy_root.mkdir()
+            (policy_root / 'spec').mkdir()
+            shutil.copyfile(ROOT / 'spec/modules.json', policy_root / 'spec/modules.json')
+            repository = Path(directory) / 'repository'
+            repository.mkdir()
+            git(repository, 'init')
+            git(repository, 'config', 'user.name', 'Fixture')
+            git(repository, 'config', 'user.email', 'fixture@example.invalid')
+            (repository / '.gitignore').write_text('.campus/\n', encoding='utf-8')
+            git(repository, 'add', '.')
+            git(repository, 'commit', '-m', 'fixture mutation baseline')
+            base = git(repository, 'rev-parse', 'HEAD').decode().strip()
+            tracked = Path('backend/resource-service/src/main/resources/db/modules/identity/migration') / 'V2026111601__new_mutation_migration.sql'
+            (repository / tracked).parent.mkdir(parents=True)
+            (repository / tracked).write_bytes(b'CREATE TABLE iam.fixture_long_path(id integer);\n')
+            git(repository, 'add', '--', tracked.as_posix())
+            original = git(repository, 'diff', '--binary', base)
+            context = {'policy_root': str(policy_root), 'member': {'id': 'a', 'layer': 'backend', 'modules': ['M01']}, 'module': 'M01', 'base': base}
+            recording.save(repository / '.campus/task.local', context)
+            output = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(output):
+                    recording.mutation(policy_root, SimpleNamespace(worktree=repository))
+            except PolicyError as error:
+                diagnostics = chr(10).join(p.read_text(encoding='utf-8') for p in policy_root.glob('.campus/mutations/*/workspace/.campus/git-diagnostics/*.local'))
+                self.fail('Mutation copy must apply a staged new migration on a deep Windows path: ' + str(error) + chr(10) + diagnostics)
+            target = Path(json.loads(output.getvalue())['worktree'])
+            self.assertGreater(len(str(target / tracked)), 260)
+            self.assertEqual((repository / tracked).read_bytes(), (target / tracked).read_bytes())
+            self.assertEqual(base, git(target, 'rev-parse', 'HEAD').decode().strip())
+            self.assertEqual(original, git(repository, 'diff', '--binary', base), 'Original TDD inputs must remain unchanged')
+            self.assertEqual(self.global_text, self.global_config.read_text(encoding='utf-8'))
 
     def test_failure_hides_authentication_url_and_retains_private_diagnostic(self):
         secret = "fixture-never-echo-token"

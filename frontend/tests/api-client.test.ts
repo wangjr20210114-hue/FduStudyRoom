@@ -59,7 +59,7 @@ describe('API request behavior', () => {
     ['text/html', '<html>Sign in</html>'],
     ['application/json', '{broken'],
     ['application/json', ''],
-  ])('rejects an invalid successful response (%s)', async (contentType, body) => {
+  ])('rejects an invalid successful response [%#] (%s)', async (contentType, body) => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(body, { headers: { 'Content-Type': contentType } }))
     await expect(createApiClient({ baseUrl: '/api', fetch: fetcher }).request('/rooms')).rejects.toMatchObject({ kind: 'invalid_response', status: 200 })
   })

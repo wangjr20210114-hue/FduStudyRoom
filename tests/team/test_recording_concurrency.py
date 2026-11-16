@@ -47,7 +47,7 @@ def worker(config_path):
         return {"sha256": "b" * 64, "product_sha256": "c" * 64}
 
     try:
-        with patch("recording.docker", return_value=["fixture-docker"]), patch("recording.source_snapshot", side_effect=snapshot), redirect_stdout(io.StringIO()):
+        with patch("recording.fixture_ready", return_value=None), patch("recording.docker", return_value=["fixture-docker"]), patch("recording.source_snapshot", side_effect=snapshot), redirect_stdout(io.StringIO()):
             recording.record(ROOT, args, execute)
     except PolicyError as error:
         print(str(error))

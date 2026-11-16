@@ -1,0 +1,1088 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "M03 seat reservations / 个人预约",
+    "version": "2.0.0",
+    "description": "Asia/Shanghai display; stored timestamptz UTC; [start,end), check-in [start,deadline). Snapshot trusted settings on creation. Source-scoped idempotent durable allocation/release with higher-version tombstones. Account, resource, mail and audit HTTP occurs outside M03 JDBC transactions. Ordinary records owner-only; admin detail independent of aggregate statistics. Production SMTP and complete c+f service integration are separately verified. Lifecycle end guard: administrator cancellation and check-in also require now<endsAt. Reminder creation/retry stops at endsAt; the snapshotted check-in deadline, no-show penalty time and P08 statistics are never shortened to endsAt."
+  },
+  "paths": {
+    "/api/reservations/availability": {
+      "get": {
+        "summary": "Search current available seats; no stale cache fallback",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry"
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "parameters": [
+          {
+            "name": "startsAt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endsAt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "campus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "building",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasSocket",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/reservations": {
+      "post": {
+        "summary": "Whole-hour reservation; only actual M02 acknowledgment becomes RESERVED",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry"
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "seatId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "operationId",
+                  "seatId",
+                  "startsAt",
+                  "endsAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Owner-only stable signed-cursor history",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareHistory"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "seatId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ]
+      }
+    },
+    "/api/reservations/{id}": {
+      "get": {
+        "summary": "Owner-only reservation and safe delivery receipts",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/reservations/{id}/cancel": {
+      "post": {
+        "summary": "Owner before-start cancellation; pending release returns 202",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "operationId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reservations/{id}/admin-cancel": {
+      "post": {
+        "summary": "reservation:admin-cancel plus mandatory reason",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "operationId",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reservations/{id}/check-in": {
+      "post": {
+        "summary": "Owner current-room daily code; [start,deadline) server-time window",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry"
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$"
+                  }
+                },
+                "required": [
+                  "operationId",
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reservations/{id}/rebook": {
+      "get": {
+        "summary": "Read-only current-policy prefill; new POST with a new operationId is required",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry"
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/reservations": {
+      "get": {
+        "summary": "Independent reservation:admin-read; statistics:read does not grant access",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareHistory"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "seatId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/reservations/maintenance-events": {
+      "post": {
+        "summary": "Verify actual M02 source first, retain high water and restore tombstones, no penalty",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry"
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sourceVersion": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "roomId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "effectiveAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Original exact resource receipt string, preserved in persistent JSON."
+                  }
+                },
+                "required": [
+                  "operationId",
+                  "sourceId",
+                  "sourceVersion",
+                  "roomId",
+                  "active",
+                  "effectiveAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/reservations/statistics": {
+      "get": {
+        "summary": "Read-only persisted M1 P08 outcomes in common [from,to),asOf range",
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Statistics"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New confirmed reservation"
+          },
+          "202": {
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+          },
+          "400": {
+            "description": "Invalid DTO/time/code/cursor"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission/ownership/eligibility denied"
+          },
+          "404": {
+            "description": "Reservation/resource missing"
+          },
+          "409": {
+            "description": "State/idempotency/version/resource conflict"
+          },
+          "503": {
+            "description": "Necessary dependency unavailable; no fabricated empty or success result"
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "asOf",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ServiceKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Service-Key"
+      },
+      "SessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "FDU_SESSION",
+        "description": "Production __Host-FDU_SESSION; mutations also require the existing CSRF header."
+      }
+    },
+    "schemas": {
+      "Statistics": {
+        "type": "object",
+        "properties": {
+          "checkedInCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "noShowCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "excludedBeforeStartCancelledCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "excludedSystemTerminatedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notDueCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pendingEvaluationCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Due, previously confirmed, still RESERVED, not cancelled before start or system-terminated, and without persisted check-in/no-show outcome. GET does not execute the scheduler. Excluded from notDueCount; consumers must show incomplete outcomes."
+          },
+          "excludedUnconfirmedCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Due records never confirmed by M1; never fabricate a no-show penalty."
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "roomId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "algorithm": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkedInCount",
+          "noShowCount",
+          "excludedBeforeStartCancelledCount",
+          "excludedSystemTerminatedCount",
+          "notDueCount",
+          "pendingEvaluationCount",
+          "excludedUnconfirmedCount",
+          "from",
+          "to",
+          "asOf",
+          "roomId",
+          "algorithm",
+          "source"
+        ]
+      },
+      "ReservationState": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "RESERVED",
+          "CHECKED_IN",
+          "COMPLETED",
+          "CANCEL_PENDING",
+          "CANCELLED",
+          "NO_SHOW",
+          "REJECTED"
+        ]
+      },
+      "MaintenanceReceipt": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "duplicate": {
+            "type": "boolean"
+          },
+          "ignored": {
+            "type": "boolean"
+          },
+          "appliedSourceVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "operationId",
+          "duplicate",
+          "ignored",
+          "appliedSourceVersion"
+        ]
+      },
+      "ReleaseProgress": {
+        "type": "object",
+        "additionalProperties": false,
+        "readOnly": true,
+        "description": "Optional snapshot of only the reservation current resourceVersion RELEASE task. Omitted if that exact task does not exist; an older DONE task never implies current success. GET only observes and never dispatches, claims or changes retry times.",
+        "required": [
+          "status",
+          "attempts",
+          "nextRetryAt",
+          "errorCode"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CLAIMED",
+              "DONE",
+              "CANCELLED"
+            ],
+            "description": "Outbox task status, distinct from reservation status. DONE and resourceState=RELEASED are both required before displaying resource release success."
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Actual number of claims, including in-flight and successful claims; this is not a failure counter."
+          },
+          "nextRetryAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Only PENDING exposes the persisted UTC planned earliest next attempt; not a promised processing time. Other states expose null. Existing cancellation retries still honor this time; no force-retry API is added."
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(DEPENDENCY_HTTP_[1-5][0-9]{2}|INVALID_RESOURCE_RELEASE|RESERVATION_DEPENDENCY_UNAVAILABLE|RESERVATION_DELIVERY_UNAVAILABLE|RELEASE_DEPENDENCY_UNAVAILABLE)$",
+            "description": "Last completed failure for PENDING/CLAIMED only; terminal tasks expose null. Unknown stored errors are normalized to RELEASE_DEPENDENCY_UNAVAILABLE. No raw exception, URL, key, payload, response or claim data is public."
+          }
+        }
+      },
+      "ReleaseAwareReservation": {
+        "type": "object",
+        "properties": {
+          "releaseProgress": {
+            "$ref": "#/components/schemas/ReleaseProgress"
+          }
+        },
+        "description": "All existing reservation properties and permissions remain unchanged; releaseProgress is additive and optional."
+      },
+      "ReleaseAwareHistory": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseAwareReservation"
+            }
+          }
+        },
+        "description": "Existing signed pagination and owner/admin scope unchanged. At most 100 already-visible rows share one batched own-domain outbox read."
+      }
+    }
+  }
+}

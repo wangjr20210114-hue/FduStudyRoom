@@ -1,6 +1,6 @@
 # 业务需求清单
 
-共52项业务功能、159个场景。这里列的是系统要提供什么能力，按业务分组；分工、环境、测试流程、报告和交付步骤见[workflow文档](../docs/18-workflow-obligations.md)。
+共53项业务功能、162个场景。这里列的是系统要提供什么能力，按业务分组；分工、环境、测试流程、报告和交付步骤见[workflow文档](../docs/18-workflow-obligations.md)。
 
 - [业务关系图](../docs/spec-topology.html)
 - [业务拆分说明](../docs/17-spec-topology-and-assignment.md)
@@ -78,6 +78,7 @@
 - [S070 用AI助手提交整室申请、查进度和撤销](specs/S070.md)（附加）
 - [S071 用AI助手报修、查询工单和申请取消](specs/S071.md)（附加）
 - [S078 实际发送邮件，失败可重试，结果不明就提示待核实](specs/S078.md)
+- [S082 发送邮箱验证邮件并显示真实投递结果](specs/S082.md)
 
 ## 场景格式
 

@@ -9,6 +9,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / 'spec/spec-network.json'
+POLICY_STATUS_LABELS = {
+    'proposal_requires_review':'待评审建议',
+    'existing_baseline_design':'沿用现有设计',
+    'test_fixture_not_production_default':'场景示例值，不是正式默认值',
+    'external_delivery_limit':'外部邮件能力限制',
+    'user_confirmed_2026_11_15':'用户已确认（2026-11-15）',
+    'user_confirmed_2026_11_16':'用户已确认（2026-11-16）',
+    'user_confirmed_defaults_and_external_fixture':'默认值已确认；外部数据时效仍为示例',
+}
 
 class PlanError(ValueError):
     pass
@@ -17,6 +26,14 @@ class PlanError(ValueError):
 def require(condition, message):
     if not condition:
         raise PlanError(message)
+
+
+def digest_matches_newlines(raw, expected):
+    candidates = {raw}
+    lf = raw.replace(b'\r\n', b'\n')
+    if b'\r' not in lf:
+        candidates.update((lf, lf.replace(b'\n', b'\r\n')))
+    return any(hashlib.sha256(value).hexdigest() == expected for value in candidates)
 
 
 def boundary(data):
@@ -30,14 +47,35 @@ def snapshot(data):
     path = (ROOT / row['source_snapshot']).resolve()
     require(path.is_relative_to(ROOT.resolve()), '历史来源路径越界')
     raw = path.read_bytes()
-    require(hashlib.sha256(raw).hexdigest() == row['source_snapshot_sha256'], '历史来源已变更，需明确评审')
+    require(digest_matches_newlines(raw, row['source_snapshot_sha256']), '历史来源已变更，需明确评审')
     return json.loads(raw)
+
+
+def current_boundary(data, requirements):
+    historical = boundary(data)
+    source = snapshot(data)
+    require(historical['catalog_sha256'] == source['catalog_sha256'], '历史分类与历史来源目录不同')
+    extension = data.get('current_catalog_extension', {})
+    refs = {q['id']+'.AC'+str(i) for q in requirements+historical['user_extensions'] for i in range(1,len(q['acceptance'])+1)}
+    original = set(historical['acceptance_routes'])
+    additions = set(extension.get('acceptance_refs', []))
+    require(original <= refs and refs-original == additions, '本轮新增要求未明确登记或历史要求丢失')
+    if extension:
+        require(extension['historical_catalog_sha256'] == historical['catalog_sha256'], '新增要求的历史目录关联不匹配')
+        require(len(extension['acceptance_refs']) == len(additions), '新增要求重复登记')
+        require(additions <= set(data['business_acceptance_refs']), '新增要求未显式登记为业务')
+        require({ref.split('.AC')[0] for ref in additions} == set(extension['requirement_ids']), '新增目录要求登记不匹配')
+    else:
+        require(data['catalog_sha256'] == historical['catalog_sha256'], '业务与workflow来源不同')
+    routing = copy.deepcopy(historical)
+    routing['acceptance_routes'].update({ref:{'placement':'business','reason':extension['basis']} for ref in additions})
+    return routing
 
 
 def load():
     data = json.loads(INDEX.read_text(encoding='utf-8'))
     raw = (ROOT / data['catalog_path']).read_bytes()
-    require(hashlib.sha256(raw).hexdigest() == data['catalog_sha256'], '需求来源已变更，先评审并更新追踪')
+    require(digest_matches_newlines(raw, data['catalog_sha256']), '需求来源已变更，先评审并更新追踪')
     catalog = json.loads(raw)
     requirements = copy.deepcopy(catalog['requirements'])
     lookup = {q['id']: q for q in requirements}
@@ -51,9 +89,8 @@ def load():
 
 def validate(data, requirements):
     require(data.get('scope') == 'business_only', '当前索引只接受业务spec')
-    routing = boundary(data)
+    routing = current_boundary(data, requirements)
     source = snapshot(data)
-    require(routing['catalog_sha256'] == data['catalog_sha256'], '业务与workflow来源不同')
     all_requirements = requirements + routing['user_extensions']
     reqs = {q['id']:q for q in all_requirements}
     source_refs = {q['id']+'.AC'+str(i) for q in all_requirements for i in range(1,len(q['acceptance'])+1)}
@@ -70,11 +107,27 @@ def validate(data, requirements):
     modules = {m['id'] for m in data['modules']}
     require(len(modules) == len(data['modules']), '业务分组重复')
     old_ids = {q['id'] for q in source['specifications']}
+    extension = data.get('current_catalog_extension', {})
+    additions = extension.get('additional_specifications', {})
+    require(set(by)-old_ids == set(additions), '新增任务未明确登记')
+    for identifier, registration in additions.items():
+        item = by[identifier]
+        require(registration['source_specification'] in old_ids and item['module'] == registration['module'] and item['requirements'] == registration['requirements'], '新增任务来源或范围不匹配')
+        require({ref for scene in item['scenarios'] for ref in scene['acceptance_refs']} <= set(extension['acceptance_refs']), '新增任务引用未登记要求')
+    historical_specs = {q['id']:q for q in source['specifications']}
+    for identifier, binding in extension.get('source_rebindings', {}).items():
+        before, current = historical_specs[identifier], by[identifier]
+        require(before['requirements'] == binding['from_requirements'] and current['requirements'] == binding['to_requirements'], '来源重绑要求不匹配')
+        old_scenes = {scene['id']:scene for scene in before['scenarios']}
+        scenes = {scene['id']:scene for scene in current['scenarios']}
+        require(set(binding['scenarios']) == set(old_scenes) == set(scenes), '来源重绑场景有遗漏')
+        for sid, refs in binding['scenarios'].items():
+            require(old_scenes[sid]['acceptance_refs'] == refs['from_acceptance_refs'] and scenes[sid]['source_acceptance_refs'] == refs['from_acceptance_refs'] and scenes[sid]['acceptance_refs'] == refs['to_acceptance_refs'], '来源重绑依据不匹配')
     policies = {p['id'] for p in data['policies']}
     covered = defaultdict(list)
     scene_ids = set()
     for q in items:
-        require(re.fullmatch(r'S[0-9]{3}',q['id']) is not None and q['id'] in old_ids, '任务编号无效或未保留原编号')
+        require(re.fullmatch(r'S[0-9]{3}',q['id']) is not None and q['id'] in old_ids | set(additions), '任务编号无效或未保留原编号')
         require(q['module'] in modules and q['kind'] in {'product','extra'}, q['id']+'包含非业务任务')
         require(not {'owner','effort','development_dependencies','contract_dependencies','baseline_evidence'} & set(q), q['id']+'仍混有分工或workflow字段')
         require(q['path'] == 'spec/specs/'+q['id']+'.md', '任务路径不匹配')
@@ -97,12 +150,13 @@ def validate(data, requirements):
                 require(ref in expected,s['id']+'引用workflow要求或无效要求')
                 require(ref.split('.AC')[0] in q['requirements']+q['user_extensions'],s['id']+'来源未登记')
                 covered[ref].append(s['id'])
-            require(s.get('technical_reference',{}).get('expected'),s['id']+'精确约束缺失')
+            require(all(isinstance(s.get('technical_reference',{}).get(key),list) and s['technical_reference'][key] for key in ('preconditions','actions','expected')),s['id']+'精确约束缺失')
     require(set(covered)==expected,'业务要求覆盖不完整: '+','.join(sorted(expected-set(covered))))
     require(not set(by) & set(routing['excluded_specifications']),'已移出任务仍在业务图中')
     require({p.stem for p in (ROOT/'spec/specs').glob('S*.md')} <= set(by), 'spec目录存在未登记或旧的任务文件')
     require(all(not (ROOT/'spec/specs'/f'{id}.md').exists() for id in routing['excluded_specifications']),'spec目录中仍有旧非业务任务')
     for p in data['policies']:
+        require(p['status'] in POLICY_STATUS_LABELS, p['id']+'规则状态未登记')
         require(set(p.get('affected',[])) <= set(by),p['id']+'仍指向移出任务')
     require(all(x in data['external_labels'] for q in items for x in q['external_dependencies']),'外部业务条件缺少说明')
     remaining={q['id']:set(q['depends_on']) for q in items}
@@ -114,7 +168,7 @@ def validate(data, requirements):
         remaining={id:deps-set(ready) for id,deps in remaining.items() if id not in ready}
     business_ids={ref.split('.AC')[0] for ref in expected}
     original_ids={q['id'] for q in requirements}
-    summary={'specs':len(items),'scenarios':len(scene_ids),'requirements':len(business_ids&original_ids),'user_extensions':len(business_ids-original_ids),'acceptance_points':len(expected),'covered_points':len(covered),'edges':sum(len(q['depends_on']) for q in items),'levels':len(levels),'modules':dict(Counter(q['module'] for q in items)),'original_acceptance_points':len(source_refs),'workflow_only_points':sum(row['placement']=='workflow' for row in routes.values()),'shared_points':sum(row['placement']=='shared' for row in routes.values()),'archived_specs':len(routing['excluded_specifications'])}
+    summary={'specs':len(items),'scenarios':len(scene_ids),'requirements':len(business_ids&original_ids),'user_extensions':len(business_ids-original_ids),'acceptance_points':len(expected),'covered_points':len(covered),'edges':sum(len(q['depends_on']) for q in items),'levels':len(levels),'modules':dict(Counter(q['module'] for q in items)),'original_acceptance_points':len(boundary(data)['acceptance_routes']),'registered_acceptance_points':len(source_refs),'new_acceptance_points':len(extension.get('acceptance_refs',[])),'workflow_only_points':sum(row['placement']=='workflow' for row in routes.values()),'shared_points':sum(row['placement']=='shared' for row in routes.values()),'archived_specs':len(routing['excluded_specifications'])}
     return summary,covered,levels
 
 
@@ -150,7 +204,7 @@ def render_spec(q,data,by):
     return '\n'.join(lines)
 
 def views(data,requirements,summary,coverage,levels):
-    routing=boundary(data);previous=snapshot(data)
+    routing=current_boundary(data, requirements);previous=snapshot(data)
     all_reqs={q['id']:q for q in requirements+routing['user_extensions']}
     by={q['id']:q for q in data['specifications']}
     module_by={m['id']:m for m in data['modules']}
@@ -161,13 +215,13 @@ def views(data,requirements,summary,coverage,levels):
         for sid in coverage[ref]:
             id=sid.split('.')[0];links.append('['+sid+'](specs/'+id+'.md#'+sid.lower().replace('.','')+')')
         lines.append('| '+ref+' | '+data['readable_acceptance'][ref].replace('|','/')+' | '+'、'.join(links)+' |')
-    lines+=['','原始目录的'+str(summary['original_acceptance_points'])+'条要求都保留去向记录，见[分类索引](../'+data['workflow_boundary_path']+')；没有把工程要求当作已经完成。','']
+    lines+=['','原始目录的'+str(summary['original_acceptance_points'])+'条要求都保留去向记录，见[分类索引](../'+data['workflow_boundary_path']+')；本轮新增'+str(summary['new_acceptance_points'])+'条要求也在当前业务索引中明确登记，当前共'+str(summary['registered_acceptance_points'])+'条。没有把工程要求当作已经完成。','']
     outputs['spec/coverage.md']='\n'.join(lines)
-    lines=['# 业务规则和场景共用说明','','以下均用于说明产品行为；标为待评审的规则仍需确认。示例时间和账号只帮助理解场景，不表示真实账号或已批准的正式默认值。','','## 示例账号、教室和时间','']
+    lines=['# 业务规则和场景共用说明','','各条规则分别标明已确认、待评审或外部条件，请以状态和正文为准。示例账号和教室仅用于说明场景；审批、维修等已确认默认值见对应规则。','','## 示例账号、教室和时间','']
     names={'clock':'时间','accounts':'账号','resources':'教室和座位','interval':'示例时段','cleanliness':'示例数据'}
     for key,value in data['fixtures'].items():lines.append('- **'+names[key]+'**：'+value)
     lines+=['','## 业务规则','']
-    statuses={'proposal_requires_review':'待评审建议','existing_baseline_design':'沿用现有设计','test_fixture_not_production_default':'场景示例值，不是正式默认值','external_delivery_limit':'外部邮件能力限制'}
+    statuses=POLICY_STATUS_LABELS
     for p in data['policies']:
         lines+=['### '+p['id'],'','- 状态：'+statuses[p['status']],'- 规则：'+p['rule'],'- 涉及功能：'+('、'.join(p.get('affected',[])) or '相关业务功能'),'','<details>','<summary>精确规则补充</summary>','',p['technical_rule'],'','</details>','']
     outputs['spec/policies.md']='\n'.join(lines)
@@ -196,7 +250,7 @@ def views(data,requirements,summary,coverage,levels):
         if criteria:visible_reqs.append({'id':id,'title':data['readable_titles'][id],'criteria':criteria})
     payload={'specifications':list(by.values()),'modules':data['modules'],'summary':summary,'levels':levels,'requirements':visible_reqs,'fixtures':data['fixtures'],'policies':data['policies'],'external_labels':data['external_labels'],'reading_style':data['reading_style']}
     template=(ROOT/'tools/spec_plan/topology.template.html').read_text(encoding='utf-8')
-    outputs['docs/spec-topology.html']=template.replace('__SPEC_DATA__',json.dumps(payload,ensure_ascii=False).replace('<','\\u003c'))
+    outputs['docs/spec-topology.html']=template.replace('__SPEC_DATA__',json.dumps(payload,ensure_ascii=False).replace('<','\\u003c')).replace('__POLICY_STATUS_LABELS__',json.dumps(POLICY_STATUS_LABELS,ensure_ascii=False))
     return outputs
 
 
@@ -206,20 +260,20 @@ def render_main(data,summary):
     for m in data['modules']:
         owned=[q for q in data['specifications'] if q['module']==m['id']]
         lines.append('| '+m['title']+' | '+descriptions[m['id']]+' | '+str(len(owned))+' | '+str(sum(len(q['scenarios']) for q in owned))+' |')
-    lines+=['','## 一份业务spec写什么','','每个场景固定使用“场景概述”和“操作步骤与预期结果”两个部分。概述用一段话说明用户处境和目标，编号步骤把操作与对应结果写在一起；开始条件融入概述或第一步。场景编号、精确约束和有关业务能力放在可展开的补充信息中。不写开发分工、报告、环境和提交代码的步骤。','','例如[S029签到](../spec/specs/S029.md)：','','1. user1已预约R101的A01，09:00开始，现在是09:00。','2. 打开“我的预约”，找到这笔预约，输入教室当天的签到码，点击“签到”。','3. 页面显示已签到，同一笔只记一次。错码、提前、截止后和替别人签到的情况另列场景。','','自动功能也属于业务。例如开始前15分钟提醒、开始后10分钟未签到再提醒、15分钟仍未签到自动取消。它们会实际改变用户看到的结果，仍需要写清。','','## 哪些恢复和权限规则仍保留','','以下直接影响系统业务，继续保留：重复提交不多下单、两人不能订到同座同一时段、故障后不能假报成功、取消只释放自己的占用、维修不能错误恢复、不能查看或修改别人的记录。','','报修里的派单、维修负责人和独立验收是产品功能；它们与开发成员的任务责任不同。中英文、清楚的状态提示和简洁页面也保留。','','## 图里的箭头怎样理解','','箭头从被其他功能使用的能力，指向使用它的功能。图按业务模块分列，不按人员分列。当前有'+str(summary['edges'])+'条业务依赖、'+str(summary['levels'])+'个先后层次，没有互相循环等待。层数不表示周数或实际开发排期。','','接口准备、构建、测试、容器和部署不会再成为业务节点。原先经过这些工程节点的关系已重新整理，只保留真正的业务关联。','','## 还有哪些业务条件需要确认','','签到窗口、可取消时机、整室审批期限、维修影响已有预约、安全取消和统计计算方式仍按[待确认规则](../spec/policies.md)记录。建议没有因为文档精简就自动变成已批准方案。','','真实学校教室数据、正式邮件服务、教室现场展示条件和真实模型服务仍要具备才能完成对应业务。缺一项只影响相关部分，不能用测试数据冒充真实接入。','','## 原始要求是否丢了','','原目录仍完整保留。'+str(summary['acceptance_points'])+'条业务相关要求留在业务规范，'+str(summary['workflow_only_points'])+'条工程或过程要求转到workflow；另有'+str(summary['shared_points'])+'条同时包含业务和工程内容，分别记录。合计仍是原来的'+str(summary['original_acceptance_points'])+'条，没有把移出业务图当作已完成。','','业务编号继续沿用，因此会有空号。S009只保留页面一致性、中英文和简洁提示；S068只保留助手的追问、权限和安全操作，模型或插件安装部署归workflow。','','本次只调整需求文档及其生成工具，没有改变正式账号权限或业务代码。','']
+    lines+=['','## 一份业务spec写什么','','每个场景固定使用“场景概述”和“操作步骤与预期结果”两个部分。概述用一段话说明用户处境和目标，编号步骤把操作与对应结果写在一起；开始条件融入概述或第一步。场景编号、精确约束和有关业务能力放在可展开的补充信息中。不写开发分工、报告、环境和提交代码的步骤。','','例如[S029签到](../spec/specs/S029.md)：','','1. user1已预约R101的A01，09:00开始，现在是09:00。','2. 打开“我的预约”，找到这笔预约，输入教室当天的签到码，点击“签到”。','3. 页面显示已签到，同一笔只记一次。错码、提前、截止后和替别人签到的情况另列场景。','','自动功能也属于业务。例如开始前15分钟提醒、开始后10分钟未签到再提醒、15分钟仍未签到自动取消。它们会实际改变用户看到的结果，仍需要写清。','','## 哪些恢复和权限规则仍保留','','以下直接影响系统业务，继续保留：重复提交不多下单、两人不能订到同座同一时段、故障后不能假报成功、取消只释放自己的占用、维修不能错误恢复、不能查看或修改别人的记录。','','报修里的派单、维修负责人和独立验收是产品功能；它们与开发成员的任务责任不同。中英文、清楚的状态提示和简洁页面也保留。','','## 图里的箭头怎样理解','','箭头从被其他功能使用的能力，指向使用它的功能。图按业务模块分列，不按人员分列。当前有'+str(summary['edges'])+'条业务依赖、'+str(summary['levels'])+'个先后层次，没有互相循环等待。层数不表示周数或实际开发排期。','','接口准备、构建、测试、容器和部署不会再成为业务节点。原先经过这些工程节点的关系已重新整理，只保留真正的业务关联。','','## 哪些规则已确认，哪些条件仍待确认','','签到、取消、审批维修默认值和统计口径等，分别按[规则状态](../spec/policies.md)区分已确认与待确认。已确认规则沿用确认内容，未确认项继续保留；文档生成不改变批准状态。','','真实学校教室数据、正式邮件服务、教室现场展示条件和真实模型服务仍要具备才能完成对应业务。缺一项只影响相关部分，不能用测试数据冒充真实接入。','','## 原始要求是否丢了','','原目录仍完整保留。'+str(summary['acceptance_points'])+'条业务相关要求留在业务规范，'+str(summary['workflow_only_points'])+'条工程或过程要求转到workflow；另有'+str(summary['shared_points'])+'条同时包含业务和工程内容，分别记录。当前合计登记'+str(summary['registered_acceptance_points'])+'条，其中'+str(summary['original_acceptance_points'])+'条历史要求全部保留，另有'+str(summary['new_acceptance_points'])+'条本轮新增要求；没有把移出业务图当作已完成。','','业务编号继续沿用，因此会有空号。S009只保留页面一致性、中英文和简洁提示；S068只保留助手的追问、权限和安全操作，模型或插件安装部署归workflow。','','本次只调整需求文档及其生成工具，没有改变正式账号权限或业务代码。','']
     return '\n'.join(lines)
 
 
 def render_workflow(data,summary,routing,previous,reqs):
     old={q['id']:q for q in previous['specifications']}
-    lines=['# workflow管理的工程和过程要求','','这些内容从业务spec中移出，在workflow中统一管理。它们不是用户预约、审批或报修时使用的业务功能。','','本次只是分类和文档整理，不表示自动化已经实现。已有技能、权限、TDD检查、人工验收、合并和发布规则继续执行；需要真实成员完成或批准的事项不能由AI代签。','','## 包含哪些工作','','- 成员登记、文件分工、模块隔离和公共变更评审。','- 接口说明的准备、公共组件复用和技术栈保持。','- 环境检查、工具安装、本机运行、数据库升级与初始化。','- 先测后写、回归、故障联调和证据保存。','- 缓冲网站收件、审核、独立检查、72小时同步与合并请求。','- 测试部署、生产批准、发布回退、课程评审和个人报告。','','## 原要求的去向','','共'+str(summary['original_acceptance_points'])+'条原要求全部保留分类。下面列'+str(summary['workflow_only_points']+summary['shared_points'])+'条workflow相关要求，其中'+str(summary['shared_points'])+'条还含有业务部分；业务部分见[业务对照表](../spec/coverage.md)。','','| 要求编号 | workflow管理的部分 | 分类 |','| --- | --- | --- |']
+    lines=['# workflow管理的工程和过程要求','','这些内容从业务spec中移出，在workflow中统一管理。它们不是用户预约、审批或报修时使用的业务功能。','','本次只是分类和文档整理，不表示自动化已经实现。已有技能、权限、TDD检查、人工验收、合并和发布规则继续执行；需要真实成员完成或批准的事项不能由AI代签。','','## 包含哪些工作','','- 成员登记、文件分工、模块隔离和公共变更评审。','- 接口说明的准备、公共组件复用和技术栈保持。','- 环境检查、工具安装、本机运行、数据库升级与初始化。','- 先测后写、回归、故障联调和证据保存。','- 缓冲网站收件、审核、独立检查、72小时同步与合并请求。','- 测试部署、生产批准、发布回退、课程评审和个人报告。','','## 原要求的去向','','历史'+str(summary['original_acceptance_points'])+'条要求全部保留分类；本轮新增'+str(summary['new_acceptance_points'])+'条业务要求，当前共'+str(summary['registered_acceptance_points'])+'条。下面列'+str(summary['workflow_only_points']+summary['shared_points'])+'条workflow相关要求，其中'+str(summary['shared_points'])+'条还含有业务部分；业务部分见[业务对照表](../spec/coverage.md)。','','| 要求编号 | workflow管理的部分 | 分类 |','| --- | --- | --- |']
     for ref,row in routing['acceptance_routes'].items():
         if row['placement']=='business':continue
         text=row.get('workflow_part') or previous['readable_acceptance'][ref]
         lines.append('| '+ref+' | '+text.replace('|','/')+' | '+('同时有业务部分' if row['placement']=='shared' else '工程或过程要求')+' |')
     lines+=['','## 从业务图移出的旧条目','','以下'+str(summary['archived_specs'])+'个旧条目仅留历史资料，不是新的业务任务；不会因为移动就变成完成状态。','','| 原编号 | 原内容 |','| --- | --- |']
     for id in routing['excluded_specifications']:lines.append('| ['+id+'](workflow/archive/'+id+'.md) | '+old[id]['title']+' |')
-    lines+=['','混合条目另外处理：','','- S009：公共实现、字典检查和技术栈检查留在workflow；业务图只保留用户能看到的页面和语言效果。','- S068.SC01：模型/插件安装、流水线和凭据配置留在workflow；S068其余场景仍在业务图。','','## 分工与运行配置','','旧分工保存在[历史分工资料](workflow/assignments/a.md)，其余成员清单在同一目录。它们是规划资料，不自动改变真实成员、文件授权或容器权限。新的业务源文件不再保存开发负责人、难度点数或工程依赖。','','当前仍按[团队工作流规则](14-team-workflow.md)执行。把业务图改为纯业务，不会绕过测试、审核、冲突处理或生产批准。','','## 可核对的来源','','- [原始需求目录](../spec/requirements.json)','- [170条要求的分类索引](workflow/requirements-boundary.json)','- [调整前的完整81项计划](workflow/previous-spec-plan.json)','- [调整前总说明](workflow/archive/17-previous-plan.md)','','原始资料用于追溯，不作为当前业务清单。','']
+    lines+=['','混合条目另外处理：','','- S009：公共实现、字典检查和技术栈检查留在workflow；业务图只保留用户能看到的页面和语言效果。','- S068.SC01：模型/插件安装、流水线和凭据配置留在workflow；S068其余场景仍在业务图。','','## 分工与运行配置','','旧分工保存在[历史分工资料](workflow/assignments/a.md)，其余成员清单在同一目录。它们是规划资料，不自动改变真实成员、文件授权或容器权限。新的业务源文件不再保存开发负责人、难度点数或工程依赖。','','当前仍按[团队工作流规则](14-team-workflow.md)执行。把业务图改为纯业务，不会绕过测试、审核、冲突处理或生产批准。','','## 可核对的来源','','- [原始需求目录](../spec/requirements.json)','- [历史170条要求的分类索引](workflow/requirements-boundary.json)','- [本轮新增要求与来源重绑登记](../spec/spec-network.json)','- [调整前的完整81项计划](workflow/previous-spec-plan.json)','- [调整前总说明](workflow/archive/17-previous-plan.md)','','原始资料用于追溯，不作为当前业务清单。','']
     return '\n'.join(lines)
 
 

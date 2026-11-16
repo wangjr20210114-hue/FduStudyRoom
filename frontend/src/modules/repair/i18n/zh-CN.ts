@@ -1,0 +1,14 @@
+export default {
+ titles:{repairs:'报修',manage:'维修管理',tasks:'维修任务',history:'维修记录'},new:'新建报修',close:'关闭',submit:'提交报修',retryCreate:'重试原报修',retryCommand:'重试原操作',retryEvaluation:'核对并重试原评价',refresh:'刷新状态',loading:'加载中',empty:'暂无工单',view:'查看',shanghai:'上海时间',
+ room:'教室',seat:'座位（可不选）',noSeat:'不指定座位',description:'故障说明',noRooms:'暂无教室记录',noRoomAccess:'没有教室查询权限，暂时不能选择教室',descriptionRequired:'请填写故障说明，最多4000字',reportInfo:'提交报修只生成工单，尚未开始维修或停用资源',submitted:'报修已提交',unknown:'结果尚未确认，请保留并重试原操作',
+ detail:'工单详情',id:'工单编号',reporter:'报修人',technician:'当前维修人',unassigned:'尚未分配',deadline:'原维修截止',assignedAt:'首次派单',sla:'首次派单时限（分钟）',version:'版本 {version}',source:'资源来源标识',desiredVersion:'待应用版本',appliedVersion:'已应用版本',resourceError:'资源同步原因',repairReport:'维修报告',acceptedBy:'验收人',acceptedAt:'验收时间',acceptanceComment:'验收意见',cancelReason:'取消理由',reviewedBy:'取消审查人',reviewedAt:'审查时间',inspectedBy:'安全验收人',inspectedAt:'安全验收时间',
+ assign:'确认派单',candidate:'选择维修人员',noCandidates:'没有有效维护人员',candidateRequired:'请选择有效维修人员',start:'开始维修',finish:'申请完工',reportRequired:'请填写维修报告',startImpact:'维修生效后，未结束的个人预约将由系统结束，不记违约；整室申请保留并提示异常。',
+ inspect:'验收意见',accept:'验收通过',reject:'验收不通过',inspectionRequired:'请填写验收意见',cancel:'取消工单',cancelRequired:'请填写取消理由',reviewComment:'取消审查意见',reviewApprove:'同意进入安全验收',reviewReject:'不同意取消',reviewRequired:'请填写取消审查意见',safetyComment:'安全验收意见',safetyApprove:'确认安全',safetyReject:'安全验收不通过',safetyRequired:'请填写安全验收意见',
+ rating:'评分',evaluation:'文字评价（可留空）',evaluate:'提交评价',ratingRequired:'请填写1至5的整数评分',evaluationRequired:'评价须为0至500字，不能只有空白',ratingValue:'评分 {rating}',evaluatedAt:'评价时间',
+ history:'处理过程',system:'系统',noHistory:'暂无过程记录',from:'由',to:'转为',eventVersion:'版本 {version}',assignmentTarget:'分配给',historyUnavailable:'过程记录尚未确认，暂时不能验收或评价',
+ restrictionConfirmed:'本工单维修限制已生效',restrictionActive:'本工单限制仍生效',sourceReleased:'本工单限制已解除',noRestriction:'本工单尚未启动维修限制',restorationPending:'等待解除本工单限制',restrictionPending:'等待维修限制生效',completed:'已完成',cancelled:'已取消',
+ deadlineOverdue:'已超时，等待系统处理',escalated:'已上报一级',legacyInfo:'历史工单，按现有授权查看记录和评价',scopeLeft:'操作已提交，工单已离开当前可办理范围',goalUnconfirmed:'操作已接收，当前尚不能确认工单状态',alreadyChanged:'原操作已接收，工单已有更新，请查看当前状态',
+ status:{SUBMITTED:'待派单',ASSIGNED:'已派单',RESTRICTION_PENDING:'等待维修限制生效',IN_PROGRESS:'维修中',PENDING_ACCEPTANCE:'待验收',RESTORATION_PENDING:'等待解除本工单限制',CANCEL_REVIEW_PENDING:'待取消审查',CANCEL_SAFETY_PENDING:'待安全验收',COMPLETED:'已完成',CANCELLED:'已取消'},
+ event:{SUBMIT:'报修',ASSIGN:'派单',REASSIGN:'转派',START:'开始维修',FINISH:'申请完工',ACCEPT:'验收通过',REJECT:'验收未通过',ESCALATE:'超时上报',CANCEL:'取消',EVALUATE:'评价',CANCEL_REQUEST:'申请取消',CANCEL_REVIEW:'取消审查',CANCEL_INSPECT:'安全验收',RESOURCE_ACK:'资源状态确认'},
+ errors:{signedOut:'登录已过期',stale:'资料已变化，请重新确认',technicianUnavailable:'维修人员当前不可用',idempotency:'原操作内容冲突，暂不能重试，请核对后处理',legacy:'这条历史工单暂不能在当前流程验收',forbidden:'无权执行此操作',detailForbidden:'无权查看此工单',notFound:'工单不存在',invalid:'请检查填写的信息',invalidResponse:'服务返回的数据不完整，请重试',unavailable:'服务暂时不可用，请重试'},
+}

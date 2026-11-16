@@ -70,6 +70,7 @@ class SandboxEnvironmentTests(unittest.TestCase):
                 worktree, config, _ = self.configuration(layer)
                 runner = config["services"]["runner"]
                 self.assertTrue(runner["read_only"])
+                self.assertTrue(runner.get("init"), "The member runner must reap orphaned browser children")
                 self.assertEqual(["ALL"], runner["cap_drop"])
                 self.assertEqual(["no-new-privileges:true"], runner["security_opt"])
                 self.assertFalse(runner.get("privileged", False))

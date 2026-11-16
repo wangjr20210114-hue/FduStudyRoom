@@ -38,8 +38,20 @@ def verify_patch(root,member,module,patch,policy):
 
 def review_command(layer):
     if layer=='frontend':return 'cd /workspace/frontend && (test -e node_modules || ln -s /opt/warm/frontend/node_modules node_modules) && npm test -- --maxWorkers=1 && npm run build'
-    if layer=='backend':return 'cp -R /opt/warm/m2 /tmp/m2 && cd /workspace/backend && MAVEN_USER_HOME=/tmp/m2 mvn -o -B -Dmaven.repo.local=/tmp/m2/repository verify'
+    if layer=='backend':return 'cp -R /opt/warm/m2 /tmp/m2 && cd /workspace/backend && MAVEN_USER_HOME=/tmp/m2 mvn -o -B -Dmaven.repo.local=/tmp/m2/repository -pl workflow-service -am -DskipTests package && MAVEN_USER_HOME=/tmp/m2 mvn -o -B -Dmaven.repo.local=/tmp/m2/repository verify -DreuseForks=false'
     raise PolicyError('INVALID_LAYER')
+
+def require_approved_baseline(config,repo,base):
+    history=config.get('approvedBaselines',[])
+    current=config.get('baseline')
+    if not isinstance(history,list) or any(not isinstance(value,str) or not re.fullmatch('[0-9a-f]{40}',value) for value in [current,*history]):
+        raise PolicyError('INVALID_APPROVED_BASELINES')
+    approved={current,*history}
+    if not isinstance(base,str) or base not in approved:raise PolicyError('BASELINE_CHANGED')
+    for value in approved:
+        result=git_run(repo,'cat-file','-t',value,check=False)
+        if result.returncode or result.stdout.strip()!=b'commit':raise PolicyError('APPROVED_BASELINE_NOT_COMMIT')
+
 
 def verify(config,item):
     root=Path(config['root']);repo=Path(config['repository']);identifier=str(uuid.UUID(item['id']))
@@ -48,7 +60,7 @@ def verify(config,item):
     if not member:raise PolicyError('MEMBER_MISMATCH')
     member=scoped(member,item['layer'])
     meta=item['metadata'];base=meta['base']
-    if base!=config['baseline'] or not re.fullmatch('[0-9a-f]{40}',base):raise PolicyError('BASELINE_CHANGED')
+    require_approved_baseline(config,repo,base)
     evidence_valid(meta['evidence'],meta['requirements']);patch=base64.b64decode(item['patch'],validate=True)
     paths=verify_patch(repo,member,item['module_id'],patch,load(root))
     home=root/'.campus/buffer/jobs'/identifier;home.mkdir(parents=True,exist_ok=True)

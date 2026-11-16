@@ -1,6 +1,5 @@
-import { featurePage } from '@/shared/navigation/feature-page'
-
-export const reservationRoutes = [
-  featurePage({ path: 'reservations', name: 'reservations', titleKey: 'shell.navigation.reservations', roles: ['USER'] }),
-  featurePage({ path: 'manage/reservations', name: 'manage-reservations', titleKey: 'shell.navigation.manageReservations', roles: ['SYSTEM_ADMIN'] }),
+import type { WorkspaceRoute } from '@/shared/navigation/types'
+export const reservationRoutes:WorkspaceRoute[]=[
+ {path:'reservations',name:'reservations',component:()=>import('./pages/ReservationPage.vue'),meta:{titleKey:'shell.navigation.reservations',permission:'reservation:read',navigation:true}},
+ {path:'manage/reservations',name:'manage-reservations',component:()=>import('./pages/ReservationPage.vue'),props:{manage:true},meta:{titleKey:'shell.navigation.manageReservations',permission:'reservation:admin-read',navigation:true}},
 ]

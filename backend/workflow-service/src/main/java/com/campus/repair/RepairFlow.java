@@ -1,0 +1,137 @@
+package com.campus.repair;
+
+import com.campus.common.error.ApiException;
+import com.campus.common.security.IdentityPrincipal;
+import java.net.*;
+import java.net.http.*;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.sql.*;
+import java.time.*;
+import java.util.*;
+import java.util.function.Supplier;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.json.JsonMapper;
+
+/** Own m3 state and durable commands. Never hold a database transaction across HTTP. */
+@Service
+public class RepairFlow {
+ private final JdbcTemplate db; private final TransactionTemplate tx; private final Clock clock;
+ private final URI resource,workflow; private final String key;
+ private final JsonMapper json=JsonMapper.builder().build();
+ private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
+ public RepairFlow(JdbcTemplate db,PlatformTransactionManager manager,@org.springframework.beans.factory.annotation.Qualifier("repairClock") ObjectProvider<Clock> clocks,
+ @Value("${campus.workflow.identity-url:http://127.0.0.1:8080/internal/auth/introspect}") String identity,
+ @Value("${campus.repair.workflow-url:http://127.0.0.1:8081}") String workflow,
+ @Value("${campus.auth.service-key}") String key){this.db=db;this.tx=new TransactionTemplate(manager);this.clock=clocks.getIfAvailable(Clock::systemUTC);this.resource=URI.create(identity).resolve("/");this.workflow=URI.create(workflow);this.key=key;}
+ private Instant now(){return clock.instant();}
+ private OffsetDateTime time(){return now().atOffset(ZoneOffset.UTC);}
+ private String encode(Object v){return json.writeValueAsString(v);}
+ private Map<String,Object> parse(String v){return json.readValue(v,Map.class);}
+ private Object exchange(URI origin,String path,String method,Object body){
+  try{var b=HttpRequest.newBuilder(origin.resolve(path)).timeout(Duration.ofSeconds(5)).header("X-Service-Key",key).header("Content-Type","application/json");
+   b.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofString(encode(body)));
+   var r=http.send(b.build(),HttpResponse.BodyHandlers.ofString());
+   if(r.statusCode()<200||r.statusCode()>=300)throw new ApiException(r.statusCode()==404?404:r.statusCode()==409?409:503,"REPAIR_DEPENDENCY_UNAVAILABLE");
+   return r.body().isBlank()?Map.of():json.readValue(r.body(),Object.class);
+  }catch(ApiException e){throw e;}catch(Exception e){if(e instanceof InterruptedException)Thread.currentThread().interrupt();throw new ApiException(503,"REPAIR_DEPENDENCY_UNAVAILABLE");}
+ }
+ private Map<String,Object> get(String path){return (Map<String,Object>)exchange(resource,path,"GET",null);}
+ private void permission(IdentityPrincipal a,String p){if(a==null||!a.permissions().contains(p))throw new ApiException(403,"ACCESS_DENIED");}
+ private static void fields(Map<String,Object>b,String... names){if(b==null||!b.keySet().equals(Set.of(names)))throw new ApiException(400,"INVALID_REQUEST");}
+ private UUID uuid(Object v){try{return UUID.fromString((String)v);}catch(Exception e){throw new ApiException(400,"INVALID_REQUEST");}}
+ private int number(Object v){if(!(v instanceof Integer n)||n<1)throw new ApiException(400,"INVALID_REQUEST");return n;}
+ private String text(Object v){if(!(v instanceof String s)||s.isBlank()||s.length()>4000)throw new ApiException(400,"INVALID_REQUEST");return s;}
+ private boolean bool(Object v){if(!(v instanceof Boolean b))throw new ApiException(400,"INVALID_REQUEST");return b;}
+ private Map<String,Object> load(UUID id,boolean lock){var rows=db.queryForList("SELECT * FROM m3.repair_orders WHERE id=?"+(lock?" FOR UPDATE":""),id);if(rows.isEmpty())throw new ApiException(404,"REPAIR_NOT_FOUND");return rows.getFirst();}
+ private Map<String,Object> view(Map<String,Object> r){var m=new LinkedHashMap<String,Object>();for(var e:r.entrySet()){String k=e.getKey();var b=new StringBuilder();boolean upper=false;for(char c:k.toCharArray()){if(c=='_'){upper=true;continue;}b.append(upper?Character.toUpperCase(c):c);upper=false;}Object v=e.getValue();if(v instanceof OffsetDateTime t)v=t.toInstant().toString();else if(v instanceof UUID)v=v.toString();m.put(b.toString(),v);}return m;}
+ public void checkIndependent(UUID id,IdentityPrincipal actor){independent(load(id,false),actor);}
+ public boolean managed(UUID id){return Boolean.TRUE.equals(load(id,false).get("managed"));}
+ public Map<String,Object> detail(UUID id,IdentityPrincipal actor){permission(actor,"repair:history:read");var r=load(id,false);participant(r,actor);return view(r);}
+ private void participant(Map<String,Object> r,IdentityPrincipal actor){if(!actor.id().equals(r.get("reporter_id"))&&!actor.id().equals(r.get("technician_id"))&&!actor.id().equals(r.get("accepted_by"))&&!actor.permissions().contains("repair:assign")&&!mayReadQueue(r,actor))throw new ApiException(403,"REPAIR_NOT_PARTICIPANT");}
+ private boolean mayReadQueue(Map<String,Object> row,IdentityPrincipal actor){
+  String status=(String)row.get("status");
+  return (actor.permissions().contains("repair:accept")&&Set.of("PENDING_ACCEPTANCE","CANCEL_SAFETY_PENDING").contains(status))
+   ||(actor.permissions().contains("repair:admin-cancel")&&"CANCEL_REVIEW_PENDING".equals(status));
+ }
+ public List<Map<String,Object>> list(IdentityPrincipal actor){permission(actor,"repair:history:read");return db.queryForList("SELECT * FROM m3.repair_orders WHERE ? OR reporter_id=? OR technician_id=? OR accepted_by=? OR (? AND status IN ('PENDING_ACCEPTANCE','CANCEL_SAFETY_PENDING')) OR (? AND status='CANCEL_REVIEW_PENDING') ORDER BY created_at DESC,id",actor.permissions().contains("repair:assign"),actor.id(),actor.id(),actor.id(),actor.permissions().contains("repair:accept"),actor.permissions().contains("repair:admin-cancel")).stream().map(this::view).toList();}
+ public List<?> candidates(IdentityPrincipal actor,String permission){permission(actor,"repair:assign");if(!Set.of("repair:maintain","repair:accept").contains(permission))throw new ApiException(400,"INVALID_REQUEST");return (List<?>)exchange(resource,"/internal/identity/users?permission="+permission,"GET",null);}
+ private void independent(Map<String,Object> r,IdentityPrincipal actor){boolean was=db.queryForObject("SELECT EXISTS(SELECT 1 FROM m3.repair_events WHERE order_id=? AND actor_id=? AND event_type IN ('START','FINISH'))",Boolean.class,r.get("id"),actor.id());if(actor.id().equals(r.get("technician_id"))||was)throw new ApiException(403,"REPAIR_SELF_ACCEPTANCE_DENIED");}
+ private void assigned(Map<String,Object> r,IdentityPrincipal a){permission(a,"repair:maintain");if(!a.id().equals(r.get("technician_id")))throw new ApiException(403,"REPAIR_NOT_ASSIGNED");}
+ private void state(Map<String,Object> r,String... allowed){if(!Set.of(allowed).contains(r.get("status")))throw new ApiException(409,"REPAIR_STATE_CONFLICT");}
+ private void event(UUID id,UUID actor,String type,String from,String to,UUID assigned,String note,int version){db.update("INSERT INTO m3.repair_events(order_id,actor_id,event_type,from_status,to_status,assigned_to,note,order_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",id,actor,type,from,to,assigned,note,version,time(),time());}
+ private UUID stable(String v){return UUID.nameUUIDFromBytes(v.getBytes(StandardCharsets.UTF_8));}
+ private void task(UUID id,String kind,String suffix,Object payload){db.update("INSERT INTO m3.repair_tasks(id,order_id,kind,payload,next_at) VALUES(?,?,?,?::jsonb,?) ON CONFLICT(id) DO NOTHING",stable(id+":"+kind+":"+suffix),id,kind,encode(payload),time());}
+ /** Joins the successful evaluation transaction; HTTP runs after commit in dispatch. */
+ public void enqueueEvaluationAudit(UUID orderId,UUID eventId,UUID actorId,int version,int score,Instant occurredAt,String trace){
+  var payload=new LinkedHashMap<String,Object>();
+  payload.put("eventKey","M3:"+orderId+":EVALUATE:"+eventId);
+  payload.put("sourceService","workflow-service");payload.put("actorId",actorId);
+  payload.put("action","EVALUATE");payload.put("sourceModule","M3");payload.put("sourceId",orderId);
+  payload.put("success",true);payload.put("occurredAt",occurredAt.toString());payload.put("traceId",trace);
+  payload.put("afterData",Map.of("status","COMPLETED","version",version,"score",score));
+  db.update("INSERT INTO m3.repair_tasks(id,order_id,kind,payload,next_at) VALUES(?,NULL,'AUDIT',?::jsonb,?) ON CONFLICT(id) DO NOTHING",eventId,encode(payload),time());
+ }
+ private void audit(UUID id,UUID actor,String action,boolean success,int version,String status,String trace){var m=new LinkedHashMap<String,Object>();m.put("eventKey","M3:"+id+":"+action+":"+version+":"+trace);m.put("sourceService","workflow-service");m.put("actorId",actor);m.put("action",action);m.put("sourceModule","M3");m.put("sourceId",id);m.put("success",success);m.put("occurredAt",now().toString());m.put("traceId",trace);m.put("afterData",Map.of("version",version,"status",status));task(id,"AUDIT",action+version+trace,m);}
+ private void notice(UUID id,int version,String action,Collection<UUID> users){for(UUID user:new HashSet<>(users)){if(user==null)continue;task(id,"NOTICE",action+version+user,Map.of("recipientId",user,"action",action,"version",version));}}
+ private List<UUID> people(Map<String,Object> r){var ids=new ArrayList<UUID>();ids.add((UUID)r.get("reporter_id"));if(r.get("technician_id")!=null)ids.add((UUID)r.get("technician_id"));return ids;}
+ public Map<String,Object> create(IdentityPrincipal a,Map<String,Object>b,String trace){try{return createChecked(a,b,trace);}catch(ApiException e){failure(null,a,"CREATE",trace,e);throw e;}}
+ private void failure(UUID id,IdentityPrincipal a,String action,String trace,ApiException error){tx.execute(s->{UUID source=id!=null&&db.queryForObject("SELECT EXISTS(SELECT 1 FROM m3.repair_orders WHERE id=?)",Boolean.class,id)?id:null;int version=source==null?1:((Number)load(source,false).get("version")).intValue();audit(source,a==null?null:a.id(),"DENIED_"+action,false,version,error.code(),trace);return null;});}
+ private Map<String,Object> createChecked(IdentityPrincipal a,Map<String,Object>b,String trace){permission(a,"repair:report");if(b==null)throw new ApiException(400,"INVALID_REQUEST");boolean seat=b.containsKey("seatId");if(seat)fields(b,"operationId","roomId","seatId","description");else fields(b,"operationId","roomId","description");UUID op=uuid(b.get("operationId")),room=uuid(b.get("roomId")),seatId=seat?uuid(b.get("seatId")):null;String description=text(b.get("description"));var prior=peek(op,fingerprint(a,"CREATE",null,b));if(prior!=null)return prior;var actual=get("/internal/resources/rooms/"+room);if(!room.toString().equals(String.valueOf(actual.get("id"))))throw new ApiException(400,"REPAIR_INVALID_ROOM");if(seat){var s=get("/internal/resources/seats/"+seatId);if(!room.toString().equals(String.valueOf(s.get("roomId"))))throw new ApiException(400,"REPAIR_INVALID_SEAT");}
+  return tx.execute(s->{String fp=fingerprint(a,"CREATE",null,b);var replay=replay(op,fp);if(replay!=null)return replay;UUID id=stable("repair:"+op);db.update("INSERT INTO m3.repair_orders(id,reporter_id,room_id,seat_id,description,managed,due_at,created_at,updated_at) VALUES(?,?,?,?,?,true,NULL,?,?)",id,a.id(),room,seatId,description,time(),time());event(id,a.id(),"SUBMIT",null,"SUBMITTED",null,null,1);audit(id,a.id(),"SUBMIT",true,1,"SUBMITTED",trace);var out=view(load(id,false));save(op,a.id(),id,"CREATE",fp,out);return out;});}
+ private String fingerprint(IdentityPrincipal a,String action,UUID id,Map<String,Object>b){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(encode(List.of(a.id().toString(),action,String.valueOf(id),new TreeMap<>(b))).getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
+ private Map<String,Object> replay(UUID op,String fp){db.queryForObject("SELECT pg_advisory_xact_lock(?)",Object.class,(long)op.hashCode());var rows=db.queryForList("SELECT fingerprint,response::text response FROM m3.repair_commands WHERE operation_id=?",op);if(rows.isEmpty())return null;if(!fp.equals(rows.getFirst().get("fingerprint")))throw new ApiException(409,"REPAIR_IDEMPOTENCY_CONFLICT");return parse((String)rows.getFirst().get("response"));}
+ private void save(UUID op,UUID actor,UUID id,String action,String fp,Object response){db.update("INSERT INTO m3.repair_commands(operation_id,actor_id,order_id,action,fingerprint,response) VALUES(?,?,?,?,?,?::jsonb)",op,actor,id,action,fp,encode(response));}
+ public Map<String,Object> command(UUID id,IdentityPrincipal a,String action,Map<String,Object>b,String trace){try{return commandChecked(id,a,action,b,trace);}catch(ApiException e){failure(id,a,action,trace,e);throw e;}}
+ private Map<String,Object> peek(UUID op,String fingerprint){var rows=db.queryForList("SELECT fingerprint,response::text response FROM m3.repair_commands WHERE operation_id=?",op);if(rows.isEmpty())return null;if(!fingerprint.equals(rows.getFirst().get("fingerprint")))throw new ApiException(409,"REPAIR_IDEMPOTENCY_CONFLICT");return parse((String)rows.getFirst().get("response"));}
+ private Map<String,Object> commandChecked(UUID id,IdentityPrincipal a,String action,Map<String,Object>b,String trace){
+  String required=switch(action){case "assignment"->"repair:assign";case "start","finish"->"repair:maintain";case "acceptance","cancel-inspection"->"repair:accept";case "cancel-review"->"repair:admin-cancel";default->"repair:history:read";};permission(a,required);if(action.equals("cancel")&&!a.id().equals(load(id,false).get("reporter_id")))permission(a,"repair:admin-cancel");
+  var prior=peek(uuid(b.get("operationId")),fingerprint(a,action,id,b));if(prior!=null)return prior;
+  Map<String,Object> candidate=null,settings=null;
+  if(action.equals("assignment")){permission(a,"repair:assign");candidate=get("/internal/identity/users/"+uuid(b.get("technicianId"))+"/eligibility");if(!Boolean.TRUE.equals(candidate.get("enabled"))||!((List<?>)candidate.getOrDefault("permissions",List.of())).contains("repair:maintain"))throw new ApiException(400,"REPAIR_INVALID_TECHNICIAN");settings=get("/internal/system/settings");}
+  final Map<String,Object> config=settings;
+  return tx.execute(s->{UUID op=uuid(b.get("operationId"));String fp=fingerprint(a,action,id,b);var replay=replay(op,fp);if(replay!=null)return replay;var r=load(id,true);if(!Boolean.TRUE.equals(r.get("managed")))throw new ApiException(409,"ACCEPTANCE_INTEGRATION_PENDING");int old=((Number)r.get("version")).intValue();if(number(b.get("version"))!=old)throw new ApiException(409,"REPAIR_VERSION_CONFLICT");int next=old+1;String from=(String)r.get("status"),to=from,type=action.toUpperCase(Locale.ROOT),note=null;UUID assignee=(UUID)r.get("technician_id");
+   if(Set.of("start","finish").contains(action))assigned(r,a);
+   switch(action){
+case "assignment"->{permission(a,"repair:assign");fields(b,"operationId","version","technicianId");state(r,"SUBMITTED","ASSIGNED","IN_PROGRESS");UUID target=uuid(b.get("technicianId"));if(r.get("technician_id")!=null)notice(id,next,"REASSIGN",List.of((UUID)r.get("technician_id")));int sla=number(config.get("repairSlaMinutes"));db.update("UPDATE m3.repair_orders SET technician_id=?,assigned_at=COALESCE(assigned_at,?),sla_minutes=COALESCE(sla_minutes,?),due_at=CASE WHEN assigned_at IS NULL THEN ? ELSE due_at END WHERE id=?",target,time(),sla,now().plusSeconds(sla*60L).atOffset(ZoneOffset.UTC),id);assignee=target;type=from.equals("SUBMITTED")?"ASSIGN":"REASSIGN";to=from.equals("SUBMITTED")?"ASSIGNED":from;}
+case "start"->{fields(b,"operationId","version");assigned(r,a);state(r,"ASSIGNED");type="START";to="RESTRICTION_PENDING";restrict(id,r,next,true,null);}
+case "finish"->{fields(b,"operationId","version","report");assigned(r,a);state(r,"IN_PROGRESS");note=text(b.get("report"));db.update("UPDATE m3.repair_orders SET repair_report=? WHERE id=?",note,id);type="FINISH";to="PENDING_ACCEPTANCE";task(id,"CANDIDATES",type+next,Map.of("permission","repair:accept","action",type,"version",next));}
+case "acceptance"->{permission(a,"repair:accept");independent(r,a);fields(b,"operationId","version","approved","comment");state(r,"PENDING_ACCEPTANCE");note=text(b.get("comment"));if(bool(b.get("approved"))){type="ACCEPT";to="RESTORATION_PENDING";db.update("UPDATE m3.repair_orders SET accepted_by=?,accepted_at=?,acceptance_comment=? WHERE id=?",a.id(),time(),note,id);restrict(id,r,next,false,"COMPLETED");}else{type="REJECT";to="IN_PROGRESS";}}
+case "cancel"->{fields(b,"operationId","version","reason");if(!a.id().equals(r.get("reporter_id")))permission(a,"repair:admin-cancel");note=text(b.get("reason"));state(r,"SUBMITTED","ASSIGNED","RESTRICTION_PENDING","IN_PROGRESS","PENDING_ACCEPTANCE");db.update("UPDATE m3.repair_orders SET cancel_reason=?,cancel_reviewed_by=NULL,cancel_reviewed_at=NULL,safety_inspected_by=NULL,safety_inspected_at=NULL WHERE id=?",note,id);if(Set.of("SUBMITTED","ASSIGNED").contains(from)){to="CANCELLED";type="CANCEL";}else{to="CANCEL_REVIEW_PENDING";type="CANCEL_REQUEST";}}
+case "cancel-review"->{permission(a,"repair:admin-cancel");fields(b,"operationId","version","approved","comment");state(r,"CANCEL_REVIEW_PENDING");note=text(b.get("comment"));type="CANCEL_REVIEW";if(bool(b.get("approved"))){to="CANCEL_SAFETY_PENDING";db.update("UPDATE m3.repair_orders SET cancel_reviewed_by=?,cancel_reviewed_at=? WHERE id=?",a.id(),time(),id);}else to=Boolean.TRUE.equals(r.get("applied_active"))?"IN_PROGRESS":"RESTRICTION_PENDING";}
+case "cancel-inspection"->{permission(a,"repair:accept");independent(r,a);fields(b,"operationId","version","approved","comment");state(r,"CANCEL_SAFETY_PENDING");note=text(b.get("comment"));type="CANCEL_INSPECT";if(bool(b.get("approved"))){to="RESTORATION_PENDING";db.update("UPDATE m3.repair_orders SET safety_inspected_by=?,safety_inspected_at=? WHERE id=?",a.id(),time(),id);restrict(id,r,next,false,"CANCELLED");}else to=Boolean.TRUE.equals(r.get("applied_active"))?"IN_PROGRESS":"RESTRICTION_PENDING";}
+    default->missing();
+   }
+   db.update("UPDATE m3.repair_orders SET status=?,version=?,updated_at=? WHERE id=?",to,next,time(),id);event(id,a.id(),type,from,to,assignee,note,next);audit(id,a.id(),type,true,next,to,trace);notice(id,next,type,people(load(id,false)));var out=view(load(id,false));save(op,a.id(),id,action,fp,out);return out;
+  });
+ }
+ private void missing(){throw new ApiException(404,"REPAIR_ACTION_NOT_IMPLEMENTED");}
+ private void restrict(UUID id,Map<String,Object> r,int version,boolean active,String terminal){db.update("UPDATE m3.repair_orders SET desired_version=?,desired_active=?,restore_terminal=?,resource_error=NULL WHERE id=?",version,active,terminal,id);task(id,"RESOURCE",String.valueOf(version),Map.of("operationId",stable(id+":restriction:"+version),"sourceVersion",version,"roomId",r.get("room_id"),"active",active));}
+ @Scheduled(fixedDelayString="${campus.repair.poll-ms:1000}") public void dispatch(){
+  for(int i=0;i<40;i++){var task=tx.execute(s->{var rows=db.queryForList("SELECT * FROM m3.repair_tasks WHERE (state='PENDING' AND next_at<=?) OR (state='LEASED' AND lease_until<=?) ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1",time(),time());if(rows.isEmpty())return null;var t=rows.getFirst();db.update("UPDATE m3.repair_tasks SET state='LEASED',lease_until=?,attempts=attempts+1 WHERE id=?",now().plusSeconds(30).atOffset(ZoneOffset.UTC),t.get("id"));return t;});if(task==null)return;
+   UUID id=(UUID)task.get("order_id");String kind=(String)task.get("kind");var payload=parse(task.get("payload").toString());
+   try{
+    if(kind.equals("RESOURCE")){Object response;try{response=exchange(resource,"/internal/resources/restrictions/"+id,"PUT",payload);}catch(ApiException e){if(e.status()!=409)throw e;response=get("/internal/resources/sources/M3/"+id);}ack(id,payload,(Map<String,Object>)response);}
+    else if(kind.equals("NOTICE")){var frozen=prepareNotice(id,task,payload);exchange(workflow,"/internal/notifications/events","POST",frozen);}
+    else if(kind.equals("CANDIDATES")){String perm=(String)payload.get("permission");List<?> users=(List<?>)exchange(resource,"/internal/identity/users?permission="+perm,"GET",null);var recipients=new ArrayList<UUID>();for(Object u:users){UUID who=uuid(((Map<?,?>)u).get("userId"));var current=get("/internal/identity/users/"+who+"/eligibility");if(Boolean.TRUE.equals(current.get("enabled"))&&((List<?>)current.getOrDefault("permissions",List.of())).contains(perm))recipients.add(who);}if(recipients.isEmpty())throw new ApiException(503,"REPAIR_NO_NOTIFICATION_RECIPIENT");tx.execute(s->{notice(id,((Number)payload.get("version")).intValue(),(String)payload.get("action"),recipients);return null;});}
+    else exchange(kind.equals("M1")?resource:workflow,kind.equals("AUDIT")?"/internal/audit/events":kind.equals("M1")?"/internal/reservations/maintenance-events":"/internal/approvals/maintenance-events","POST",payload);
+    tx.execute(s->{db.update("UPDATE m3.repair_tasks SET state='DONE',lease_until=NULL,last_error=NULL WHERE id=?",task.get("id"));return null;});
+   }catch(Exception e){tx.execute(s->{db.update("UPDATE m3.repair_tasks SET state='PENDING',next_at=?,lease_until=NULL,last_error='DEPENDENCY_UNAVAILABLE' WHERE id=?",now().plusSeconds(30).atOffset(ZoneOffset.UTC),task.get("id"));if(kind.equals("RESOURCE"))db.update("UPDATE m3.repair_orders SET resource_error='DEPENDENCY_UNAVAILABLE' WHERE id=?",id);return null;});}
+  }
+ }
+ private Map<String,Object> prepareNotice(UUID id,Map<String,Object> task,Map<String,Object> payload){if(payload.containsKey("eventId"))return payload;UUID user=uuid(payload.get("recipientId"));var address=get("/internal/identity/users/"+user+"/notification-email");var m=new LinkedHashMap<String,Object>();m.put("eventId",task.get("id"));m.put("recipientId",user);m.put("sourceModule","M3");m.put("sourceId",id);m.put("title","维修工单更新");m.put("titleEn","Repair work order update");m.put("body","工单 "+id+"："+label((String)payload.get("action"),false));m.put("bodyEn","Work order "+id+": "+label((String)payload.get("action"),true));m.put("scheduledAt",now().toString());if(Boolean.TRUE.equals(address.get("enabled"))&&Boolean.TRUE.equals(address.get("verified"))&&address.get("email") instanceof String email)m.put("emailAddress",email);tx.execute(s->{db.update("UPDATE m3.repair_tasks SET payload=?::jsonb WHERE id=?",encode(m),task.get("id"));return null;});return m;}
+ private String label(String action,boolean en){return switch(action){case "ASSIGN","REASSIGN"->en?"Assignment changed":"派单已更新";case "FINISH"->en?"Awaiting inspection":"等待独立验收";case "ESCALATE"->en?"Repair deadline exceeded":"维修已超时";case "ACCEPT"->en?"Inspection passed, restoring":"验收通过，正在恢复";case "REJECT"->en?"Inspection rejected, repair continues":"验收未通过，继续维修";case "CANCEL"->en?"Cancelled":"已取消";default->en?"Status updated":"状态已更新";};}
+ private void ack(UUID id,Map<String,Object> sent,Map<String,Object> receipt){int wanted=((Number)sent.get("sourceVersion")).intValue();if(!"M3".equals(receipt.get("sourceModule"))||!id.toString().equals(String.valueOf(receipt.get("sourceId")))||!String.valueOf(sent.get("roomId")).equals(String.valueOf(receipt.get("roomId")))||!(receipt.get("sourceVersion") instanceof Number n)||n.intValue()<wanted)throw new ApiException(503,"REPAIR_INVALID_RESOURCE_RECEIPT");if(n.intValue()>wanted)return;if(!sent.get("active").equals(receipt.get("active"))||!(receipt.get("effectiveAt") instanceof String effective))throw new ApiException(503,"REPAIR_INVALID_RESOURCE_RECEIPT");Instant.parse(effective);
+  tx.execute(s->{var r=load(id,true);if(((Number)r.get("desired_version")).intValue()!=wanted)return null;db.update("UPDATE m3.repair_orders SET applied_version=?,applied_active=?,resource_error=NULL WHERE id=?",wanted,sent.get("active"),id);String status=(String)r.get("status");String next=status;if(Boolean.TRUE.equals(sent.get("active"))&&status.equals("RESTRICTION_PENDING"))next="IN_PROGRESS";else if(!Boolean.TRUE.equals(sent.get("active"))&&status.equals("RESTORATION_PENDING"))next=(String)r.get("restore_terminal");if(!status.equals(next)){int v=((Number)r.get("version")).intValue()+1;db.update("UPDATE m3.repair_orders SET status=?,version=?,updated_at=? WHERE id=?",next,v,time(),id);event(id,null,"RESOURCE_ACK",status,next,(UUID)r.get("technician_id"),null,v);audit(id,null,"RESOURCE_ACK",true,v,next,stable(id+":ack:"+wanted).toString());notice(id,v,"RESOURCE_ACK",people(r));}
+   var event=new LinkedHashMap<String,Object>();event.put("operationId",stable(id+":broadcast:"+wanted));event.put("sourceId",id);event.put("sourceVersion",wanted);event.put("roomId",r.get("room_id"));event.put("active",sent.get("active"));event.put("effectiveAt",effective);task(id,"M1",String.valueOf(wanted),event);task(id,"M2",String.valueOf(wanted),event);return null;});
+ }
+ @Scheduled(fixedDelayString="${campus.repair.poll-ms:1000}") public void scanOverdue(){
+tx.execute(s->{for(var r:db.queryForList("SELECT * FROM m3.repair_orders WHERE managed AND due_at<=? AND escalation_level=0 AND accepted_at IS NULL AND status NOT IN ('COMPLETED','CANCELLED','RESTORATION_PENDING') FOR UPDATE SKIP LOCKED",time())){UUID id=(UUID)r.get("id");int level=1;int added=db.update("INSERT INTO m3.repair_escalations(order_id,level,occurred_at) VALUES(?,1,?) ON CONFLICT DO NOTHING",id,time());if(added==0)continue;int version=((Number)r.get("version")).intValue()+1;db.update("UPDATE m3.repair_orders SET escalation_level=1,version=?,updated_at=? WHERE id=?",version,time(),id);event(id,null,"ESCALATE",(String)r.get("status"),(String)r.get("status"),(UUID)r.get("technician_id"),"SLA_EXCEEDED",version);audit(id,null,"ESCALATE",true,version,(String)r.get("status"),stable(id+":escalation").toString());task(id,"CANDIDATES","escalate1",Map.of("permission","repair:assign","action","ESCALATE","version",version));}return null;});
+ }
+}

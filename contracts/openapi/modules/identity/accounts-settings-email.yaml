@@ -1,0 +1,355 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Account eligibility, settings and notification email",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/admin/users": {
+      "get": {
+        "description": "identity:users:read; rows include id,loginName,displayName,roleId,role,enabled,authVersion,departmentCode,canApplyRoom.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/eligibility": {
+      "patch": {
+        "description": "identity:users:update + CSRF. Body departmentCode(nullable,max64),canApplyRoom:boolean,expectedAuthVersion:positive int; 204 increments authVersion; 409 stale, 403 unauthorized. Ordinary users cannot self-assert qualifications.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      }
+    },
+    "/internal/identity/users/{id}/eligibility": {
+      "get": {
+        "description": "Service key only. Returns userId,enabled,role,permissions,departmentCode,canApplyRoom,authVersion; disabled account or role has enabled=false and no effective permissions.",
+        "security": [
+          {
+            "serviceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      }
+    },
+    "/internal/identity/users": {
+      "get": {
+        "description": "Service key only; permission query is restricted to approval:decide, repair:maintain, repair:assign or repair:accept. Returns only effective enabled candidates [{userId,displayName}] for the exact permission. Other permission codes return 400; this is not an ordinary-user or school-wide account enumeration API.",
+        "security": [
+          {
+            "serviceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      }
+    },
+    "/internal/system/settings": {
+      "get": {
+        "description": "Service key only. Returns version,maxReservationHours,beforeStartReminderMinutes,afterStartReminderMinutes,checkinDeadlineMinutes,approvalTtlMinutes,repairSlaMinutes. Approved defaults 1,4,15,10,15,60,120. Consumers snapshot current settings when creating business records; old records remain unchanged.",
+        "security": [
+          {
+            "serviceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      }
+    },
+    "/api/admin/settings": {
+      "get": {
+        "description": "identity:settings:read. Returns the same settings DTO as the internal contract.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      },
+      "put": {
+        "description": "identity:settings:write + CSRF. Full body expectedVersion and six setting values; all positive integers and afterStartReminderMinutes<checkinDeadlineMinutes. Atomically update version+1/history/audit or reject whole request (400 invalid,409 stale).",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "New settings"
+          },
+          "400": {
+            "description": "Invalid group"
+          },
+          "409": {
+            "description": "Stale version"
+          }
+        }
+      }
+    },
+    "/api/admin/settings/history": {
+      "get": {
+        "description": "identity:settings:read. Returns [{id,actorId,changedAt,version,before,after}], newest version first; history is immutable.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      }
+    },
+    "/api/account/email": {
+      "get": {
+        "description": "Authenticated identity:read; current email(nullable),verified,verifiedAt,pendingVerificationExpiresAt,deliveryStatus,deliveryErrorCode. No token is returned.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      },
+      "patch": {
+        "description": "identity:read + CSRF. Only {email} accepted (valid,max254). Changed email becomes pending, increments email_version and invalidates every old-address challenge, even if changed back. Unknown role/eligibility fields rejected. Does not grant qualifications.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Safe current profile"
+          },
+          "400": {
+            "description": "Invalid or extra fields"
+          }
+        }
+      }
+    },
+    "/api/account/email/verification": {
+      "post": {
+        "description": "Authenticated identity:read + CSRF. Reuses the active operationId and reconstructs exactly the same token/request after a delivery failure or unknown HTTP outcome. Returns operationId,status,retryable,nextRetryAt,errorCode; 202 for UNKNOWN, otherwise 200. Email required; already verified 409. Tokens are never returned in public receipts.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      }
+    },
+    "/api/account/email/verify": {
+      "post": {
+        "description": "Authenticated identity:read + CSRF. Body {token}; token must be 43 base64url chars, bound to this user, current address/version and expiry. Boundary now>=expiresAt is rejected, valid replay is idempotent. No raw token in DB/logs/public response.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      }
+    },
+    "/internal/identity/users/{id}/notification-email": {
+      "get": {
+        "description": "Service key only. Returns userId,enabled,email(nullable),verified. Disabled users/roles never have verified=true; normal notification sender must not claim delivery when missing/unverified.",
+        "security": [
+          {
+            "serviceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current data or safe result"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Current authority missing"
+          },
+          "409": {
+            "description": "Stale version, current email verified or idempotency conflict"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-FDU_SESSION"
+      },
+      "serviceKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Service-Key"
+      }
+    }
+  }
+}
