@@ -1,5 +1,3 @@
-import { featurePage } from '@/shared/navigation/feature-page'
+import type { WorkspaceRoute } from '@/shared/navigation/types'
 
-export const auditRoutes = [
-  featurePage({ path: 'audit', name: 'audit', titleKey: 'shell.navigation.audit', permission: 'audit:read' }),
-]
+export const auditRoutes: WorkspaceRoute[] = [{ path: 'audit', name: 'audit', component: () => import('./pages/AuditPage.vue'), meta: { titleKey: 'shell.navigation.audit', permission: 'audit:read', navigation: true } }]

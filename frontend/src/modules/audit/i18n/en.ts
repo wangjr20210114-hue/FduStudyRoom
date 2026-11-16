@@ -1,0 +1,30 @@
+export default {
+  "refresh": "Refresh",
+  "loading": "Loading",
+  "empty": "No records",
+  "previous": "Previous",
+  "next": "Next",
+  "page": "Page",
+  "total": "Total",
+  "search": "Search",
+  "title": "Audit log",
+  "trace": "Trace ID",
+  "source": "Source",
+  "object": "Object ID",
+  "actor": "Actor",
+  "anonymous": "Unauthenticated",
+  "time": "Time",
+  "all": "All",
+  "success": "Succeeded",
+  "failure": "Failed",
+  "summary": "Business summary",
+  "before": "Before",
+  "after": "After",
+  "sources": {
+    "M1": "Seat booking",
+    "M2": "Room approval",
+    "M3": "Repairs",
+    "D": "Accounts and resources",
+    "EXTERNAL": "External service"
+  }
+}
