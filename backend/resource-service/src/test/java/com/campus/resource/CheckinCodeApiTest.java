@@ -57,7 +57,7 @@ class CheckinCodeApiTest {
         app.getBean(MutableClock.class).value=Instant.parse("2030-06-03T04:00:00Z");
         var jdbc=app.getBean(JdbcTemplate.class);
         if(Boolean.TRUE.equals(jdbc.queryForObject("SELECT to_regclass('resource.rooms') IS NOT NULL",Boolean.class))){
-            jdbc.update("DELETE FROM resource.rooms");
+            jdbc.update("DELETE FROM resource.rooms WHERE id IN (?,?,?)",R101,R102,R103);
             insert(R101,"R101",true);insert(R102,"R102",true);insert(R103,"R103",false);
         }
     }
