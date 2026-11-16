@@ -1,0 +1,2112 @@
+{
+  "version": 2,
+  "module": "M03",
+  "layer": "frontend",
+  "requirements": [
+    {
+      "id": "M1-01",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1,
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "按区域、日期、时段和插座筛选",
+        "只返回开放且符合资格、没有占用和维修限制的座位"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-01.S01",
+          "business_scene_refs": [
+            "S026.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n用户在座位预约页面选择校区、日期、时段并勾选需要插座，搜索后只看到符合全部条件的座位。\n\n### 操作步骤与预期结果\n\n1. R101的A01和A02在09:00—10:00都空闲，只有A01有插座。\n2. user1打开座位预约页面，选择邯郸校区、2030年6月3日和09:00—10:00，勾选“需要插座”。\n3. 点击“搜索”，结果只显示R101的A01，并展示教室、座位编号和插座标记。\n4. 提交给后端的条件与页面选择一致。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC01）</summary>\n\n- 场景名称：选择时间和插座条件后，只显示符合条件的座位\n- 场景编号：S026.SC01\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n\n**精确条件**\n\n- R101两座仅A01有插座且T均可用\n\n**精确动作**\n\n- user1选择邯郸、2030-06-03、09:00—10:00、需要插座\n\n**结果与约束**\n\n- 列表只显示R101/A01；每项含教室、座位编号和插座标记，提交参数与筛选一致\n\n</details>",
+          "source_path": "spec/specs/S026.md",
+          "source_sha256": "f569af81011e45abc87608acfc033038360ab65448df092708e479bdd4a98b63",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "R101两个座位在09:00—10:00都可用，只有A01有插座。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "user1打开座位预约页面。",
+            "选择邯郸校区、2030年6月3日、09:00—10:00，勾选“需要插座”，点击“搜索”。"
+          ],
+          "expected": [
+            "列表只显示R101的A01，能看到教室、座位编号和插座标记。实际提交的查询条件与页面选择一致。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/availability",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-01.S01#1",
+              "criterion": 1,
+              "basis": "按区域、日期、时段和插座筛选",
+              "expected": "常规/原文数据分支：只显示R101/A01与插座标记；实际campus/building/startsAt/endsAt/hasSocket一致且时间为+08:00；有效/无效跨模块query都不自动POST；英文Search可见",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/availability.browser.test.ts::M1-01.S01 选择时间和插座条件后，只显示符合条件的座位"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；R101两个座位在09:00—10:00都可用，只有A01有插座。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "只显示R101/A01与插座标记；实际campus/building/startsAt/endsAt/hasSocket一致且时间为+08:00；有效/无效跨模块query都不自动POST；英文Search可见",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n用户在座位预约页面选择校区、日期、时段并勾选需要插座，搜索后只看到符合全部条件的座位。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/availability.browser.test.ts",
+          "planned_test_title": "M1-01.S01 选择时间和插座条件后，只显示符合条件的座位"
+        },
+        {
+          "id": "M1-01.S02",
+          "business_scene_refs": [
+            "S026.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n用户搜索时，系统不把无院系资格、已有占用或维修中的座位列为可预约，直接提交也不能绕过检查。\n\n### 操作步骤与预期结果\n\n1. user2无CS资格，R102限定CS，R101在查询时段已有占用或维修。\n2. user2打开座位预约页面，搜索该时段。\n3. 结果不显示上述不可预约项，后端资源接口也检查相同限制。\n4. 不能通过绕开页面直接下单取得不可用座位。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC02）</summary>\n\n- 场景名称：不把无资格或正在占用、维修的座位列为可预约\n- 场景编号：S026.SC02\n\n**对应的业务要求**\n\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- user2无CS资格，R102为CS限定；R101有占用或维修\n\n**精确动作**\n\n- user2以相同时段搜索\n\n**结果与约束**\n\n- 不返回上述不可预约项；筛选由资源公开接口判定，不能靠前端隐藏就放行下单\n\n</details>",
+          "source_path": "spec/specs/S026.md",
+          "source_sha256": "f569af81011e45abc87608acfc033038360ab65448df092708e479bdd4a98b63",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "user2没有CS院系资格，R102限定CS；R101在查询时段已有占用或维修。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "user2打开座位预约页面，搜索同一时段。"
+          ],
+          "expected": [
+            "这些不可预约的座位不会出现在可预约结果中。后端资源接口也实际检查，不能只是前端隐藏后仍允许下单。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/availability",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-01.S02#1",
+              "criterion": 2,
+              "basis": "只返回开放且符合资格、没有占用和维修限制的座位",
+              "expected": "常规/原文数据分支：空可用结果没有预约入口；预填不可用座位后创建前重查，仍无POST，不发送userId/service-key或调用internal",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/availability.browser.test.ts::M1-01.S02 不把无资格或正在占用、维修的座位列为可预约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；user2没有CS院系资格，R102限定CS；R101在查询时段已有占用或维修。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "空可用结果没有预约入口；预填不可用座位后创建前重查，仍无POST，不发送userId/service-key或调用internal",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n用户搜索时，系统不把无院系资格、已有占用或维修中的座位列为可预约，直接提交也不能绕过检查。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/availability.browser.test.ts",
+          "planned_test_title": "M1-01.S02 不把无资格或正在占用、维修的座位列为可预约"
+        },
+        {
+          "id": "M1-01.S03",
+          "business_scene_refs": [
+            "S026.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n搜索没有结果时提示没有空位；请求失败时提示错误和重试。页面不拿上次结果冒充本次可用座位。\n\n### 操作步骤与预期结果\n\n1. 用户打开座位搜索页面并提交查询。\n2. 接口正常返回空列表时，页面显示没有可用座位。\n3. 另一次查询遇到网络失败，页面显示必要错误和重试方式。\n4. 失败时不把上一轮结果当作这次可用结果。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC03）</summary>\n\n- 场景名称：没有空位和网络出错，要给出不同提示\n- 场景编号：S026.SC03\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- 资源接口分别返回空列表和网络失败\n\n**精确动作**\n\n- 执行两次独立搜索\n\n**结果与约束**\n\n- 空列表显示无可用座位；失败显示必要错误/重试；不回填上一轮结果冒充本次可用\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S026\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-01\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S024 查询座位时，一起检查预约、维修和使用资格](S024.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S026.md",
+          "source_sha256": "f569af81011e45abc87608acfc033038360ab65448df092708e479bdd4a98b63",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "分别准备接口正常返回空结果，以及网络请求失败两种情况。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "分别执行一次搜索。"
+          ],
+          "expected": [
+            "空结果提示没有可用座位；请求失败提示必要的错误和重试方式。不能拿上次搜索结果冒充这次可用的座位。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/availability",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-01.S03#1",
+              "criterion": 1,
+              "basis": "按区域、日期、时段和插座筛选",
+              "expected": "常规/原文数据分支：先有结果再清空，空态与503错误分开；失败无旧结果，重试回到本次真实响应",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/availability.browser.test.ts::M1-01.S03 没有空位和网络出错，要给出不同提示"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；分别准备接口正常返回空结果，以及网络请求失败两种情况。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "先有结果再清空，空态与503错误分开；失败无旧结果，重试回到本次真实响应",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n搜索没有结果时提示没有空位；请求失败时提示错误和重试。页面不拿上次结果冒充本次可用座位。"
+            },
+            {
+              "id": "M1-01.S03#2",
+              "criterion": 2,
+              "basis": "只返回开放且符合资格、没有占用和维修限制的座位",
+              "expected": "常规/原文数据分支：先有结果再清空，空态与503错误分开；失败无旧结果，重试回到本次真实响应",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/availability.browser.test.ts::M1-01.S03 没有空位和网络出错，要给出不同提示"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；分别准备接口正常返回空结果，以及网络请求失败两种情况。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "先有结果再清空，空态与503错误分开；失败无旧结果，重试回到本次真实响应",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n搜索没有结果时提示没有空位；请求失败时提示错误和重试。页面不拿上次结果冒充本次可用座位。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/availability.browser.test.ts",
+          "planned_test_title": "M1-01.S03 没有空位和网络出错，要给出不同提示"
+        }
+      ]
+    },
+    {
+      "id": "M1-02",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "起止整点，正时长，默认最多4小时",
+        "动态参数生效，禁止过去时段和超出开放时间",
+        "数据库并发测试验证同座位仅一人成功"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-02.S01",
+          "business_scene_refs": [
+            "S027.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n用户提交预约时，起止必须是整点，结束晚于开始，默认最多4小时；不符合的时段不能占座。\n\n### 操作步骤与预期结果\n\n1. 当前08:00，教室08:00—22:00开放，上限4小时，分别从空闲状态尝试以下请求。\n2. 用户提交09:00—13:00，其他条件符合时可成功。\n3. 用户分别提交09:30—10:30、09:00—14:00和10:00—09:00。\n4. 系统分别因非整点、超过4小时或时长不为正而拒绝，不产生占用。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC01）</summary>\n\n- 场景名称：预约必须从整点开始和结束，默认最多4小时\n- 场景编号：S027.SC01\n\n**对应的业务要求**\n\n- M1-02.AC1：开始结束均为整点，结束晚于开始，默认最多4小时\n\n**精确条件**\n\n- now=08:00，默认最长4小时，教室开放08:00—22:00\n\n**精确动作**\n\n- 依次提交09:00—13:00、09:30—10:30、09:00—14:00和10:00—09:00\n\n**结果与约束**\n\n- 仅第一项在无占用时可成立；非整点、5小时、非正时长均拒绝且不占资源\n\n</details>",
+          "source_path": "spec/specs/S027.md",
+          "source_sha256": "cfa52f50b9f195c71a517b60cccbeafc621b9b5d3fe6b3b893eb4a7d897cce22",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "测试时间为08:00，最长预约4小时，教室08:00—22:00开放。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "打开座位预约页面，分别提交09:00—13:00、09:30—10:30、09:00—14:00和10:00—09:00。"
+          ],
+          "expected": [
+            "座位空闲时只有第一种可以成功。不是整点、超过4小时或结束早于开始的请求都不能占用座位。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-02.S01#1",
+              "criterion": 1,
+              "basis": "起止整点，正时长，默认最多4小时",
+              "expected": "常规/原文数据分支：4小时确认；半点、5小时和倒序时段显示拒绝且无新增确认行；创建DTO只含operationId/seatId/startsAt/endsAt",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/booking.browser.test.ts::M1-02.S01 预约必须从整点开始和结束，默认最多4小时"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；测试时间为08:00，最长预约4小时，教室08:00—22:00开放。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "4小时确认；半点、5小时和倒序时段显示拒绝且无新增确认行；创建DTO只含operationId/seatId/startsAt/endsAt",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n用户提交预约时，起止必须是整点，结束晚于开始，默认最多4小时；不符合的时段不能占座。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/booking.browser.test.ts",
+          "planned_test_title": "M1-02.S01 预约必须从整点开始和结束，默认最多4小时"
+        },
+        {
+          "id": "M1-02.S02",
+          "business_scene_refs": [
+            "S027.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n预约不能从已过去的时间开始，不能超出关门时间，也不能超过管理员刚设置的新上限。旧页面信息不会放宽后端规则。\n\n### 操作步骤与预期结果\n\n1. 当前08:01，管理员已把最长时长改为2小时。\n2. 用户分别提交08:00开始、21:00—23:00和09:00—12:00的预约。\n3. 系统全部拒绝，不占用资源。\n4. 即使旧页面仍显示最多4小时，后端也按当前2小时上限检查。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC02）</summary>\n\n- 场景名称：已经过去、超过关门时间或超过新上限的预约不能提交\n- 场景编号：S027.SC02\n\n**对应的业务要求**\n\n- M1-02.AC2：新设置实际生效，不能预约过去或超出开放时间的时段\n\n**精确条件**\n\n- now=08:01，最长时长已改2小时\n\n**精确动作**\n\n- 分别提交08:00开始、21:00—23:00、09:00—12:00\n\n**结果与约束**\n\n- 全部拒绝；新参数用于新请求，不能因旧页面显示4小时放行\n\n</details>",
+          "source_path": "spec/specs/S027.md",
+          "source_sha256": "cfa52f50b9f195c71a517b60cccbeafc621b9b5d3fe6b3b893eb4a7d897cce22",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "测试时间为08:01，管理员已把最长时长改成2小时。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "分别提交08:00开始、21:00—23:00和09:00—12:00的预约。"
+          ],
+          "expected": [
+            "全部失败，并且不占用资源。即使旧页面还显示最多4小时，后端也按新的2小时检查。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-02.S02#1",
+              "criterion": 2,
+              "basis": "动态参数生效，禁止过去时段和超出开放时间",
+              "expected": "常规/原文数据分支：过去、关门后、新2小时上限下3小时均不成功；上限改6后5小时可提交，以服务结果为准，前端无固定4小时上限",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/booking.browser.test.ts::M1-02.S02 已经过去、超过关门时间或超过新上限的预约不能提交"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；测试时间为08:01，管理员已把最长时长改成2小时。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "过去、关门后、新2小时上限下3小时均不成功；上限改6后5小时可提交，以服务结果为准，前端无固定4小时上限",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n预约不能从已过去的时间开始，不能超出关门时间，也不能超过管理员刚设置的新上限。旧页面信息不会放宽后端规则。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/booking.browser.test.ts",
+          "planned_test_title": "M1-02.S02 已经过去、超过关门时间或超过新上限的预约不能提交"
+        },
+        {
+          "id": "M1-02.S03",
+          "business_scene_refs": [
+            "S027.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n两位用户同时预约同一座位，只有一人获得已确认记录，失败者不能留下成功预约。成功结果能与占用、通知和操作记录对应。\n\n### 操作步骤与预期结果\n\n1. user1和user2选择A01的同一时段。\n2. 两人同时提交，查看各自预约结果。\n3. 只有一人得到已确认预约，且对应一笔有效占用；另一人没有已确认记录。\n4. 成功预约的通知和操作事件可追踪到同一笔业务。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC03）</summary>\n\n- 场景名称：两个人同时点预约，不能都看到成功\n- 场景编号：S027.SC03\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- user1/user2同时申请A01的T\n\n**精确动作**\n\n- 并发通过真实预约接口创建\n\n**结果与约束**\n\n- 只有一个确认成功并对应一个有效占用；失败者不留已确认预约；成功记录/通知/审计各有可追踪事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S027\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02\n- 有关业务功能：[S006 管理员设置预约时长和各类时限](S006.md)、[S017 防止两个人订到同一座位，也防止一人同时占多个座位](S017.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S027.md",
+          "source_sha256": "cfa52f50b9f195c71a517b60cccbeafc621b9b5d3fe6b3b893eb4a7d897cce22",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "user1和user2准备在同一时段预约A01。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "user1和user2同时提交A01的同一时段预约，查看结果。"
+          ],
+          "expected": [
+            "只有一个人得到已确认的预约，且恰好对应一笔有效占用。另一人不能留下已确认记录。成功预约、通知和操作记录之间可以追踪对应关系。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-02.S03#1",
+              "criterion": 3,
+              "basis": "数据库并发测试验证同座位仅一人成功",
+              "expected": "常规/原文数据分支：分别显示受控并发结果的胜者确认与失败者错误，只有服务确认才能显示成功；真实DB互斥另验，不把fixture当并发证据",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/booking.browser.test.ts::M1-02.S03 两个人同时点预约，不能都看到成功"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；user1和user2准备在同一时段预约A01。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "分别显示受控并发结果的胜者确认与失败者错误，只有服务确认才能显示成功；真实DB互斥另验，不把fixture当并发证据",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n两位用户同时预约同一座位，只有一人获得已确认记录，失败者不能留下成功预约。成功结果能与占用、通知和操作记录对应。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/booking.browser.test.ts",
+          "planned_test_title": "M1-02.S03 两个人同时点预约，不能都看到成功"
+        },
+        {
+          "id": "M1-02.S04",
+          "business_scene_refs": [
+            "S034.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n预约请求已被资源服务处理但回复丢失，服务恢复后会核对同一笔业务，查清前显示处理中，不再多下一单。\n\n### 操作步骤与预期结果\n\n1. 预约请求已到资源服务，确认回复丢失，预约服务随后意外退出。\n2. 恢复后用户打开“我的预约”，系统按原业务编号核对。\n3. 未确认时只显示处理中；查清后显示同一笔确认预约或明确冲突。\n4. 系统不产生第二份座位占用。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC01）</summary>\n\n- 场景名称：座位已订下但确认丢失，重启后不会再订一次\n- 场景编号：S034.SC01\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- 资源已接受预约命令，预约域尚未收到确认\n\n**精确动作**\n\n- 杀死预约进程后重启并按同业务ID对账\n\n**结果与约束**\n\n- 恢复为同一确认预约或明确冲突；处理中不展示已落实；不产生第二份占用\n\n</details>",
+          "source_path": "spec/specs/S034.md",
+          "source_sha256": "3c0d9d5c2ac22c7bbe4a1bbc950dd9c12acc0d6185e10bf979ec17a34f0a2e56",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "预约请求已到达资源服务，但确认回复丢失，随后预约服务意外退出。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "系统恢复后，打开“我的预约”查看这次提交；系统按原业务编号核对结果。"
+          ],
+          "expected": [
+            "最后确认的是同一笔预约，或者明确报告冲突，不多出第二份占用。结果没查清前只显示处理中，不能先说成功。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-02.S04#1",
+              "criterion": 3,
+              "basis": "数据库并发测试验证同座位仅一人成功",
+              "expected": "常规/原文数据分支：丢两次ACK后三次完全同operationId/载荷，唯一业务ID；PENDING不显示成功，GET确认后同ID显示RESERVED，重开只读查历史不自动再POST",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/booking.browser.test.ts::M1-02.S04 座位已订下但确认丢失，重启后不会再订一次"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；预约请求已到达资源服务，但确认回复丢失，随后预约服务意外退出。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "丢两次ACK后三次完全同operationId/载荷，唯一业务ID；PENDING不显示成功，GET确认后同ID显示RESERVED，重开只读查历史不自动再POST",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n预约请求已被资源服务处理但回复丢失，服务恢复后会核对同一笔业务，查清前显示处理中，不再多下一单。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/booking.browser.test.ts",
+          "planned_test_title": "M1-02.S04 座位已订下但确认丢失，重启后不会再订一次"
+        }
+      ]
+    },
+    {
+      "id": "M1-03",
+      "source": {
+        "kind": "derived",
+        "pdf_pages": [
+          6
+        ],
+        "note": "由任务书约束推导，属于需验收的设计决策"
+      },
+      "acceptance": [
+        "仅本人或有权限管理员可取消",
+        "只释放本预约占用，重复取消不影响其他来源",
+        "不可取消状态给出明确错误"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-03.S01",
+          "business_scene_refs": [
+            "S028.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n用户在预约开始前取消自己的未签到预约，系统显示已取消并释放这笔占用，不影响其他业务。\n\n### 操作步骤与预期结果\n\n1. user1有09:00开始、尚未签到的预约，当前08:30。\n2. 用户打开“我的预约”，找到记录并点击“取消预约”。\n3. 记录显示已取消，查询资源时只释放本预约占用，其他预约、整室占用和维修限制保持不变。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC01）</summary>\n\n- 场景名称：开始前可以取消自己的预约\n- 场景编号：S028.SC01\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- user1有09:00开始BOOKED预约，now=08:30\n\n**精确动作**\n\n- user1取消并在资源接口查T\n\n**结果与约束**\n\n- 预约CANCELLED且只释放本人该预约占用；其他来源不受影响\n\n</details>",
+          "source_path": "spec/specs/S028.md",
+          "source_sha256": "8d1057c16553d487d257af0caf105bb034b86c46ca8270c932cd04b5c99519f2",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "user1有一笔09:00开始、还没签到的预约，当前08:30。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "打开“我的预约”，找到该笔记录，点击“取消预约”。",
+            "再查询这个时段的资源状态。"
+          ],
+          "expected": [
+            "预约显示已取消，只释放这笔预约自己的占用；其他预约、整室申请或维修限制不受影响。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations/{id}/cancel + /admin-cancel",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-03.S01#1",
+              "criterion": 1,
+              "basis": "仅本人或有权限管理员可取消",
+              "expected": "常规/原文数据分支：本人开始前取消后显示服务器CANCELLED/RELEASED；只请求本记录cancel路径，其它记录快照不变，不调用跨域释放",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/cancellation.browser.test.ts::M1-03.S01 开始前可以取消自己的预约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；user1有一笔09:00开始、还没签到的预约，当前08:30。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "本人开始前取消后显示服务器CANCELLED/RELEASED；只请求本记录cancel路径，其它记录快照不变，不调用跨域释放",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n用户在预约开始前取消自己的未签到预约，系统显示已取消并释放这笔占用，不影响其他业务。"
+            },
+            {
+              "id": "M1-03.S01#2",
+              "criterion": 2,
+              "basis": "只释放本预约占用，重复取消不影响其他来源",
+              "expected": "常规/原文数据分支：本人开始前取消后显示服务器CANCELLED/RELEASED；只请求本记录cancel路径，其它记录快照不变，不调用跨域释放",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/cancellation.browser.test.ts::M1-03.S01 开始前可以取消自己的预约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；user1有一笔09:00开始、还没签到的预约，当前08:30。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "本人开始前取消后显示服务器CANCELLED/RELEASED；只请求本记录cancel路径，其它记录快照不变，不调用跨域释放",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n用户在预约开始前取消自己的未签到预约，系统显示已取消并释放这笔占用，不影响其他业务。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/cancellation.browser.test.ts",
+          "planned_test_title": "M1-03.S01 开始前可以取消自己的预约"
+        },
+        {
+          "id": "M1-03.S02",
+          "business_scene_refs": [
+            "S028.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n用户不能取消别人的预约，也不能按普通用户规则取消已签到或已开始的预约；管理员需要独立权限并填写理由。\n\n### 操作步骤与预期结果\n\n1. user2尝试取消user1的预约，系统拒绝并说明无权操作。\n2. 分别对已签到和已到09:00开始时刻的预约，由user1尝试取消，系统均拒绝并说明原因。\n3. 管理员执行取消时，系统仍检查取消权限和非空理由，其他账号不能绕过。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC02）</summary>\n\n- 场景名称：不能取消他人的预约，也不能按普通用户规则取消已开始的预约\n- 场景编号：S028.SC02\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- user2不是预约人；user1预约已签到或now>=09:00\n\n**精确动作**\n\n- 分别由user2取消、user1取消已开始预约\n\n**结果与约束**\n\n- 均拒绝并说明原因；管理员需取消权限及非空理由，未授权者不能绕过\n\n</details>",
+          "source_path": "spec/specs/S028.md",
+          "source_sha256": "8d1057c16553d487d257af0caf105bb034b86c46ca8270c932cd04b5c99519f2",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "user2不是预约人；另外分别准备user1已签到，以及已到09:00的预约。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "user2尝试取消user1的预约。",
+            "user1尝试取消已签到或已经开始的预约。"
+          ],
+          "expected": [
+            "这些请求都被拒绝并说明原因。管理员另需取消权限并填写理由，其他人不能绕过限制。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations/{id}/cancel + /admin-cancel",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-03.S02#1",
+              "criterion": 1,
+              "basis": "仅本人或有权限管理员可取消",
+              "expected": "常规/原文数据分支：非本人详情拒绝且无操作内容；已开始/已签到的普通取消不可用并说明；管理员独立权限和非空理由才发admin-cancel，管理他人行不GETowner-only详情",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/cancellation.browser.test.ts::M1-03.S02 不能取消他人的预约，也不能按普通用户规则取消已开始的预约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；user2不是预约人；另外分别准备user1已签到，以及已到09:00的预约。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "非本人详情拒绝且无操作内容；已开始/已签到的普通取消不可用并说明；管理员独立权限和非空理由才发admin-cancel，管理他人行不GETowner-only详情",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n用户不能取消别人的预约，也不能按普通用户规则取消已签到或已开始的预约；管理员需要独立权限并填写理由。"
+            },
+            {
+              "id": "M1-03.S02#2",
+              "criterion": 3,
+              "basis": "不可取消状态给出明确错误",
+              "expected": "常规/原文数据分支：非本人详情拒绝且无操作内容；已开始/已签到的普通取消不可用并说明；管理员独立权限和非空理由才发admin-cancel，管理他人行不GETowner-only详情",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/cancellation.browser.test.ts::M1-03.S02 不能取消他人的预约，也不能按普通用户规则取消已开始的预约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；user2不是预约人；另外分别准备user1已签到，以及已到09:00的预约。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "非本人详情拒绝且无操作内容；已开始/已签到的普通取消不可用并说明；管理员独立权限和非空理由才发admin-cancel，管理他人行不GETowner-only详情",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n用户不能取消别人的预约，也不能按普通用户规则取消已签到或已开始的预约；管理员需要独立权限并填写理由。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/cancellation.browser.test.ts",
+          "planned_test_title": "M1-03.S02 不能取消他人的预约，也不能按普通用户规则取消已开始的预约"
+        },
+        {
+          "id": "M1-03.S03",
+          "business_scene_refs": [
+            "S028.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n取消请求已到后端但确认丢失时，页面先显示取消处理中，查清后显示取消结果；重试不重复释放座位。\n\n### 操作步骤与预期结果\n\n1. 用户发出取消请求，资源服务已经收到，但确认在网络中丢失。\n2. 用户打开预约记录，确认前看到取消处理中。\n3. 系统重试同一次操作，确认后页面显示同一取消结果。\n4. 重试不多次释放，也不解除别的预约或维修限制。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC03）</summary>\n\n- 场景名称：取消遇到网络问题时，先显示处理中，不重复释放\n- 场景编号：S028.SC03\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- 取消命令第一次到达资源接口但响应丢失\n\n**精确动作**\n\n- 以同一业务命令重试并查询预约\n\n**结果与约束**\n\n- 不多次释放或释放别的来源；未确认前显示取消处理中，确认后为同一取消结果\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S028\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P03](../policies.md#p03)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S028.md",
+          "source_sha256": "8d1057c16553d487d257af0caf105bb034b86c46ca8270c932cd04b5c99519f2",
+          "covers": [
+            2,
+            3
+          ],
+          "preconditions": [
+            "取消请求已到达资源服务，但确认结果在网络中丢失。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "重试同一次取消，并打开该预约查看状态。"
+          ],
+          "expected": [
+            "确认之前显示取消处理中；确认后显示同一取消结果。重试不会多次释放，也不会解除其他业务的占用。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations/{id}/cancel + /admin-cancel",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-03.S03#1",
+              "criterion": 2,
+              "basis": "只释放本预约占用，重复取消不影响其他来源",
+              "expected": "常规/原文数据分支：丢ACK后原cancel operationId/载荷稳定；CANCEL_PENDING/RELEASE_PENDING显示等待，读取确认后才显示取消结果；无其它来源写入",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/cancellation.browser.test.ts::M1-03.S03 取消遇到网络问题时，先显示处理中，不重复释放"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；取消请求已到达资源服务，但确认结果在网络中丢失。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "丢ACK后原cancel operationId/载荷稳定；CANCEL_PENDING/RELEASE_PENDING显示等待，读取确认后才显示取消结果；无其它来源写入",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n取消请求已到后端但确认丢失时，页面先显示取消处理中，查清后显示取消结果；重试不重复释放座位。"
+            },
+            {
+              "id": "M1-03.S03#2",
+              "criterion": 3,
+              "basis": "不可取消状态给出明确错误",
+              "expected": "常规/原文数据分支：丢ACK后原cancel operationId/载荷稳定；CANCEL_PENDING/RELEASE_PENDING显示等待，读取确认后才显示取消结果；无其它来源写入",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/cancellation.browser.test.ts::M1-03.S03 取消遇到网络问题时，先显示处理中，不重复释放"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；取消请求已到达资源服务，但确认结果在网络中丢失。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "丢ACK后原cancel operationId/载荷稳定；CANCEL_PENDING/RELEASE_PENDING显示等待，读取确认后才显示取消结果；无其它来源写入",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n取消请求已到后端但确认丢失时，页面先显示取消处理中，查清后显示取消结果；重试不重复释放座位。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/cancellation.browser.test.ts",
+          "planned_test_title": "M1-03.S03 取消遇到网络问题时，先显示处理中，不重复释放"
+        },
+        {
+          "id": "M1-03.S04",
+          "business_scene_refs": [
+            "S034.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n取消遇到网络异常后，系统继续原来的释放任务，页面能看到失败和重试情况，其他业务的占用或维修限制不受影响。\n\n### 操作步骤与预期结果\n\n1. 一笔预约正在取消释放，网络暂时异常，同教室还有整室占用或其他维修限制。\n2. 网络恢复后，用户查看取消进度，系统继续已保存的待办。\n3. 只释放这笔预约，页面显示真实失败、重试和处理结果。\n4. 不通过直接修改其他模块数据库修复，也不解除其他来源。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC02）</summary>\n\n- 场景名称：取消重试只释放自己的预约\n- 场景编号：S034.SC02\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- 预约待释放，同室存在M2或另一工单限制\n\n**精确动作**\n\n- 注入资源超时后恢复网络并重试\n\n**结果与约束**\n\n- 持久命令恢复执行且仅释放本预约；失败/重试在页面可见，不跨库直接修复\n\n</details>",
+          "source_path": "spec/specs/S034.md",
+          "source_sha256": "3c0d9d5c2ac22c7bbe4a1bbc950dd9c12acc0d6185e10bf979ec17a34f0a2e56",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "一笔预约正在取消释放，网络暂时异常；同教室还有整室占用或其他维修限制。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "网络恢复后，再查看取消进度，等待系统继续处理原操作。"
+          ],
+          "expected": [
+            "系统从已保存的待办继续，只释放本预约。页面能看到失败和重试状态；不能直接连接别的模块数据库手工修业务数据。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations/{id}/cancel + /admin-cancel",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-03.S04#1",
+              "criterion": 2,
+              "basis": "只释放本预约占用，重复取消不影响其他来源",
+              "expected": "常规/原文数据分支：可选releaseProgress按公开契约显示实际attempts、安全errorCode、上海nextRetryAt；CLAIMED处理中；仅DONE且RELEASED释放完成；旧后端缺字段显示待核实不造次数，刷新不承诺强制立即重试",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/cancellation.browser.test.ts::M1-03.S04 取消重试只释放自己的预约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；一笔预约正在取消释放，网络暂时异常；同教室还有整室占用或其他维修限制。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收；协调人2026-11-16已批准可选releaseProgress新契约；status PENDING/CLAIMED/DONE/CANCELLED、真实attempts/nextRetryAt与白名单errorCode；旧3ce缺字段不能伪造，新后端真实联调另验",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "可选releaseProgress按公开契约显示实际attempts、安全errorCode、上海nextRetryAt；CLAIMED处理中；仅DONE且RELEASED释放完成；旧后端缺字段显示待核实不造次数，刷新不承诺强制立即重试",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n取消遇到网络异常后，系统继续原来的释放任务，页面能看到失败和重试情况，其他业务的占用或维修限制不受影响。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/cancellation.browser.test.ts",
+          "planned_test_title": "M1-03.S04 取消重试只释放自己的预约"
+        }
+      ]
+    },
+    {
+      "id": "M1-04",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "本人在有效窗口用当前教室当日编码签到",
+        "错误教室、过期码、越权和重复签到受到检查",
+        "签到与超时取消并发只有一个状态终结"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-04.S01",
+          "business_scene_refs": [
+            "S029.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n用户打开“我的预约”，找到已到开始时间的预约，输入教室当天的签到码并提交。成功后页面显示已签到，不再对这笔预约发送未签到提醒或记录违约。\n\n### 操作步骤与预期结果\n\n1. user1预约了R101的A01，09:00开始，当前09:00，当天R101签到码有效。\n2. 用户打开“我的预约”，找到该预约并进入签到操作。\n3. 输入教室当天的签到码，点击“签到”。\n4. 页面显示已签到，系统只保存一次签到和服务器处理时间，之后不再把这笔预约当作未签到处理。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC01）</summary>\n\n- 场景名称：预约开始后，输入正确签到码完成签到\n- 场景编号：S029.SC01\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n\n**精确条件**\n\n- user1有R101/A01的09:00预约，now=09:00，当日R101码有效\n\n**精确动作**\n\n- 在Web输入编码并提交\n\n**结果与约束**\n\n- 预约只变为一次CHECKED_IN，记录服务器签到时刻；不再满足未签到提醒/违约条件\n\n</details>",
+          "source_path": "spec/specs/S029.md",
+          "source_sha256": "1c17d491c2443b7b6bb7838b3d5305e43877d030ee1fc3503509a7b987205590",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "user1预约了R101的A01，09:00开始；测试时间为09:00，当天R101签到码有效。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "打开“我的预约”，找到这笔预约，进入签到操作。",
+            "输入教室当天的签到码，点击“签到”。"
+          ],
+          "expected": [
+            "页面显示已签到，后端只保存一次签到和实际处理时间。之后不再把这笔预约当成未签到来提醒或记违约。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations/{id}/check-in",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-04.S01#1",
+              "criterion": 1,
+              "basis": "本人在有效窗口用当前教室当日编码签到",
+              "expected": "常规/原文数据分支：本人有效窗口提交6位码，仅POST body；服务器CHECKED_IN及checkedInAt如实显示，重复点击不多发；码不入URL/storage/log，之后只读刷新不改违约",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/checkin.browser.test.ts::M1-04.S01 预约开始后，输入正确签到码完成签到"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；user1预约了R101的A01，09:00开始；测试时间为09:00，当天R101签到码有效。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "本人有效窗口提交6位码，仅POST body；服务器CHECKED_IN及checkedInAt如实显示，重复点击不多发；码不入URL/storage/log，之后只读刷新不改违约",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n用户打开“我的预约”，找到已到开始时间的预约，输入教室当天的签到码并提交。成功后页面显示已签到，不再对这笔预约发送未签到提醒或记录违约。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/checkin.browser.test.ts",
+          "planned_test_title": "M1-04.S01 预约开始后，输入正确签到码完成签到"
+        },
+        {
+          "id": "M1-04.S02",
+          "business_scene_refs": [
+            "S029.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n用户提前签到、使用其他教室或昨天的编码，或替他人签到时，系统都拒绝，原预约仍待签到，错误操作不记违约。\n\n### 操作步骤与预期结果\n\n1. 每种情况均从user1的同一笔09:00待签到预约开始。\n2. 在08:59:59提交正确码，系统因尚未开始拒绝。\n3. 在09:00分别提交R102的码和昨天的码，系统均拒绝。\n4. 由user2尝试为该预约签到，系统拒绝；各次预约保持待签到，不替别人签到，也不新增违约。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC02）</summary>\n\n- 场景名称：提前签到、输错教室码或替别人签到都不成功\n- 场景编号：S029.SC02\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n\n**精确条件**\n\n- 同一BOOKED预约\n\n**精确动作**\n\n- 分别在08:59:59提交正确码、09:00提交R102码/昨日码、由user2签到\n\n**结果与约束**\n\n- 每项拒绝且预约保持BOOKED；不消费其他人的预约；错误不记违约\n\n</details>",
+          "source_path": "spec/specs/S029.md",
+          "source_sha256": "1c17d491c2443b7b6bb7838b3d5305e43877d030ee1fc3503509a7b987205590",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "仍使用同一笔尚未签到的09:00预约，各种情况分别从相同初始数据测试。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "在08:59:59输入正确码并提交。",
+            "在09:00分别输入R102的码、昨天的码，再由user2尝试为这笔预约签到。"
+          ],
+          "expected": [
+            "每次都拒绝，预约仍为待签到。不替其他人完成签到，输错或操作被拒绝也不会因此新增违约。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations/{id}/check-in",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-04.S02#1",
+              "criterion": 1,
+              "basis": "本人在有效窗口用当前教室当日编码签到",
+              "expected": "常规/原文数据分支：开始前不提交；错误教室码/昨日码由服务拒绝保持RESERVED，非本人详情拒绝且不能代签；不伪造违约计数",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/checkin.browser.test.ts::M1-04.S02 提前签到、输错教室码或替别人签到都不成功"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；仍使用同一笔尚未签到的09:00预约，各种情况分别从相同初始数据测试。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "开始前不提交；错误教室码/昨日码由服务拒绝保持RESERVED，非本人详情拒绝且不能代签；不伪造违约计数",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n用户提前签到、使用其他教室或昨天的编码，或替他人签到时，系统都拒绝，原预约仍待签到，错误操作不记违约。"
+            },
+            {
+              "id": "M1-04.S02#2",
+              "criterion": 2,
+              "basis": "错误教室、过期码、越权和重复签到受到检查",
+              "expected": "常规/原文数据分支：开始前不提交；错误教室码/昨日码由服务拒绝保持RESERVED，非本人详情拒绝且不能代签；不伪造违约计数",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/checkin.browser.test.ts::M1-04.S02 提前签到、输错教室码或替别人签到都不成功"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；仍使用同一笔尚未签到的09:00预约，各种情况分别从相同初始数据测试。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "开始前不提交；错误教室码/昨日码由服务拒绝保持RESERVED，非本人详情拒绝且不能代签；不伪造违约计数",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n用户提前签到、使用其他教室或昨天的编码，或替他人签到时，系统都拒绝，原预约仍待签到，错误操作不记违约。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/checkin.browser.test.ts",
+          "planned_test_title": "M1-04.S02 提前签到、输错教室码或替别人签到都不成功"
+        },
+        {
+          "id": "M1-04.S03",
+          "business_scene_refs": [
+            "S029.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n用户在截止前已完成签到，之后重复点击或到期检查不会改成违约；直到截止时才首次签到则不允许。\n\n### 操作步骤与预期结果\n\n1. 一笔09:00预约已在09:14:59完成签到，随后到09:15。\n2. 用户再次点击签到，系统保留原签到记录；同一时刻的未签到检查不取消、不释放，也不记违约。\n3. 另在相同预约条件下，直到09:15才首次提交签到，系统提示已到截止并拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC03）</summary>\n\n- 场景名称：截止前签到成功后，不会再被截止任务判成违约\n- 场景编号：S029.SC03\n\n**对应的业务要求**\n\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n- M1-04.AC3：签到与到期取消同时处理，也只留下一个有效结果\n\n**精确条件**\n\n- 签到事务于09:14:59完成，随后时钟推进09:15\n\n**精确动作**\n\n- 重复签到并触发超时任务\n\n**结果与约束**\n\n- 保持同一签到记录，不转违约，不产生取消释放；相反若到09:15才尝试首次签到则拒绝\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S029\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-04\n- 有关业务功能：[S021 每天为每间教室显示当天签到码](S021.md)、[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P02](../policies.md#p02)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S029.md",
+          "source_sha256": "1c17d491c2443b7b6bb7838b3d5305e43877d030ee1fc3503509a7b987205590",
+          "covers": [
+            2,
+            3
+          ],
+          "preconditions": [
+            "这笔预约已在09:14:59完成签到，随后把测试时间调到09:15。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "再次点击签到，并运行未签到超时检查。",
+            "另做一次独立测试：直到09:15才第一次提交签到。"
+          ],
+          "expected": [
+            "已签到的那笔保持原签到记录，不违约、不取消，也不释放其占用。另一种情况已到截止，首次签到被拒绝。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "POST /api/reservations/{id}/check-in",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-04.S03#1",
+              "criterion": 2,
+              "basis": "错误教室、过期码、越权和重复签到受到检查",
+              "expected": "常规/原文数据分支：已签到在截止前后保持服务器原签到时刻；截止首次不能提交；浏览器只读刷新/待核实，不写NO_SHOW，真正事务竞争另验",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/checkin.browser.test.ts::M1-04.S03 截止前签到成功后，不会再被截止任务判成违约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；这笔预约已在09:14:59完成签到，随后把测试时间调到09:15。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "已签到在截止前后保持服务器原签到时刻；截止首次不能提交；浏览器只读刷新/待核实，不写NO_SHOW，真正事务竞争另验",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n用户在截止前已完成签到，之后重复点击或到期检查不会改成违约；直到截止时才首次签到则不允许。"
+            },
+            {
+              "id": "M1-04.S03#2",
+              "criterion": 3,
+              "basis": "签到与超时取消并发只有一个状态终结",
+              "expected": "常规/原文数据分支：已签到在截止前后保持服务器原签到时刻；截止首次不能提交；浏览器只读刷新/待核实，不写NO_SHOW，真正事务竞争另验",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/checkin.browser.test.ts::M1-04.S03 截止前签到成功后，不会再被截止任务判成违约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；这笔预约已在09:14:59完成签到，随后把测试时间调到09:15。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "已签到在截止前后保持服务器原签到时刻；截止首次不能提交；浏览器只读刷新/待核实，不写NO_SHOW，真正事务竞争另验",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n用户在截止前已完成签到，之后重复点击或到期检查不会改成违约；直到截止时才首次签到则不允许。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/checkin.browser.test.ts",
+          "planned_test_title": "M1-04.S03 截止前签到成功后，不会再被截止任务判成违约"
+        }
+      ]
+    },
+    {
+      "id": "M1-05",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "按预约开始时间减15分钟触发",
+        "取消记录不再提醒，任务重试不重复通知",
+        "真实邮件发送需邮件服务，测试使用可观察的测试邮件收件箱"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-05.S01",
+          "business_scene_refs": [
+            "S030.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n预约开始前15分钟，系统生成一份提前提醒。示例中09:00开始，08:45到点后，收件箱能看到包含教室、座位和时间的邮件。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始，已配置可观察的测试邮件服务和收件邮箱。\n2. 08:44:59运行提醒处理，没有提前提醒。\n3. 08:45:00再次处理，系统生成一份对应提前提醒。\n4. 打开测试收件箱，可看到教室、座位、时间，并能对应到原业务事件。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC01）</summary>\n\n- 场景名称：没到提醒时间不发，到点后能在测试邮箱看到\n- 场景编号：S030.SC01\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约09:00开始、收件邮箱已配置测试SMTP\n\n**精确动作**\n\n- 将时钟从08:44:59推进08:45:00并执行调度\n\n**结果与约束**\n\n- 前者无提醒；后者创建一次提前提醒，测试邮箱可见教室/座位/时间；业务事件ID可追踪\n\n</details>",
+          "source_path": "spec/specs/S030.md",
+          "source_sha256": "08f3010a3ffcfc0bccc78103c37bd93c0765b10b2c1e4eccb7b9de4b7951af67",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "预约09:00开始，已配置测试邮件服务和收件邮箱。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "把测试时间设为08:44:59，运行提醒检查。",
+            "再调到08:45:00运行检查，打开测试邮箱查看。"
+          ],
+          "expected": [
+            "前一次没有提前提醒；后一次只生成一份提醒。测试邮箱里能看到教室、座位和时间，并能追查到对应业务事件。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/{id} notifications + public /notifications navigation",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-05.S01#1",
+              "criterion": 1,
+              "basis": "按预约开始时间减15分钟触发",
+              "expected": "常规/原文数据分支：按policySnapshot显示预定提醒08:45；无事件不宣称已发；收到DONE+receipt.SENT时区分服务收件与邮件服务器接收并显示eventId；真实SMTP收件箱另验",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/notifications.browser.test.ts::M1-05.S01 没到提醒时间不发，到点后能在测试邮箱看到"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；预约09:00开始，已配置测试邮件服务和收件邮箱。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "按policySnapshot显示预定提醒08:45；无事件不宣称已发；收到DONE+receipt.SENT时区分服务收件与邮件服务器接收并显示eventId；真实SMTP收件箱另验",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n预约开始前15分钟，系统生成一份提前提醒。示例中09:00开始，08:45到点后，收件箱能看到包含教室、座位和时间的邮件。"
+            },
+            {
+              "id": "M1-05.S01#2",
+              "criterion": 3,
+              "basis": "真实邮件发送需邮件服务，测试使用可观察的测试邮件收件箱",
+              "expected": "常规/原文数据分支：按policySnapshot显示预定提醒08:45；无事件不宣称已发；收到DONE+receipt.SENT时区分服务收件与邮件服务器接收并显示eventId；真实SMTP收件箱另验",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/notifications.browser.test.ts::M1-05.S01 没到提醒时间不发，到点后能在测试邮箱看到"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；预约09:00开始，已配置测试邮件服务和收件邮箱。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "按policySnapshot显示预定提醒08:45；无事件不宣称已发；收到DONE+receipt.SENT时区分服务收件与邮件服务器接收并显示eventId；真实SMTP收件箱另验",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n预约开始前15分钟，系统生成一份提前提醒。示例中09:00开始，08:45到点后，收件箱能看到包含教室、座位和时间的邮件。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/notifications.browser.test.ts",
+          "planned_test_title": "M1-05.S01 没到提醒时间不发，到点后能在测试邮箱看到"
+        },
+        {
+          "id": "M1-05.S02",
+          "business_scene_refs": [
+            "S030.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n预约已经取消就不再发提前提醒；已经生成过的同一提醒，即使反复处理也不多建一份通知。\n\n### 操作步骤与预期结果\n\n1. 一笔预约已取消，另一笔已触发过提前提醒。\n2. 系统对两笔预约重复执行提醒处理。\n3. 已取消的预约不发送，已处理事件不增加新的逻辑通知。\n4. 只有实际收件情况才能证明邮件到达，不能只凭日志说已送达。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC02）</summary>\n\n- 场景名称：已取消的不发，已经处理过的不重复生成\n- 场景编号：S030.SC02\n\n**对应的业务要求**\n\n- M1-05.AC2：已取消的不提醒，任务重试不多建通知\n\n**精确条件**\n\n- 一个预约已取消，另一个已触发提前提醒\n\n**精确动作**\n\n- 重复执行两个预约的调度\n\n**结果与约束**\n\n- 已取消不发；已触发事件不多建逻辑通知；不能只看日志就声称邮件送达\n\n</details>",
+          "source_path": "spec/specs/S030.md",
+          "source_sha256": "08f3010a3ffcfc0bccc78103c37bd93c0765b10b2c1e4eccb7b9de4b7951af67",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "一笔预约已取消，另一笔已经触发过提前提醒。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "对这两笔预约重复运行提醒检查。"
+          ],
+          "expected": [
+            "已取消的不发送；已经触发过的不多建逻辑通知。要确认邮件送达还需实际收件证据，不能只凭日志。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/{id} notifications + public /notifications navigation",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-05.S02#1",
+              "criterion": 2,
+              "basis": "取消记录不再提醒，任务重试不重复通知",
+              "expected": "常规/原文数据分支：取消不生成客户端提醒；重复GET同事件仅一项；DONE+email.PENDING不显示邮件已发送，导航通知中心只走公开路由",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/notifications.browser.test.ts::M1-05.S02 已取消的不发，已经处理过的不重复生成"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；一笔预约已取消，另一笔已经触发过提前提醒。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "取消不生成客户端提醒；重复GET同事件仅一项；DONE+email.PENDING不显示邮件已发送，导航通知中心只走公开路由",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n预约已经取消就不再发提前提醒；已经生成过的同一提醒，即使反复处理也不多建一份通知。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/notifications.browser.test.ts",
+          "planned_test_title": "M1-05.S02 已取消的不发，已经处理过的不重复生成"
+        },
+        {
+          "id": "M1-05.S03",
+          "business_scene_refs": [
+            "S030.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n离开始不足15分钟才创建预约，系统补一次提前提醒；邮件可能已发出但未确认时，投递详情如实显示待核实。\n\n### 操作步骤与预期结果\n\n1. 用户在08:50创建一笔09:00开始的预约。\n2. 系统执行到期处理，补生成一份提前提醒。\n3. 另一次邮件发送可能被外部接收但确认丢失，用户查看投递详情时看到待核实。\n4. 该次结果不能标为已发送，也不宣称外部邮件严格只会收到一次。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC03）</summary>\n\n- 场景名称：临近开始才预约要补提醒，邮件结果不明要如实显示\n- 场景编号：S030.SC03\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约于08:50创建且09:00开始；另一次SMTP确认丢失\n\n**精确动作**\n\n- 执行到期任务并查看投递详情\n\n**结果与约束**\n\n- 08:50补一次提前提醒；未知外部发送结果显示待核实而非SENT，不承诺SMTP恰好一次\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S030\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-05\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S078 实际发送邮件，失败可重试，结果不明就提示待核实](S078.md)、[S081 填写和验证通知邮箱，缺邮箱时给出明确提示](S081.md)。\n- 需要的外部业务条件：可用的邮件服务。\n- 相关业务规则：[P12](../policies.md#p12)、[P13](../policies.md#p13)、[P16](../policies.md#p16)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S030.md",
+          "source_sha256": "08f3010a3ffcfc0bccc78103c37bd93c0765b10b2c1e4eccb7b9de4b7951af67",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "一笔09:00开始的预约在08:50才创建；另准备一次邮件可能发出但没有收到确认的情况。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "运行到期提醒任务，再查看投递详情。"
+          ],
+          "expected": [
+            "新预约在08:50补一份提前提醒。另一笔结果不明的邮件显示待核实，不能标已发送，也不能保证外部邮箱只收到一次。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/{id} notifications + public /notifications navigation",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-05.S03#1",
+              "criterion": 1,
+              "basis": "按预约开始时间减15分钟触发",
+              "expected": "常规/原文数据分支：临近预约的已有服务事件可见；receipt.UNKNOWN显示待核实，NOT_CONFIGURED如实提示；不把DONE或日志当邮箱送达",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/notifications.browser.test.ts::M1-05.S03 临近开始才预约要补提醒，邮件结果不明要如实显示"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；一笔09:00开始的预约在08:50才创建；另准备一次邮件可能发出但没有收到确认的情况。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "临近预约的已有服务事件可见；receipt.UNKNOWN显示待核实，NOT_CONFIGURED如实提示；不把DONE或日志当邮箱送达",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n离开始不足15分钟才创建预约，系统补一次提前提醒；邮件可能已发出但未确认时，投递详情如实显示待核实。"
+            },
+            {
+              "id": "M1-05.S03#2",
+              "criterion": 3,
+              "basis": "真实邮件发送需邮件服务，测试使用可观察的测试邮件收件箱",
+              "expected": "常规/原文数据分支：临近预约的已有服务事件可见；receipt.UNKNOWN显示待核实，NOT_CONFIGURED如实提示；不把DONE或日志当邮箱送达",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/notifications.browser.test.ts::M1-05.S03 临近开始才预约要补提醒，邮件结果不明要如实显示"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；一笔09:00开始的预约在08:50才创建；另准备一次邮件可能发出但没有收到确认的情况。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "临近预约的已有服务事件可见；receipt.UNKNOWN显示待核实，NOT_CONFIGURED如实提示；不把DONE或日志当邮箱送达",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n离开始不足15分钟才创建预约，系统补一次提前提醒；邮件可能已发出但未确认时，投递详情如实显示待核实。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/notifications.browser.test.ts",
+          "planned_test_title": "M1-05.S03 临近开始才预约要补提醒，邮件结果不明要如实显示"
+        }
+      ]
+    },
+    {
+      "id": "M1-07",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "未签到则取消、释放、通知并记录一次违约",
+        "重启后补偿到期任务，不能重复计违约",
+        "使用可控时钟测试10/15分钟边界"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-07.S01",
+          "business_scene_refs": [
+            "S032.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n开始15分钟还没签到，系统自动取消预约、释放该笔座位占用并通知用户，只记录一次违约；截止前不提前取消。\n\n### 操作步骤与预期结果\n\n1. 09:00开始的预约一直未签到。\n2. 09:14:59执行截止检查，预约仍保留。\n3. 09:15:00再次执行，预约被取消，只释放它自己的占用。\n4. 系统发送取消提醒并记录一次违约。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC01）</summary>\n\n- 场景名称：到截止时间才取消，并释放这笔预约的座位\n- 场景编号：S032.SC01\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 09:00预约仍BOOKED\n\n**精确动作**\n\n- 在09:14:59与09:15:00驱动截止任务\n\n**结果与约束**\n\n- 前者不取消；后者取消、释放本人占用、投递取消提醒并记一次违约\n\n</details>",
+          "source_path": "spec/specs/S032.md",
+          "source_sha256": "228487adfd29c6ef548757688cd5e207aff49a2f5505543b0491d9bf2fed65a4",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "09:00开始的预约仍未签到。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "分别在09:14:59和09:15:00运行未签到截止检查。"
+          ],
+          "expected": [
+            "前一次不取消；后一次取消预约、释放它自己的占用、发送取消提醒，并记录一次违约。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/{id} + history status, no client no-show writes",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S01#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "expected": "常规/原文数据分支：09:14:59保持服务RESERVED；到真实checkinDeadlineAt先读刷新/待核实而非本地取消；服务器NO_SHOW后才显示违约结果和已有通知",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/deadline.browser.test.ts::M1-07.S01 到截止时间才取消，并释放这笔预约的座位"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；09:00开始的预约仍未签到。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "09:14:59保持服务RESERVED；到真实checkinDeadlineAt先读刷新/待核实而非本地取消；服务器NO_SHOW后才显示违约结果和已有通知",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n开始15分钟还没签到，系统自动取消预约、释放该笔座位占用并通知用户，只记录一次违约；截止前不提前取消。"
+            },
+            {
+              "id": "M1-07.S01#2",
+              "criterion": 3,
+              "basis": "使用可控时钟测试10/15分钟边界",
+              "expected": "常规/原文数据分支：09:14:59保持服务RESERVED；到真实checkinDeadlineAt先读刷新/待核实而非本地取消；服务器NO_SHOW后才显示违约结果和已有通知",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/deadline.browser.test.ts::M1-07.S01 到截止时间才取消，并释放这笔预约的座位"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；09:00开始的预约仍未签到。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "09:14:59保持服务RESERVED；到真实checkinDeadlineAt先读刷新/待核实而非本地取消；服务器NO_SHOW后才显示违约结果和已有通知",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n开始15分钟还没签到，系统自动取消预约、释放该笔座位占用并通知用户，只记录一次违约；截止前不提前取消。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/deadline.browser.test.ts",
+          "planned_test_title": "M1-07.S01 到截止时间才取消，并释放这笔预约的座位"
+        },
+        {
+          "id": "M1-07.S02",
+          "business_scene_refs": [
+            "S032.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n服务停机错过截止后，恢复时补处理未签到预约，只记一次违约和取消通知，不补发已经过时的提醒。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始且未签到，服务09:12停止、09:20恢复。\n2. 恢复后系统两次处理已到期任务。\n3. 最后只有一次违约和一份取消通知，不重复释放，也不释放其他预约。\n4. 已经过时的提前提醒和开始10分钟提醒都不再补发。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC02）</summary>\n\n- 场景名称：服务晚恢复，也只处理一次，不补发已经没意义的提醒\n- 场景编号：S032.SC02\n\n**对应的业务要求**\n\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 服务09:12停止，到09:20恢复，预约未签到\n\n**精确动作**\n\n- 补执行到期任务两次\n\n**结果与约束**\n\n- 最终一条违约与一次取消逻辑通知；不补发过时提前/+10提醒；其他预约不被释放\n\n</details>",
+          "source_path": "spec/specs/S032.md",
+          "source_sha256": "228487adfd29c6ef548757688cd5e207aff49a2f5505543b0491d9bf2fed65a4",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "服务在09:12停止，09:20才恢复；这笔预约一直没签到。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "恢复服务后，两次运行已到期任务的补处理。"
+          ],
+          "expected": [
+            "最后只有一次违约和一份取消通知。不再补发提前提醒或开始10分钟提醒，不释放其他预约的座位。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/{id} + history status, no client no-show writes",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S02#1",
+              "criterion": 2,
+              "basis": "重启后补偿到期任务，不能重复计违约",
+              "expected": "常规/原文数据分支：重开与反复刷新只读显示同一NO_SHOW/事件，未产生客户端调度写入或重复列表；后端恢复幂等与过时提醒另验",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/deadline.browser.test.ts::M1-07.S02 服务晚恢复，也只处理一次，不补发已经没意义的提醒"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；服务在09:12停止，09:20才恢复；这笔预约一直没签到。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "重开与反复刷新只读显示同一NO_SHOW/事件，未产生客户端调度写入或重复列表；后端恢复幂等与过时提醒另验",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n服务停机错过截止后，恢复时补处理未签到预约，只记一次违约和取消通知，不补发已经过时的提醒。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/deadline.browser.test.ts",
+          "planned_test_title": "M1-07.S02 服务晚恢复，也只处理一次，不补发已经没意义的提醒"
+        },
+        {
+          "id": "M1-07.S03",
+          "business_scene_refs": [
+            "S032.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n截止任务遇到已经签到或已因维修结束的预约，不会把它们改成未签到取消，也不会新增违约。\n\n### 操作步骤与预期结果\n\n1. 一笔预约09:14:59已签到，另一笔已因系统维修结束。\n2. 09:15同时执行两笔预约的截止检查。\n3. 原签到和维修结果保持不变，两笔都不新增违约，不被旧的未签到判断覆盖。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC03）</summary>\n\n- 场景名称：已经签到或因维修被结束的预约，不算未签到违约\n- 场景编号：S032.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 一条预约已在09:14:59签到；另一条已由维修系统终结\n\n**精确动作**\n\n- 09:15同时提交截止检查\n\n**结果与约束**\n\n- 二者均不新增违约；版本条件保证不会把签到或系统终结覆写成未签到取消\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S032\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-07\n- 有关业务功能：[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P02](../policies.md#p02)、[P05](../policies.md#p05)、[P12](../policies.md#p12)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S032.md",
+          "source_sha256": "228487adfd29c6ef548757688cd5e207aff49a2f5505543b0491d9bf2fed65a4",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "一笔预约在09:14:59已签到；另一笔已因系统维修被结束。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "在09:15同时运行这两笔预约的截止检查。"
+          ],
+          "expected": [
+            "两笔都不新增违约。检查不能把较新的签到或维修处理结果覆盖成未签到取消。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/{id} + history status, no client no-show writes",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S03#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "expected": "常规/原文数据分支：CHECKED_IN保持签到，SYSTEM_MAINTENANCE取消显示不计违约；10/15分钟均使用记录真实截止与服务结果，不客户端硬写",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/deadline.browser.test.ts::M1-07.S03 已经签到或因维修被结束的预约，不算未签到违约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；一笔预约在09:14:59已签到；另一笔已因系统维修被结束。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "CHECKED_IN保持签到，SYSTEM_MAINTENANCE取消显示不计违约；10/15分钟均使用记录真实截止与服务结果，不客户端硬写",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n截止任务遇到已经签到或已因维修结束的预约，不会把它们改成未签到取消，也不会新增违约。"
+            },
+            {
+              "id": "M1-07.S03#2",
+              "criterion": 3,
+              "basis": "使用可控时钟测试10/15分钟边界",
+              "expected": "常规/原文数据分支：CHECKED_IN保持签到，SYSTEM_MAINTENANCE取消显示不计违约；10/15分钟均使用记录真实截止与服务结果，不客户端硬写",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/deadline.browser.test.ts::M1-07.S03 已经签到或因维修被结束的预约，不算未签到违约"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；一笔预约在09:14:59已签到；另一笔已因系统维修被结束。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "CHECKED_IN保持签到，SYSTEM_MAINTENANCE取消显示不计违约；10/15分钟均使用记录真实截止与服务结果，不客户端硬写",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n截止任务遇到已经签到或已因维修结束的预约，不会把它们改成未签到取消，也不会新增违约。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/deadline.browser.test.ts",
+          "planned_test_title": "M1-07.S03 已经签到或因维修被结束的预约，不算未签到违约"
+        },
+        {
+          "id": "M1-07.S04",
+          "business_scene_refs": [
+            "S034.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n预约已因签到超时取消后，先前占用的成功消息即使晚到，也不能让预约恢复成功，系统会补做本笔释放。\n\n### 操作步骤与预期结果\n\n1. 预约已经到截止并取消，原占用命令的成功确认此时才到。\n2. 系统核对结果，并重复处理该确认。\n3. 预约始终保持超时取消，必要时只补释放自己的占用。\n4. 不复活预约，不多记违约，也不多发取消通知。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC03）</summary>\n\n- 场景名称：已经因超时取消的预约，不会被迟到的成功消息恢复\n- 场景编号：S034.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 预约已在截止取消，但收到先前占用命令迟到成功响应\n\n**精确动作**\n\n- 执行对账及重复响应处理\n\n**结果与约束**\n\n- 保持截止取消，按同源补偿释放；不复活预约、不多记违约或多发取消事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S034\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02、M1-03、M1-07\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)、[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S034.md",
+          "source_sha256": "3c0d9d5c2ac22c7bbe4a1bbc950dd9c12acc0d6185e10bf979ec17a34f0a2e56",
+          "covers": [
+            1,
+            2
+          ],
+          "preconditions": [
+            "预约已到签到截止并被取消，但之前占用座位的成功确认现在才到。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "让系统核对结果，再重复处理这个迟到的确认。"
+          ],
+          "expected": [
+            "预约仍保持超时取消，并补做这笔预约自己的释放。不会重新变成功，也不多记违约或多发取消通知。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/{id} + history status, no client no-show writes",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S04#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "expected": "常规/原文数据分支：已知NO_SHOW version5后迟到RESERVED version2不覆盖本页已知终态；不追加违约/取消通知或发复活写入",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/deadline.browser.test.ts::M1-07.S04 已经因超时取消的预约，不会被迟到的成功消息恢复"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；预约已到签到截止并被取消，但之前占用座位的成功确认现在才到。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "已知NO_SHOW version5后迟到RESERVED version2不覆盖本页已知终态；不追加违约/取消通知或发复活写入",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n预约已因签到超时取消后，先前占用的成功消息即使晚到，也不能让预约恢复成功，系统会补做本笔释放。"
+            },
+            {
+              "id": "M1-07.S04#2",
+              "criterion": 2,
+              "basis": "重启后补偿到期任务，不能重复计违约",
+              "expected": "常规/原文数据分支：已知NO_SHOW version5后迟到RESERVED version2不覆盖本页已知终态；不追加违约/取消通知或发复活写入",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/deadline.browser.test.ts::M1-07.S04 已经因超时取消的预约，不会被迟到的成功消息恢复"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；预约已到签到截止并被取消，但之前占用座位的成功确认现在才到。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "已知NO_SHOW version5后迟到RESERVED version2不覆盖本页已知终态；不追加违约/取消通知或发复活写入",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n预约已因签到超时取消后，先前占用的成功消息即使晚到，也不能让预约恢复成功，系统会补做本笔释放。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/deadline.browser.test.ts",
+          "planned_test_title": "M1-07.S04 已经因超时取消的预约，不会被迟到的成功消息恢复"
+        },
+        {
+          "id": "M1-07.S05",
+          "business_scene_refs": [
+            "S079.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n教室开始维修时，已经结束或提前取消的预约历史不再重做取消、释放或通知，原状态和时间保持。\n\n### 操作步骤与预期结果\n\n1. R101还有已结束和已提前取消的预约。\n2. 系统处理同一维修生效事件。\n3. 查看两笔历史，状态和时间不变，不新增取消、释放或通知。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC02）</summary>\n\n- 场景名称：已经结束或取消的历史，不重新处理\n- 场景编号：S079.SC02\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n\n**精确条件**\n\n- R101另有已结束和已提前取消预约\n\n**精确动作**\n\n- 处理同一维修事件\n\n**结果与约束**\n\n- 两条历史保持原状态/时间；不重新记取消、释放或通知\n\n</details>",
+          "source_path": "spec/specs/S079.md",
+          "source_sha256": "6f8a9bf7e2be745ad22d12109b474767ea404fecbb629090875d0fbb8454b3eb",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "R101另有已结束和已提前取消的预约。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "处理相同维修事件，再看这两笔历史。"
+          ],
+          "expected": [
+            "原状态和时间不变，不重新取消，不新增释放或通知。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations/{id} + history status, no client no-show writes",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-07.S05#1",
+              "criterion": 1,
+              "basis": "未签到则取消、释放、通知并记录一次违约",
+              "expected": "常规/原文数据分支：已COMPLETED/USER取消历史刷新后原状态/时间保持，维护事件不由浏览器生成，無重复通知或释放POST",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/deadline.browser.test.ts::M1-07.S05 已经结束或取消的历史，不重新处理"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；R101另有已结束和已提前取消的预约。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "已COMPLETED/USER取消历史刷新后原状态/时间保持，维护事件不由浏览器生成，無重复通知或释放POST",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n教室开始维修时，已经结束或提前取消的预约历史不再重做取消、释放或通知，原状态和时间保持。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/deadline.browser.test.ts",
+          "planned_test_title": "M1-07.S05 已经结束或取消的历史，不重新处理"
+        }
+      ]
+    },
+    {
+      "id": "M1-08",
+      "source": {
+        "kind": "explicit",
+        "pdf_pages": [
+          1,
+          6
+        ],
+        "note": "任务书明确要求"
+      },
+      "acceptance": [
+        "只能查询本人历史，管理员另行授权",
+        "再次预约走当前全部规则，不能直接复制旧占用",
+        "分页和时区展示正确"
+      ],
+      "scenarios": [
+        {
+          "id": "M1-08.S01",
+          "business_scene_refs": [
+            "S033.SC01"
+          ],
+          "original_text": "## 场景一\n\n### 场景概述\n\n用户打开自己的预约历史，翻页时记录按固定顺序展示，不重复不漏项；直接请求他人的详情也会被拒绝。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有多笔不同状态预约。\n2. user1打开“我的预约历史”，列表只显示自己有权看的记录。\n3. 在同一份查询数据中连续翻页，记录按开始时间和编号排序，不重复或漏项。\n4. user1直接请求user2某笔详情时，系统拒绝，不泄露内容。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC01）</summary>\n\n- 场景名称：只能看到自己的历史，翻页不漏记录也不重复\n- 场景编号：S033.SC01\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- user1/user2各有多条不同状态预约\n\n**精确动作**\n\n- user1分页查询，另直接指定user2记录ID\n\n**结果与约束**\n\n- 只返回user1可见记录；越权详情拒绝；同一快照按开始时间与ID稳定排序，无重复漏项\n\n</details>",
+          "source_path": "spec/specs/S033.md",
+          "source_sha256": "3b568289f14d0811025548109b2fc0ba54ac42fd65a82f64a6396168f6e17591",
+          "covers": [
+            1,
+            3
+          ],
+          "preconditions": [
+            "user1和user2各有多笔不同状态的预约。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "user1打开“我的预约历史”，连续翻页。",
+            "开发者再直接请求user2某笔预约的详情。"
+          ],
+          "expected": [
+            "列表只显示user1有权看的记录，别人的详情被拒绝。在同一份查询数据中，按开始时间和记录编号稳定排序，不重复或漏项。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations, /api/admin/reservations, /api/reservations/{id}/rebook",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-08.S01#1",
+              "criterion": 1,
+              "basis": "只能查询本人历史，管理员另行授权",
+              "expected": "常规/原文数据分支：19/20/21/41数据完整翻页，顺序与服务一致，不漏不重；cursor原样传递、过滤改变后清除，不编total；越权详情拒绝",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/history.browser.test.ts::M1-08.S01 只能看到自己的历史，翻页不漏记录也不重复"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；user1和user2各有多笔不同状态的预约。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "19/20/21/41数据完整翻页，顺序与服务一致，不漏不重；cursor原样传递、过滤改变后清除，不编total；越权详情拒绝",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n用户打开自己的预约历史，翻页时记录按固定顺序展示，不重复不漏项；直接请求他人的详情也会被拒绝。"
+            },
+            {
+              "id": "M1-08.S01#2",
+              "criterion": 3,
+              "basis": "分页和时区展示正确",
+              "expected": "常规/原文数据分支：19/20/21/41数据完整翻页，顺序与服务一致，不漏不重；cursor原样传递、过滤改变后清除，不编total；越权详情拒绝",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/history.browser.test.ts::M1-08.S01 只能看到自己的历史，翻页不漏记录也不重复"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；user1和user2各有多笔不同状态的预约。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "19/20/21/41数据完整翻页，顺序与服务一致，不漏不重；cursor原样传递、过滤改变后清除，不编total；越权详情拒绝",
+              "source_quote": "## 场景一\n\n### 场景概述\n\n用户打开自己的预约历史，翻页时记录按固定顺序展示，不重复不漏项；直接请求他人的详情也会被拒绝。"
+            },
+            {
+              "id": "M1-08.S01#3",
+              "criterion": 3,
+              "basis": "分页和时区展示正确",
+              "expected": "数量：页容量20，19条本人有权历史全部按服务顺序遍历，无重复或漏项，末页无nextCursor",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/history.browser.test.ts::M1-08.S01 只能看到自己的历史，翻页不漏记录也不重复"
+              ],
+              "sample": "公开HTTP夹具构造19条可区分ID/时间的本人记录和1条他人记录；每页20、opaque签名游标由夹具返回，非真实数据库签名证明",
+              "observation": "逐页DOM data-reservation-id集合/顺序和HTTP cursor原值、末页按钮、改变roomId后cursor缺省",
+              "comparison": "所有页连接长度=19且Set长度=19，ID序列等于fixture有权记录排序；不出现total推断"
+            },
+            {
+              "id": "M1-08.S01#4",
+              "criterion": 3,
+              "basis": "分页和时区展示正确",
+              "expected": "数量：页容量20，20条本人有权历史全部按服务顺序遍历，无重复或漏项，末页无nextCursor",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/history.browser.test.ts::M1-08.S01 只能看到自己的历史，翻页不漏记录也不重复"
+              ],
+              "sample": "公开HTTP夹具构造20条可区分ID/时间的本人记录和1条他人记录；每页20、opaque签名游标由夹具返回，非真实数据库签名证明",
+              "observation": "逐页DOM data-reservation-id集合/顺序和HTTP cursor原值、末页按钮、改变roomId后cursor缺省",
+              "comparison": "所有页连接长度=20且Set长度=20，ID序列等于fixture有权记录排序；不出现total推断"
+            },
+            {
+              "id": "M1-08.S01#5",
+              "criterion": 3,
+              "basis": "分页和时区展示正确",
+              "expected": "数量：页容量20，21条本人有权历史全部按服务顺序遍历，无重复或漏项，末页无nextCursor",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/history.browser.test.ts::M1-08.S01 只能看到自己的历史，翻页不漏记录也不重复"
+              ],
+              "sample": "公开HTTP夹具构造21条可区分ID/时间的本人记录和1条他人记录；每页20、opaque签名游标由夹具返回，非真实数据库签名证明",
+              "observation": "逐页DOM data-reservation-id集合/顺序和HTTP cursor原值、末页按钮、改变roomId后cursor缺省",
+              "comparison": "所有页连接长度=21且Set长度=21，ID序列等于fixture有权记录排序；不出现total推断"
+            },
+            {
+              "id": "M1-08.S01#6",
+              "criterion": 3,
+              "basis": "分页和时区展示正确",
+              "expected": "数量：页容量20，41条本人有权历史全部按服务顺序遍历，无重复或漏项，末页无nextCursor",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/history.browser.test.ts::M1-08.S01 只能看到自己的历史，翻页不漏记录也不重复"
+              ],
+              "sample": "公开HTTP夹具构造41条可区分ID/时间的本人记录和1条他人记录；每页20、opaque签名游标由夹具返回，非真实数据库签名证明",
+              "observation": "逐页DOM data-reservation-id集合/顺序和HTTP cursor原值、末页按钮、改变roomId后cursor缺省",
+              "comparison": "所有页连接长度=41且Set长度=41，ID序列等于fixture有权记录排序；不出现total推断"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/history.browser.test.ts",
+          "planned_test_title": "M1-08.S01 只能看到自己的历史，翻页不漏记录也不重复"
+        },
+        {
+          "id": "M1-08.S02",
+          "business_scene_refs": [
+            "S033.SC02"
+          ],
+          "original_text": "## 场景二\n\n### 场景概述\n\n历史记录里的再次预约只帮忙填入资源和时长，提交时仍检查当前规则，不复活旧记录或复制旧占用。\n\n### 操作步骤与预期结果\n\n1. 过去A01曾预约成功，如今已停用，或最长时长已改为2小时。\n2. 用户在原3小时历史记录上点击“再次预约”，页面带入资源与时长。\n3. 用户提交，系统以新业务编号按当前规则判断并拒绝。\n4. 旧预约和旧占用不会复活，也不把过去的成功状态直接复制。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC02）</summary>\n\n- 场景名称：再次预约会重新检查当前规则\n- 场景编号：S033.SC02\n\n**对应的业务要求**\n\n- M1-08.AC2：再次预约重新检查当前规则，不复制旧占用\n\n**精确条件**\n\n- 历史A01曾预约成功，当前其已停用或最长时长改2\n\n**精确动作**\n\n- 点击再次预约并提交原3小时时段\n\n**结果与约束**\n\n- 仅预填资源与时长；创建新业务ID并按当前规则拒绝，不复活旧占用或复制旧成功状态\n\n</details>",
+          "source_path": "spec/specs/S033.md",
+          "source_sha256": "3b568289f14d0811025548109b2fc0ba54ac42fd65a82f64a6396168f6e17591",
+          "covers": [
+            2
+          ],
+          "preconditions": [
+            "历史上A01曾预约成功；现在座位已停用，或最长预约时长已改成2小时。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "在一笔历史记录中点击“再次预约”，按原来的3小时时长提交。"
+          ],
+          "expected": [
+            "页面只帮忙填入资源和时长，不恢复旧预约。新的预约尝试有新的业务编号，按当前规则被拒绝，不复制过去的成功状态。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations, /api/admin/reservations, /api/reservations/{id}/rebook",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-08.S02#1",
+              "criterion": 2,
+              "basis": "再次预约走当前全部规则，不能直接复制旧占用",
+              "expected": "常规/原文数据分支：rebook只读预填资源/历史时长及当前policy；过去null须选新时间；明确点击后用新operationId创建并重查规则，不复制旧成功/占用",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/history.browser.test.ts::M1-08.S02 再次预约会重新检查当前规则"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；历史上A01曾预约成功；现在座位已停用，或最长预约时长已改成2小时。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "rebook只读预填资源/历史时长及当前policy；过去null须选新时间；明确点击后用新operationId创建并重查规则，不复制旧成功/占用",
+              "source_quote": "## 场景二\n\n### 场景概述\n\n历史记录里的再次预约只帮忙填入资源和时长，提交时仍检查当前规则，不复活旧记录或复制旧占用。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/history.browser.test.ts",
+          "planned_test_title": "M1-08.S02 再次预约会重新检查当前规则"
+        },
+        {
+          "id": "M1-08.S03",
+          "business_scene_refs": [
+            "S033.SC03"
+          ],
+          "original_text": "## 场景三\n\n### 场景概述\n\n预约历史按上海时间显示日期。用户没有记录时显示空列表，已有记录则能查看状态、签到和取消原因。\n\n### 操作步骤与预期结果\n\n1. 打开一笔其UTC时间对应上海次日的记录，日期及筛选均归到上海的正确日期。\n2. 查看记录，可见历史状态、签到信息和取消原因。\n3. 另一个没有历史的用户打开同一页面，看到0条记录，不显示编造的演示预约。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC03）</summary>\n\n- 场景名称：日期按上海时间显示，没有记录就显示空\n- 场景编号：S033.SC03\n\n**对应的业务要求**\n\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- 一个UTC时间对应上海次日；另一用户无历史\n\n**精确动作**\n\n- 查看日期筛选及空页面\n\n**结果与约束**\n\n- 按Asia/Shanghai归日，空结果为0条而非虚构样例；历史状态/签到/取消原因可见\n\n</details>",
+          "source_path": "spec/specs/S033.md",
+          "source_sha256": "3b568289f14d0811025548109b2fc0ba54ac42fd65a82f64a6396168f6e17591",
+          "covers": [
+            3
+          ],
+          "preconditions": [
+            "一笔保存的UTC时间对应上海的次日；另一个用户还没有历史。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "查看第一笔的日期归属和日期筛选。",
+            "再用无历史的用户打开历史页面。"
+          ],
+          "expected": [
+            "按上海时区归到正确日期，能查看历史状态、签到和取消原因；无记录时显示0条，不放编造的演示记录。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations, /api/admin/reservations, /api/reservations/{id}/rebook",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-08.S03#1",
+              "criterion": 3,
+              "basis": "分页和时区展示正确",
+              "expected": "常规/原文数据分支：UTC对应上海次日的记录与日期过滤一致，状态/签到/取消原因可见；无历史只显示本页0条，无虚构示例；空元数据不编造地点",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/history.browser.test.ts::M1-08.S03 日期按上海时间显示，没有记录就显示空"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；一笔保存的UTC时间对应上海的次日；另一个用户还没有历史。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "UTC对应上海次日的记录与日期过滤一致，状态/签到/取消原因可见；无历史只显示本页0条，无虚构示例；空元数据不编造地点",
+              "source_quote": "## 场景三\n\n### 场景概述\n\n预约历史按上海时间显示日期。用户没有记录时显示空列表，已有记录则能查看状态、签到和取消原因。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/history.browser.test.ts",
+          "planned_test_title": "M1-08.S03 日期按上海时间显示，没有记录就显示空"
+        },
+        {
+          "id": "M1-08.S04",
+          "business_scene_refs": [
+            "S033.SC04"
+          ],
+          "original_text": "## 场景四\n\n### 场景概述\n\n有预约管理读取权限的管理员，可以按教室、座位和时间查询运营明细；普通用户不能借管理列表查看他人预约。\n\n### 操作步骤与预期结果\n\n1. 两个普通用户各有预约，admin1有管理读取权限，user1没有。\n2. admin1打开管理列表，选择教室、座位和时间范围查询。\n3. 结果包含范围内预约时段、状态、签到、违约及必要的用户标识。\n4. user1尝试同样的管理查询，被拒绝，不返回他人记录。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC04）</summary>\n\n- 场景名称：有权限的管理员可以查看预约管理明细\n- 场景编号：S033.SC04\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n\n**精确条件**\n\n- admin1有预约管理读取权限，user1没有；两普通用户各有预约\n\n**精确动作**\n\n- 按教室、座位和时间范围查询管理列表\n\n**结果与约束**\n\n- 只有授权管理员返回范围内预约时段、状态、签到/违约和最小化用户标识；普通用户拒绝且不泄漏他人记录\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S033\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-08、SUP-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>",
+          "source_path": "spec/specs/S033.md",
+          "source_sha256": "3b568289f14d0811025548109b2fc0ba54ac42fd65a82f64a6396168f6e17591",
+          "covers": [
+            1
+          ],
+          "preconditions": [
+            "admin1有读取预约管理信息的权限，user1没有；两个普通用户各有预约。",
+            "本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收"
+          ],
+          "actions": [
+            "分别尝试打开预约管理列表，按教室、座位和时间范围查询。"
+          ],
+          "expected": [
+            "只有授权管理员得到范围内的预约时段、状态、签到、违约和必要的用户标识。普通用户被拒绝，不泄露他人记录。"
+          ],
+          "depends_on": [],
+          "objects": [
+            {
+              "kind": "page",
+              "key": "/reservations; /manage/reservations",
+              "status": "existing",
+              "evidence": "frontend/src/modules/reservation/routes.ts两现有入口仅加载公共FeaturePage占位；已读该静态组件，无业务表单/列表/请求"
+            },
+            {
+              "kind": "component",
+              "key": "data-reservations-page",
+              "status": "missing",
+              "evidence": "本域完整源码文件清单只有routes.ts；未发现可执行的预约/签到/历史页面或API封装，不是仅运行采样缺口"
+            },
+            {
+              "kind": "api",
+              "key": "GET /api/reservations, /api/admin/reservations, /api/reservations/{id}/rebook",
+              "status": "existing",
+              "evidence": "contracts/openapi/modules/reservation/reservation-api.json 与当前ReservationController公开契约；不得带service-key进入浏览器"
+            }
+          ],
+          "cells": [
+            {
+              "id": "M1-08.S04#1",
+              "criterion": 1,
+              "basis": "只能查询本人历史，管理员另行授权",
+              "expected": "常规/原文数据分支：独立admin-read路径按roomId/seatId/from/to查询必要用户/签到/状态；他人行用列表snapshot不取其通知；普通用户管理路由拒绝",
+              "kind": "e2e",
+              "test_ids": [
+                "/workspace/frontend/tests/modules/reservation/history.browser.test.ts::M1-08.S04 有权限的管理员可以查看预约管理明细"
+              ],
+              "sample": "本容器真实Chrome加载当前App/Vue路由，API和浏览器时钟为公开契约受控夹具；admin1有读取预约管理信息的权限，user1没有；两个普通用户各有预约。；本层实际Vue/App与真实Chrome，公开HTTP loopback状态夹具；不冒充真实数据库并发、调度或SMTP验收",
+              "observation": "[data-reservations-page]，预约搜索/历史/详情/命令/通知DOM；本次公开HTTP method/path/query/body，状态/version/resourceState/checkinDeadlineAt/releaseProgress/receipt/emailStatus及原始PNG；禁止把夹具当真实事务或SMTP",
+              "comparison": "独立admin-read路径按roomId/seatId/from/to查询必要用户/签到/状态；他人行用列表snapshot不取其通知；普通用户管理路由拒绝",
+              "source_quote": "## 场景四\n\n### 场景概述\n\n有预约管理读取权限的管理员，可以按教室、座位和时间查询运营明细；普通用户不能借管理列表查看他人预约。"
+            }
+          ],
+          "layer_scope": "本层验证公开HTTP数据与操作呈现、权限/错误、原operationId重试、状态确认、上海时间及双语；真实互斥、截止调度、违约幂等和外部SMTP由已交付后端及最终联合验收分别确认",
+          "planned_test_file": "frontend/tests/modules/reservation/history.browser.test.ts",
+          "planned_test_title": "M1-08.S04 有权限的管理员可以查看预约管理明细"
+        }
+      ]
+    }
+  ],
+  "source_snapshots": [
+    {
+      "path": "spec/requirements.json",
+      "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631",
+      "requirement_ids": [
+        "M1-01",
+        "M1-02",
+        "M1-03",
+        "M1-04",
+        "M1-05",
+        "M1-07",
+        "M1-08"
+      ],
+      "text": "[\n  {\n    \"id\": \"M1-01\",\n    \"module\": \"M03\",\n    \"title\": \"按条件搜索可用座位\",\n    \"source\": {\n      \"kind\": \"explicit\",\n      \"pdf_pages\": [\n        1,\n        6\n      ],\n      \"note\": \"任务书明确要求\"\n    },\n    \"acceptance\": [\n      \"按区域、日期、时段和插座筛选\",\n      \"只返回开放且符合资格、没有占用和维修限制的座位\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": [\n      \"RES-01\",\n      \"RES-02\",\n      \"RES-03\",\n      \"RES-04\",\n      \"RES-07\",\n      \"SUP-01\",\n      \"SUP-02\"\n    ]\n  },\n  {\n    \"id\": \"M1-02\",\n    \"module\": \"M03\",\n    \"title\": \"整点小时预约及最长时长\",\n    \"source\": {\n      \"kind\": \"explicit\",\n      \"pdf_pages\": [\n        6\n      ],\n      \"note\": \"任务书明确要求\"\n    },\n    \"acceptance\": [\n      \"起止整点，正时长，默认最多4小时\",\n      \"动态参数生效，禁止过去时段和超出开放时间\",\n      \"数据库并发测试验证同座位仅一人成功\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": [\n      \"RES-01\",\n      \"RES-02\",\n      \"RES-03\",\n      \"RES-04\",\n      \"RES-07\",\n      \"SUP-01\",\n      \"SUP-02\"\n    ]\n  },\n  {\n    \"id\": \"M1-03\",\n    \"module\": \"M03\",\n    \"title\": \"预约取消与释放\",\n    \"source\": {\n      \"kind\": \"derived\",\n      \"pdf_pages\": [\n        6\n      ],\n      \"note\": \"由任务书约束推导，属于需验收的设计决策\"\n    },\n    \"acceptance\": [\n      \"仅本人或有权限管理员可取消\",\n      \"只释放本预约占用，重复取消不影响其他来源\",\n      \"不可取消状态给出明确错误\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": [\n      \"RES-01\",\n      \"RES-02\",\n      \"RES-03\",\n      \"RES-04\",\n      \"RES-07\",\n      \"SUP-01\",\n      \"SUP-02\"\n    ]\n  },\n  {\n    \"id\": \"M1-04\",\n    \"module\": \"M03\",\n    \"title\": \"Web编码签到\",\n    \"source\": {\n      \"kind\": \"explicit\",\n      \"pdf_pages\": [\n        6\n      ],\n      \"note\": \"任务书明确要求\"\n    },\n    \"acceptance\": [\n      \"本人在有效窗口用当前教室当日编码签到\",\n      \"错误教室、过期码、越权和重复签到受到检查\",\n      \"签到与超时取消并发只有一个状态终结\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": [\n      \"RES-01\",\n      \"RES-02\",\n      \"RES-03\",\n      \"RES-04\",\n      \"RES-07\",\n      \"SUP-01\",\n      \"SUP-02\"\n    ]\n  },\n  {\n    \"id\": \"M1-05\",\n    \"module\": \"M03\",\n    \"title\": \"预约前15分钟提醒\",\n    \"source\": {\n      \"kind\": \"explicit\",\n      \"pdf_pages\": [\n        6\n      ],\n      \"note\": \"任务书明确要求\"\n    },\n    \"acceptance\": [\n      \"按预约开始时间减15分钟触发\",\n      \"取消记录不再提醒，任务重试不重复通知\",\n      \"真实邮件发送需邮件服务，测试使用可观察的测试邮件收件箱\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [\n      \"SMTP_PROVIDER\"\n    ],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": [\n      \"RES-01\",\n      \"RES-02\",\n      \"RES-03\",\n      \"RES-04\",\n      \"RES-07\",\n      \"SUP-01\",\n      \"SUP-02\"\n    ]\n  },\n  {\n    \"id\": \"M1-07\",\n    \"module\": \"M03\",\n    \"title\": \"开始后15分钟违约自动取消\",\n    \"source\": {\n      \"kind\": \"explicit\",\n      \"pdf_pages\": [\n        6\n      ],\n      \"note\": \"任务书明确要求\"\n    },\n    \"acceptance\": [\n      \"未签到则取消、释放、通知并记录一次违约\",\n      \"重启后补偿到期任务，不能重复计违约\",\n      \"使用可控时钟测试10/15分钟边界\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": [\n      \"RES-01\",\n      \"RES-02\",\n      \"RES-03\",\n      \"RES-04\",\n      \"RES-07\",\n      \"SUP-01\",\n      \"SUP-02\"\n    ]\n  },\n  {\n    \"id\": \"M1-08\",\n    \"module\": \"M03\",\n    \"title\": \"历史查询与再次预约\",\n    \"source\": {\n      \"kind\": \"explicit\",\n      \"pdf_pages\": [\n        1,\n        6\n      ],\n      \"note\": \"任务书明确要求\"\n    },\n    \"acceptance\": [\n      \"只能查询本人历史，管理员另行授权\",\n      \"再次预约走当前全部规则，不能直接复制旧占用\",\n      \"分页和时区展示正确\"\n    ],\n    \"layers\": [\n      \"backend\",\n      \"frontend\"\n    ],\n    \"baseline_status\": {\n      \"backend\": \"pending\",\n      \"frontend\": \"pending\"\n    },\n    \"external_dependencies\": [],\n    \"verification\": {\n      \"red\": \"新增行为测试，未实现时必须以目标断言失败\",\n      \"green\": \"实现后同一测试通过，相关回归通过\",\n      \"mutation\": \"在隔离副本故意破坏目标规则，原测试必须失败\"\n    },\n    \"evidence\": [],\n    \"execution_owner\": \"member\",\n    \"integration_dependencies\": [\n      \"RES-01\",\n      \"RES-02\",\n      \"RES-03\",\n      \"RES-04\",\n      \"RES-07\",\n      \"SUP-01\",\n      \"SUP-02\"\n    ]\n  }\n]",
+      "kind": "approved_catalog_full_values"
+    }
+  ],
+  "plan_snapshots": [
+    {
+      "path": "spec/specs/S026.md",
+      "sha256": "f569af81011e45abc87608acfc033038360ab65448df092708e479bdd4a98b63",
+      "text": "# 搜索座位并按地点、时间和插座筛选\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s026sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在座位预约页面选择校区、日期、时段并勾选需要插座，搜索后只看到符合全部条件的座位。\n\n### 操作步骤与预期结果\n\n1. R101的A01和A02在09:00—10:00都空闲，只有A01有插座。\n2. user1打开座位预约页面，选择邯郸校区、2030年6月3日和09:00—10:00，勾选“需要插座”。\n3. 点击“搜索”，结果只显示R101的A01，并展示教室、座位编号和插座标记。\n4. 提交给后端的条件与页面选择一致。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC01）</summary>\n\n- 场景名称：选择时间和插座条件后，只显示符合条件的座位\n- 场景编号：S026.SC01\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n\n**精确条件**\n\n- R101两座仅A01有插座且T均可用\n\n**精确动作**\n\n- user1选择邯郸、2030-06-03、09:00—10:00、需要插座\n\n**结果与约束**\n\n- 列表只显示R101/A01；每项含教室、座位编号和插座标记，提交参数与筛选一致\n\n</details>\n\n<a id=\"s026sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户搜索时，系统不把无院系资格、已有占用或维修中的座位列为可预约，直接提交也不能绕过检查。\n\n### 操作步骤与预期结果\n\n1. user2无CS资格，R102限定CS，R101在查询时段已有占用或维修。\n2. user2打开座位预约页面，搜索该时段。\n3. 结果不显示上述不可预约项，后端资源接口也检查相同限制。\n4. 不能通过绕开页面直接下单取得不可用座位。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC02）</summary>\n\n- 场景名称：不把无资格或正在占用、维修的座位列为可预约\n- 场景编号：S026.SC02\n\n**对应的业务要求**\n\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- user2无CS资格，R102为CS限定；R101有占用或维修\n\n**精确动作**\n\n- user2以相同时段搜索\n\n**结果与约束**\n\n- 不返回上述不可预约项；筛选由资源公开接口判定，不能靠前端隐藏就放行下单\n\n</details>\n\n<a id=\"s026sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n搜索没有结果时提示没有空位；请求失败时提示错误和重试。页面不拿上次结果冒充本次可用座位。\n\n### 操作步骤与预期结果\n\n1. 用户打开座位搜索页面并提交查询。\n2. 接口正常返回空列表时，页面显示没有可用座位。\n3. 另一次查询遇到网络失败，页面显示必要错误和重试方式。\n4. 失败时不把上一轮结果当作这次可用结果。\n\n<details>\n<summary>场景编号与精确规则补充（S026.SC03）</summary>\n\n- 场景名称：没有空位和网络出错，要给出不同提示\n- 场景编号：S026.SC03\n\n**对应的业务要求**\n\n- M1-01.AC1：按区域、日期、时段和插座一起筛选\n- M1-01.AC2：只显示开放、有使用资格、没有占用或维修的座位\n\n**精确条件**\n\n- 资源接口分别返回空列表和网络失败\n\n**精确动作**\n\n- 执行两次独立搜索\n\n**结果与约束**\n\n- 空列表显示无可用座位；失败显示必要错误/重试；不回填上一轮结果冒充本次可用\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S026\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-01\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S024 查询座位时，一起检查预约、维修和使用资格](S024.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S027.md",
+      "sha256": "cfa52f50b9f195c71a517b60cccbeafc621b9b5d3fe6b3b893eb4a7d897cce22",
+      "text": "# 提交预约时检查整点、时长和实际占用结果\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s027sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户提交预约时，起止必须是整点，结束晚于开始，默认最多4小时；不符合的时段不能占座。\n\n### 操作步骤与预期结果\n\n1. 当前08:00，教室08:00—22:00开放，上限4小时，分别从空闲状态尝试以下请求。\n2. 用户提交09:00—13:00，其他条件符合时可成功。\n3. 用户分别提交09:30—10:30、09:00—14:00和10:00—09:00。\n4. 系统分别因非整点、超过4小时或时长不为正而拒绝，不产生占用。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC01）</summary>\n\n- 场景名称：预约必须从整点开始和结束，默认最多4小时\n- 场景编号：S027.SC01\n\n**对应的业务要求**\n\n- M1-02.AC1：开始结束均为整点，结束晚于开始，默认最多4小时\n\n**精确条件**\n\n- now=08:00，默认最长4小时，教室开放08:00—22:00\n\n**精确动作**\n\n- 依次提交09:00—13:00、09:30—10:30、09:00—14:00和10:00—09:00\n\n**结果与约束**\n\n- 仅第一项在无占用时可成立；非整点、5小时、非正时长均拒绝且不占资源\n\n</details>\n\n<a id=\"s027sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n预约不能从已过去的时间开始，不能超出关门时间，也不能超过管理员刚设置的新上限。旧页面信息不会放宽后端规则。\n\n### 操作步骤与预期结果\n\n1. 当前08:01，管理员已把最长时长改为2小时。\n2. 用户分别提交08:00开始、21:00—23:00和09:00—12:00的预约。\n3. 系统全部拒绝，不占用资源。\n4. 即使旧页面仍显示最多4小时，后端也按当前2小时上限检查。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC02）</summary>\n\n- 场景名称：已经过去、超过关门时间或超过新上限的预约不能提交\n- 场景编号：S027.SC02\n\n**对应的业务要求**\n\n- M1-02.AC2：新设置实际生效，不能预约过去或超出开放时间的时段\n\n**精确条件**\n\n- now=08:01，最长时长已改2小时\n\n**精确动作**\n\n- 分别提交08:00开始、21:00—23:00、09:00—12:00\n\n**结果与约束**\n\n- 全部拒绝；新参数用于新请求，不能因旧页面显示4小时放行\n\n</details>\n\n<a id=\"s027sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n两位用户同时预约同一座位，只有一人获得已确认记录，失败者不能留下成功预约。成功结果能与占用、通知和操作记录对应。\n\n### 操作步骤与预期结果\n\n1. user1和user2选择A01的同一时段。\n2. 两人同时提交，查看各自预约结果。\n3. 只有一人得到已确认预约，且对应一笔有效占用；另一人没有已确认记录。\n4. 成功预约的通知和操作事件可追踪到同一笔业务。\n\n<details>\n<summary>场景编号与精确规则补充（S027.SC03）</summary>\n\n- 场景名称：两个人同时点预约，不能都看到成功\n- 场景编号：S027.SC03\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- user1/user2同时申请A01的T\n\n**精确动作**\n\n- 并发通过真实预约接口创建\n\n**结果与约束**\n\n- 只有一个确认成功并对应一个有效占用；失败者不留已确认预约；成功记录/通知/审计各有可追踪事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S027\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02\n- 有关业务功能：[S006 管理员设置预约时长和各类时限](S006.md)、[S017 防止两个人订到同一座位，也防止一人同时占多个座位](S017.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S034.md",
+      "sha256": "3c0d9d5c2ac22c7bbe4a1bbc950dd9c12acc0d6185e10bf979ec17a34f0a2e56",
+      "text": "# 网络中断或服务重启后，把预约结果查清楚\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s034sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n预约请求已被资源服务处理但回复丢失，服务恢复后会核对同一笔业务，查清前显示处理中，不再多下一单。\n\n### 操作步骤与预期结果\n\n1. 预约请求已到资源服务，确认回复丢失，预约服务随后意外退出。\n2. 恢复后用户打开“我的预约”，系统按原业务编号核对。\n3. 未确认时只显示处理中；查清后显示同一笔确认预约或明确冲突。\n4. 系统不产生第二份座位占用。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC01）</summary>\n\n- 场景名称：座位已订下但确认丢失，重启后不会再订一次\n- 场景编号：S034.SC01\n\n**对应的业务要求**\n\n- M1-02.AC3：实际同时提交的数据库测试中，同座同一时段只能一人成功\n\n**精确条件**\n\n- 资源已接受预约命令，预约域尚未收到确认\n\n**精确动作**\n\n- 杀死预约进程后重启并按同业务ID对账\n\n**结果与约束**\n\n- 恢复为同一确认预约或明确冲突；处理中不展示已落实；不产生第二份占用\n\n</details>\n\n<a id=\"s034sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n取消遇到网络异常后，系统继续原来的释放任务，页面能看到失败和重试情况，其他业务的占用或维修限制不受影响。\n\n### 操作步骤与预期结果\n\n1. 一笔预约正在取消释放，网络暂时异常，同教室还有整室占用或其他维修限制。\n2. 网络恢复后，用户查看取消进度，系统继续已保存的待办。\n3. 只释放这笔预约，页面显示真实失败、重试和处理结果。\n4. 不通过直接修改其他模块数据库修复，也不解除其他来源。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC02）</summary>\n\n- 场景名称：取消重试只释放自己的预约\n- 场景编号：S034.SC02\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- 预约待释放，同室存在M2或另一工单限制\n\n**精确动作**\n\n- 注入资源超时后恢复网络并重试\n\n**结果与约束**\n\n- 持久命令恢复执行且仅释放本预约；失败/重试在页面可见，不跨库直接修复\n\n</details>\n\n<a id=\"s034sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约已因签到超时取消后，先前占用的成功消息即使晚到，也不能让预约恢复成功，系统会补做本笔释放。\n\n### 操作步骤与预期结果\n\n1. 预约已经到截止并取消，原占用命令的成功确认此时才到。\n2. 系统核对结果，并重复处理该确认。\n3. 预约始终保持超时取消，必要时只补释放自己的占用。\n4. 不复活预约，不多记违约，也不多发取消通知。\n\n<details>\n<summary>场景编号与精确规则补充（S034.SC03）</summary>\n\n- 场景名称：已经因超时取消的预约，不会被迟到的成功消息恢复\n- 场景编号：S034.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 预约已在截止取消，但收到先前占用命令迟到成功响应\n\n**精确动作**\n\n- 执行对账及重复响应处理\n\n**结果与约束**\n\n- 保持截止取消，按同源补偿释放；不复活预约、不多记违约或多发取消事件\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S034\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-02、M1-03、M1-07\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)、[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S028.md",
+      "sha256": "8d1057c16553d487d257af0caf105bb034b86c46ca8270c932cd04b5c99519f2",
+      "text": "# 取消自己的预约，或由管理员说明理由后取消\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s028sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在预约开始前取消自己的未签到预约，系统显示已取消并释放这笔占用，不影响其他业务。\n\n### 操作步骤与预期结果\n\n1. user1有09:00开始、尚未签到的预约，当前08:30。\n2. 用户打开“我的预约”，找到记录并点击“取消预约”。\n3. 记录显示已取消，查询资源时只释放本预约占用，其他预约、整室占用和维修限制保持不变。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC01）</summary>\n\n- 场景名称：开始前可以取消自己的预约\n- 场景编号：S028.SC01\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n\n**精确条件**\n\n- user1有09:00开始BOOKED预约，now=08:30\n\n**精确动作**\n\n- user1取消并在资源接口查T\n\n**结果与约束**\n\n- 预约CANCELLED且只释放本人该预约占用；其他来源不受影响\n\n</details>\n\n<a id=\"s028sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户不能取消别人的预约，也不能按普通用户规则取消已签到或已开始的预约；管理员需要独立权限并填写理由。\n\n### 操作步骤与预期结果\n\n1. user2尝试取消user1的预约，系统拒绝并说明无权操作。\n2. 分别对已签到和已到09:00开始时刻的预约，由user1尝试取消，系统均拒绝并说明原因。\n3. 管理员执行取消时，系统仍检查取消权限和非空理由，其他账号不能绕过。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC02）</summary>\n\n- 场景名称：不能取消他人的预约，也不能按普通用户规则取消已开始的预约\n- 场景编号：S028.SC02\n\n**对应的业务要求**\n\n- M1-03.AC1：只有本人或有权限的管理员能取消\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- user2不是预约人；user1预约已签到或now>=09:00\n\n**精确动作**\n\n- 分别由user2取消、user1取消已开始预约\n\n**结果与约束**\n\n- 均拒绝并说明原因；管理员需取消权限及非空理由，未授权者不能绕过\n\n</details>\n\n<a id=\"s028sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n取消请求已到后端但确认丢失时，页面先显示取消处理中，查清后显示取消结果；重试不重复释放座位。\n\n### 操作步骤与预期结果\n\n1. 用户发出取消请求，资源服务已经收到，但确认在网络中丢失。\n2. 用户打开预约记录，确认前看到取消处理中。\n3. 系统重试同一次操作，确认后页面显示同一取消结果。\n4. 重试不多次释放，也不解除别的预约或维修限制。\n\n<details>\n<summary>场景编号与精确规则补充（S028.SC03）</summary>\n\n- 场景名称：取消遇到网络问题时，先显示处理中，不重复释放\n- 场景编号：S028.SC03\n\n**对应的业务要求**\n\n- M1-03.AC2：只释放这笔预约自己的占用，重复取消不影响别的业务\n- M1-03.AC3：不能取消时，说明具体原因\n\n**精确条件**\n\n- 取消命令第一次到达资源接口但响应丢失\n\n**精确动作**\n\n- 以同一业务命令重试并查询预约\n\n**结果与约束**\n\n- 不多次释放或释放别的来源；未确认前显示取消处理中，确认后为同一取消结果\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S028\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P03](../policies.md#p03)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S029.md",
+      "sha256": "1c17d491c2443b7b6bb7838b3d5305e43877d030ee1fc3503509a7b987205590",
+      "text": "# 在网页输入教室当天的签到码\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s029sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户打开“我的预约”，找到已到开始时间的预约，输入教室当天的签到码并提交。成功后页面显示已签到，不再对这笔预约发送未签到提醒或记录违约。\n\n### 操作步骤与预期结果\n\n1. user1预约了R101的A01，09:00开始，当前09:00，当天R101签到码有效。\n2. 用户打开“我的预约”，找到该预约并进入签到操作。\n3. 输入教室当天的签到码，点击“签到”。\n4. 页面显示已签到，系统只保存一次签到和服务器处理时间，之后不再把这笔预约当作未签到处理。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC01）</summary>\n\n- 场景名称：预约开始后，输入正确签到码完成签到\n- 场景编号：S029.SC01\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n\n**精确条件**\n\n- user1有R101/A01的09:00预约，now=09:00，当日R101码有效\n\n**精确动作**\n\n- 在Web输入编码并提交\n\n**结果与约束**\n\n- 预约只变为一次CHECKED_IN，记录服务器签到时刻；不再满足未签到提醒/违约条件\n\n</details>\n\n<a id=\"s029sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n用户提前签到、使用其他教室或昨天的编码，或替他人签到时，系统都拒绝，原预约仍待签到，错误操作不记违约。\n\n### 操作步骤与预期结果\n\n1. 每种情况均从user1的同一笔09:00待签到预约开始。\n2. 在08:59:59提交正确码，系统因尚未开始拒绝。\n3. 在09:00分别提交R102的码和昨天的码，系统均拒绝。\n4. 由user2尝试为该预约签到，系统拒绝；各次预约保持待签到，不替别人签到，也不新增违约。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC02）</summary>\n\n- 场景名称：提前签到、输错教室码或替别人签到都不成功\n- 场景编号：S029.SC02\n\n**对应的业务要求**\n\n- M1-04.AC1：本人在允许的时间内，用当前教室当天的码签到\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n\n**精确条件**\n\n- 同一BOOKED预约\n\n**精确动作**\n\n- 分别在08:59:59提交正确码、09:00提交R102码/昨日码、由user2签到\n\n**结果与约束**\n\n- 每项拒绝且预约保持BOOKED；不消费其他人的预约；错误不记违约\n\n</details>\n\n<a id=\"s029sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n用户在截止前已完成签到，之后重复点击或到期检查不会改成违约；直到截止时才首次签到则不允许。\n\n### 操作步骤与预期结果\n\n1. 一笔09:00预约已在09:14:59完成签到，随后到09:15。\n2. 用户再次点击签到，系统保留原签到记录；同一时刻的未签到检查不取消、不释放，也不记违约。\n3. 另在相同预约条件下，直到09:15才首次提交签到，系统提示已到截止并拒绝。\n\n<details>\n<summary>场景编号与精确规则补充（S029.SC03）</summary>\n\n- 场景名称：截止前签到成功后，不会再被截止任务判成违约\n- 场景编号：S029.SC03\n\n**对应的业务要求**\n\n- M1-04.AC2：检查错教室、过期码、他人操作和重复签到\n- M1-04.AC3：签到与到期取消同时处理，也只留下一个有效结果\n\n**精确条件**\n\n- 签到事务于09:14:59完成，随后时钟推进09:15\n\n**精确动作**\n\n- 重复签到并触发超时任务\n\n**结果与约束**\n\n- 保持同一签到记录，不转违约，不产生取消释放；相反若到09:15才尝试首次签到则拒绝\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S029\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-04\n- 有关业务功能：[S021 每天为每间教室显示当天签到码](S021.md)、[S027 提交预约时检查整点、时长和实际占用结果](S027.md)。\n- 相关业务规则：[P02](../policies.md#p02)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S030.md",
+      "sha256": "08f3010a3ffcfc0bccc78103c37bd93c0765b10b2c1e4eccb7b9de4b7951af67",
+      "text": "# 预约开始前15分钟发提醒\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s030sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n预约开始前15分钟，系统生成一份提前提醒。示例中09:00开始，08:45到点后，收件箱能看到包含教室、座位和时间的邮件。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始，已配置可观察的测试邮件服务和收件邮箱。\n2. 08:44:59运行提醒处理，没有提前提醒。\n3. 08:45:00再次处理，系统生成一份对应提前提醒。\n4. 打开测试收件箱，可看到教室、座位、时间，并能对应到原业务事件。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC01）</summary>\n\n- 场景名称：没到提醒时间不发，到点后能在测试邮箱看到\n- 场景编号：S030.SC01\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约09:00开始、收件邮箱已配置测试SMTP\n\n**精确动作**\n\n- 将时钟从08:44:59推进08:45:00并执行调度\n\n**结果与约束**\n\n- 前者无提醒；后者创建一次提前提醒，测试邮箱可见教室/座位/时间；业务事件ID可追踪\n\n</details>\n\n<a id=\"s030sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n预约已经取消就不再发提前提醒；已经生成过的同一提醒，即使反复处理也不多建一份通知。\n\n### 操作步骤与预期结果\n\n1. 一笔预约已取消，另一笔已触发过提前提醒。\n2. 系统对两笔预约重复执行提醒处理。\n3. 已取消的预约不发送，已处理事件不增加新的逻辑通知。\n4. 只有实际收件情况才能证明邮件到达，不能只凭日志说已送达。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC02）</summary>\n\n- 场景名称：已取消的不发，已经处理过的不重复生成\n- 场景编号：S030.SC02\n\n**对应的业务要求**\n\n- M1-05.AC2：已取消的不提醒，任务重试不多建通知\n\n**精确条件**\n\n- 一个预约已取消，另一个已触发提前提醒\n\n**精确动作**\n\n- 重复执行两个预约的调度\n\n**结果与约束**\n\n- 已取消不发；已触发事件不多建逻辑通知；不能只看日志就声称邮件送达\n\n</details>\n\n<a id=\"s030sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n离开始不足15分钟才创建预约，系统补一次提前提醒；邮件可能已发出但未确认时，投递详情如实显示待核实。\n\n### 操作步骤与预期结果\n\n1. 用户在08:50创建一笔09:00开始的预约。\n2. 系统执行到期处理，补生成一份提前提醒。\n3. 另一次邮件发送可能被外部接收但确认丢失，用户查看投递详情时看到待核实。\n4. 该次结果不能标为已发送，也不宣称外部邮件严格只会收到一次。\n\n<details>\n<summary>场景编号与精确规则补充（S030.SC03）</summary>\n\n- 场景名称：临近开始才预约要补提醒，邮件结果不明要如实显示\n- 场景编号：S030.SC03\n\n**对应的业务要求**\n\n- M1-05.AC1：在开始前15分钟触发\n- M1-05.AC3：发送真实邮件需要邮件服务，测试时用能实际查看的测试收件箱\n\n**精确条件**\n\n- 预约于08:50创建且09:00开始；另一次SMTP确认丢失\n\n**精确动作**\n\n- 执行到期任务并查看投递详情\n\n**结果与约束**\n\n- 08:50补一次提前提醒；未知外部发送结果显示待核实而非SENT，不承诺SMTP恰好一次\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S030\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-05\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S078 实际发送邮件，失败可重试，结果不明就提示待核实](S078.md)、[S081 填写和验证通知邮箱，缺邮箱时给出明确提示](S081.md)。\n- 需要的外部业务条件：可用的邮件服务。\n- 相关业务规则：[P12](../policies.md#p12)、[P13](../policies.md#p13)、[P16](../policies.md#p16)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S032.md",
+      "sha256": "228487adfd29c6ef548757688cd5e207aff49a2f5505543b0491d9bf2fed65a4",
+      "text": "# 开始15分钟仍未签到，自动取消并记录违约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s032sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n开始15分钟还没签到，系统自动取消预约、释放该笔座位占用并通知用户，只记录一次违约；截止前不提前取消。\n\n### 操作步骤与预期结果\n\n1. 09:00开始的预约一直未签到。\n2. 09:14:59执行截止检查，预约仍保留。\n3. 09:15:00再次执行，预约被取消，只释放它自己的占用。\n4. 系统发送取消提醒并记录一次违约。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC01）</summary>\n\n- 场景名称：到截止时间才取消，并释放这笔预约的座位\n- 场景编号：S032.SC01\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 09:00预约仍BOOKED\n\n**精确动作**\n\n- 在09:14:59与09:15:00驱动截止任务\n\n**结果与约束**\n\n- 前者不取消；后者取消、释放本人占用、投递取消提醒并记一次违约\n\n</details>\n\n<a id=\"s032sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n服务停机错过截止后，恢复时补处理未签到预约，只记一次违约和取消通知，不补发已经过时的提醒。\n\n### 操作步骤与预期结果\n\n1. 预约09:00开始且未签到，服务09:12停止、09:20恢复。\n2. 恢复后系统两次处理已到期任务。\n3. 最后只有一次违约和一份取消通知，不重复释放，也不释放其他预约。\n4. 已经过时的提前提醒和开始10分钟提醒都不再补发。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC02）</summary>\n\n- 场景名称：服务晚恢复，也只处理一次，不补发已经没意义的提醒\n- 场景编号：S032.SC02\n\n**对应的业务要求**\n\n- M1-07.AC2：服务重启后补处理到期任务，不重复记违约\n\n**精确条件**\n\n- 服务09:12停止，到09:20恢复，预约未签到\n\n**精确动作**\n\n- 补执行到期任务两次\n\n**结果与约束**\n\n- 最终一条违约与一次取消逻辑通知；不补发过时提前/+10提醒；其他预约不被释放\n\n</details>\n\n<a id=\"s032sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n截止任务遇到已经签到或已因维修结束的预约，不会把它们改成未签到取消，也不会新增违约。\n\n### 操作步骤与预期结果\n\n1. 一笔预约09:14:59已签到，另一笔已因系统维修结束。\n2. 09:15同时执行两笔预约的截止检查。\n3. 原签到和维修结果保持不变，两笔都不新增违约，不被旧的未签到判断覆盖。\n\n<details>\n<summary>场景编号与精确规则补充（S032.SC03）</summary>\n\n- 场景名称：已经签到或因维修被结束的预约，不算未签到违约\n- 场景编号：S032.SC03\n\n**对应的业务要求**\n\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n- M1-07.AC3：通过可调整的测试时钟检查10分钟和15分钟的准确边界\n\n**精确条件**\n\n- 一条预约已在09:14:59签到；另一条已由维修系统终结\n\n**精确动作**\n\n- 09:15同时提交截止检查\n\n**结果与约束**\n\n- 二者均不新增违约；版本条件保证不会把签到或系统终结覆写成未签到取消\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S032\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-07\n- 有关业务功能：[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P02](../policies.md#p02)、[P05](../policies.md#p05)、[P12](../policies.md#p12)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S079.md",
+      "sha256": "6f8a9bf7e2be745ad22d12109b474767ea404fecbb629090875d0fbb8454b3eb",
+      "text": "# 维修开始后，结束受影响的个人预约但不记违约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s079sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n教室维修生效后，系统结束其中未来、未签到和正在使用的个人预约，统一说明维修原因并通知，不记违约。\n\n### 操作步骤与预期结果\n\n1. R101有未来待签到、开始后未签到和已签到未结束3笔预约。\n2. 系统接收经服务身份认证的W1维修生效事件。\n3. 3笔均以系统维修原因结束并通知，不计违约。\n4. 只处理R101，不误改其他教室。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC01）</summary>\n\n- 场景名称：未来、未签到和正在使用的预约都按维修原因结束\n- 场景编号：S079.SC01\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n\n**精确条件**\n\n- R101有未来BOOKED、开始后未签到和已签到未结束三条预约\n\n**精确动作**\n\n- 处理经过服务认证的W1维修生效事件\n\n**结果与约束**\n\n- 三者均以SYSTEM_MAINTENANCE终结并通知，不计违约；仅处理R101，不误改其他教室\n\n</details>\n\n<a id=\"s079sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n教室开始维修时，已经结束或提前取消的预约历史不再重做取消、释放或通知，原状态和时间保持。\n\n### 操作步骤与预期结果\n\n1. R101还有已结束和已提前取消的预约。\n2. 系统处理同一维修生效事件。\n3. 查看两笔历史，状态和时间不变，不新增取消、释放或通知。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC02）</summary>\n\n- 场景名称：已经结束或取消的历史，不重新处理\n- 场景编号：S079.SC02\n\n**对应的业务要求**\n\n- M3-03.AC3：已有预约怎么结束、怎样通知、历史怎样保留都有明确规则\n- M1-07.AC1：取消预约、释放自己的占用、通知用户，并只记一次违约\n\n**精确条件**\n\n- R101另有已结束和已提前取消预约\n\n**精确动作**\n\n- 处理同一维修事件\n\n**结果与约束**\n\n- 两条历史保持原状态/时间；不重新记取消、释放或通知\n\n</details>\n\n<a id=\"s079sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n维修已处理并恢复后，旧维修消息重发不能结束恢复后新建的预约，也不重复通知或记违约。\n\n### 操作步骤与预期结果\n\n1. W1这版事件已处理，资源已恢复，随后用户新建预约。\n2. 旧维修事件再次到达，系统核对来源版本。\n3. 新预约不被终结，不重复通知或违约；资源恢复仍只按对应工单来源控制。\n\n<details>\n<summary>场景编号与精确规则补充（S079.SC03）</summary>\n\n- 场景名称：维修结束后，旧消息重发不能取消新预约\n- 场景编号：S079.SC03\n\n**对应的业务要求**\n\n- RES-05.AC3：重复消息和晚到的旧消息不能错误恢复座位\n\n**精确条件**\n\n- W1同版本事件已处理且已恢复，存在恢复后新预约\n\n**精确动作**\n\n- 重放旧维修事件并检查来源版本\n\n**结果与约束**\n\n- 旧事件不再终结新预约；不重复记通知或违约；资源恢复仍按工单来源控制\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S079\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M3-03、M1-07、RES-05\n- 有关业务功能：[S019 维修时停用整间教室，恢复时逐项检查原因](S019.md)、[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S063 保存关键操作记录，并隐藏密码和密钥](S063.md)。\n- 相关业务规则：[P05](../policies.md#p05)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    },
+    {
+      "path": "spec/specs/S033.md",
+      "sha256": "3b568289f14d0811025548109b2fc0ba54ac42fd65a82f64a6396168f6e17591",
+      "text": "# 查看我的预约历史，并重新选择预约\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s033sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户打开自己的预约历史，翻页时记录按固定顺序展示，不重复不漏项；直接请求他人的详情也会被拒绝。\n\n### 操作步骤与预期结果\n\n1. user1和user2各有多笔不同状态预约。\n2. user1打开“我的预约历史”，列表只显示自己有权看的记录。\n3. 在同一份查询数据中连续翻页，记录按开始时间和编号排序，不重复或漏项。\n4. user1直接请求user2某笔详情时，系统拒绝，不泄露内容。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC01）</summary>\n\n- 场景名称：只能看到自己的历史，翻页不漏记录也不重复\n- 场景编号：S033.SC01\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- user1/user2各有多条不同状态预约\n\n**精确动作**\n\n- user1分页查询，另直接指定user2记录ID\n\n**结果与约束**\n\n- 只返回user1可见记录；越权详情拒绝；同一快照按开始时间与ID稳定排序，无重复漏项\n\n</details>\n\n<a id=\"s033sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n历史记录里的再次预约只帮忙填入资源和时长，提交时仍检查当前规则，不复活旧记录或复制旧占用。\n\n### 操作步骤与预期结果\n\n1. 过去A01曾预约成功，如今已停用，或最长时长已改为2小时。\n2. 用户在原3小时历史记录上点击“再次预约”，页面带入资源与时长。\n3. 用户提交，系统以新业务编号按当前规则判断并拒绝。\n4. 旧预约和旧占用不会复活，也不把过去的成功状态直接复制。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC02）</summary>\n\n- 场景名称：再次预约会重新检查当前规则\n- 场景编号：S033.SC02\n\n**对应的业务要求**\n\n- M1-08.AC2：再次预约重新检查当前规则，不复制旧占用\n\n**精确条件**\n\n- 历史A01曾预约成功，当前其已停用或最长时长改2\n\n**精确动作**\n\n- 点击再次预约并提交原3小时时段\n\n**结果与约束**\n\n- 仅预填资源与时长；创建新业务ID并按当前规则拒绝，不复活旧占用或复制旧成功状态\n\n</details>\n\n<a id=\"s033sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n预约历史按上海时间显示日期。用户没有记录时显示空列表，已有记录则能查看状态、签到和取消原因。\n\n### 操作步骤与预期结果\n\n1. 打开一笔其UTC时间对应上海次日的记录，日期及筛选均归到上海的正确日期。\n2. 查看记录，可见历史状态、签到信息和取消原因。\n3. 另一个没有历史的用户打开同一页面，看到0条记录，不显示编造的演示预约。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC03）</summary>\n\n- 场景名称：日期按上海时间显示，没有记录就显示空\n- 场景编号：S033.SC03\n\n**对应的业务要求**\n\n- M1-08.AC3：翻页不漏不重，日期时间显示正确\n\n**精确条件**\n\n- 一个UTC时间对应上海次日；另一用户无历史\n\n**精确动作**\n\n- 查看日期筛选及空页面\n\n**结果与约束**\n\n- 按Asia/Shanghai归日，空结果为0条而非虚构样例；历史状态/签到/取消原因可见\n\n</details>\n\n<a id=\"s033sc04\"></a>\n\n## 场景四\n\n### 场景概述\n\n有预约管理读取权限的管理员，可以按教室、座位和时间查询运营明细；普通用户不能借管理列表查看他人预约。\n\n### 操作步骤与预期结果\n\n1. 两个普通用户各有预约，admin1有管理读取权限，user1没有。\n2. admin1打开管理列表，选择教室、座位和时间范围查询。\n3. 结果包含范围内预约时段、状态、签到、违约及必要的用户标识。\n4. user1尝试同样的管理查询，被拒绝，不返回他人记录。\n\n<details>\n<summary>场景编号与精确规则补充（S033.SC04）</summary>\n\n- 场景名称：有权限的管理员可以查看预约管理明细\n- 场景编号：S033.SC04\n\n**对应的业务要求**\n\n- M1-08.AC1：本人只能看本人历史；管理员另有授权才可查看管理信息\n- SUP-03.AC2：管理员按权限查看，无数据时不编造数字\n\n**精确条件**\n\n- admin1有预约管理读取权限，user1没有；两普通用户各有预约\n\n**精确动作**\n\n- 按教室、座位和时间范围查询管理列表\n\n**结果与约束**\n\n- 只有授权管理员返回范围内预约时段、状态、签到/违约和最小化用户标识；普通用户拒绝且不泄漏他人记录\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S033\n- 业务分组：个人预约与签到\n- 范围：核心业务\n- 对应要求：M1-08、SUP-03\n- 有关业务功能：[S027 提交预约时检查整点、时长和实际占用结果](S027.md)、[S028 取消自己的预约，或由管理员说明理由后取消](S028.md)、[S029 在网页输入教室当天的签到码](S029.md)、[S032 开始15分钟仍未签到，自动取消并记录违约](S032.md)。\n- 相关业务规则：[P01](../policies.md#p01)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n"
+    }
+  ],
+  "boundary": {
+    "version": "3ce25e8dfdd279c4613e23c2cd58bcbcc393c56a",
+    "pages": [
+      {
+        "key": "/reservations",
+        "permission": "reservation:read",
+        "source": "frontend/src/modules/reservation/routes.ts",
+        "fact": "现有占位，保留route/name/meta titleKey"
+      },
+      {
+        "key": "/manage/reservations",
+        "permission": "reservation:admin-read",
+        "source": "frontend/src/modules/reservation/routes.ts",
+        "fact": "现有占位，管理员明细与普通用户历史入口分开"
+      }
+    ],
+    "components": [
+      {
+        "key": "shared:FeaturePage",
+        "source": "frontend/src/shared/pages/FeaturePage.vue",
+        "fact": "只输出标题和待实现提示，没有预约交互"
+      }
+    ],
+    "runtime": "本人network=none前端容器、只读根与模块白名单；init:true私有运行修复后133项基线PASS，无driver ERROR；原全局18个api-client用例重复标题问题单独保留，不伪造有效收据",
+    "publicContracts": [
+      "availability返回数组，包含seat id/roomId/code/roomName/roomCode/campus/building等；资格和时段限制由后端",
+      "create/cancel/check-in返回当前ReservationView；PENDING/CANCEL_PENDING为202，不能当成功确认",
+      "history游标分页items,nextCursor,limit,timeZone=Asia/Shanghai；cursor绑定本人/模式/筛选/快照，不能拼改",
+      "owner-only GET detail额外包含notifications[{eventId,status,receipt}]；admin列表返回snapshot，可直接呈现，但不能借普通detail读取他人通知",
+      "rebook为只读预填，可能requiresNewTimeSelection=true；最终必须用户确认新的POST并重查当前规则"
+    ],
+    "dataSources": "本人Cookie/标准CSRF + 当前权限；所有角色/资格来自可信会话与公开服务；无用户ID自报、service-key或他域数据库访问"
+  },
+  "issues": [
+    {
+      "id": "A01",
+      "type": "ATTRIBUTION",
+      "status": "已确认",
+      "description": "用户授权继续六人完整workflow；采用已冻结的真实Chrome+loopback公开契约fixture验证UI，与最终真实两服务/数据库/SMTP验证分开",
+      "source": "用户指令；skills/campus-test/references/web-adapter.md；既有后端真实HTTP报告"
+    },
+    {
+      "id": "U01",
+      "type": "UNRESOLVED",
+      "status": "联合验收待办",
+      "description": "正式公网SMTP仍缺实际供应商；本轮后端已用真实测试SMTP验证。前端如实呈现通知receipt状态，不能调用internal或将SMTP接收等同实际收件箱送达"
+    },
+    {
+      "id": "A02",
+      "type": "ATTRIBUTION",
+      "status": "原文可定",
+      "description": "M1-02要求动态参数生效；公共创建/再次预约服务读取当前参数。浏览器不额外写死4小时导致管理员调整后仍被拒绝，也不调用internal settings；通过服务当前结果和已有记录policySnapshot说明限制",
+      "source_quote": "动态参数生效，禁止过去时段和超出开放时间"
+    },
+    {
+      "id": "A03",
+      "type": "ATTRIBUTION",
+      "status": "原文可定",
+      "description": "普通详情仅本人，管理员另用授权管理列表；不扩大服务读权限获取他人的通知",
+      "source_quote": "只能查询本人历史，管理员另行授权"
+    },
+    {
+      "id": "U02",
+      "type": "UNRESOLVED",
+      "status": "视觉待验",
+      "description": "当前批准Chrome镜像缺CJK字体；中文DOM与交互可验证，不能声称中文像素/视觉已验收。字体由协调基线后续补齐"
+    }
+  ]
+}
