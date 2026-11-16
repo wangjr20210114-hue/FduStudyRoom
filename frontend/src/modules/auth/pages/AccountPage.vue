@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import NotificationEmail from '../components/NotificationEmail.vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthSession } from '../model/auth-session'
 import { getRoleLabel } from '../model/role-label'
@@ -17,6 +18,7 @@ const role = computed(() => user.value ? getRoleLabel(user.value.role) : '')
       <div><dt>{{ t('auth.session.account') }}</dt><dd>{{ user.loginName }}</dd></div>
       <div><dt>{{ t('auth.session.role') }}</dt><dd>{{ role }}</dd></div>
     </dl>
+    <NotificationEmail />
   </section>
 </template>
 
