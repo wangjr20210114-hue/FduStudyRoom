@@ -9,14 +9,18 @@ import { dateText, numberText, rateText } from '@/modules/notification/model/for
 const { t, locale } = useI18n({ useScope: 'global' }); const session = useAuthSession(); const message = (key: string) => t('modules.statistics.' + key)
 const allowed = computed(() => session.user.value?.permissions.includes('statistics:read') ?? false)
 const mayReadRooms = computed(() => session.user.value?.permissions.includes('resource:rooms:read') ?? false)
-const localValue = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19)
+const localValue = (date: Date) => {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}:${part('second')}`
+}
 const now = new Date(Date.now() - 1000); const from = ref(localValue(new Date(now.getTime() - 86400000))); const to = ref(localValue(now)); const asOf = ref(localValue(now)); const roomId = ref('')
 const roomOptions = ref<{ id: string; name: string; code: string }[]>([]); const result = ref<StatisticsResult | null>(null); const loading = ref(false); const error = ref(''); const roomError = ref(''); let sequence = 0; let controller: AbortController | undefined; let roomController: AbortController | undefined
 const minuteValue = (value: number | null) => numberText(value === null ? null : value / 60, locale.value)
 async function load() {
   const current = ++sequence; controller?.abort(); controller = new AbortController(); result.value = null; error.value = ''
   if (!allowed.value) { loading.value = false; return }
-  const start = new Date(from.value), end = new Date(to.value), cutoff = new Date(asOf.value)
+  const start = new Date(from.value + '+08:00'), end = new Date(to.value + '+08:00'), cutoff = new Date(asOf.value + '+08:00')
   if (![start, end, cutoff].every(d => Number.isFinite(d.getTime())) || start >= end) { loading.value = false; error.value = message('invalidRange'); return }
   loading.value = true
   try { const value = await statistics({ from: start.toISOString(), to: end.toISOString(), asOf: cutoff.toISOString(), roomId: roomId.value || undefined }, controller.signal); if (current === sequence) result.value = value }
