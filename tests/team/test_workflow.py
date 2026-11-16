@@ -32,6 +32,33 @@ class ReportTests(unittest.TestCase):
   report=parse_report('<testsuite tests="1"><testcase classname="Room" name="saves"/></testsuite>',"junit")
   with self.assertRaises(PolicyError):merge_reports([report,report])
 
+
+ def test_vitest_runtime_errors_reject_red_and_mutation_even_when_target_fails(self):
+  messages = ["Error: BROWSER_EVALUATION_FAILED: Error: ELEMENT_DISABLED", "Error: ELEMENT_NOT_FOUND", "Error: Test timed out in 5000ms", "TypeError: cannot read properties of undefined", "ReferenceError: browser is not defined", "SyntaxError: unexpected token", "TimeoutError: waiting for element", "AbortError: request aborted", "\x1b[31mError: ELEMENT_DISABLED\x1b[0m"]
+  for message in messages:
+   for stage in ("red", "mutation"):
+    with self.subTest(message=message,stage=stage):
+     body=json.dumps({"numTotalTests":2,"numPassedTests":0,"numFailedTests":2,"testResults":[{"name":"browser.test.ts","assertionResults":[{"fullName":"required business assertion","status":"failed","failureMessages":["AssertionError: expected cancelled to equal reserved"]},{"fullName":"driver action","status":"failed","failureMessages":[message]}]}]})
+     result=merge_reports([parse_report(body,"vitest")],["browser.test.ts::required business assertion"])
+     with self.assertRaisesRegex(PolicyError,"ERROR_OR_SKIPPED_IS_NOT_A_VALID_TDD_RUN"):validate_result(result,stage)
+     self.assertEqual(result["counts"],{"total":2,"executed":2,"passed":0,"failed":1,"errors":1,"skipped":0})
+     self.assertEqual(result["cases"][1]["details"],message)
+ def test_vitest_assertions_mentioning_driver_errors_are_valid_business_failures(self):
+  messages=["AssertionError: expected BROWSER_EVALUATION_FAILED to equal OK", "AssertionError: expected 'Error: ELEMENT_DISABLED' to be hidden", "AssertionError: wrong message\nError: BROWSER_EVALUATION_FAILED", "AssertionError: expected TypeError: example to equal handled"]
+  for message in messages:
+   with self.subTest(message=message):
+    body=json.dumps({"numTotalTests":1,"numPassedTests":0,"numFailedTests":1,"testResults":[{"name":"browser.test.ts","assertionResults":[{"fullName":"business assertion","status":"failed","failureMessages":[message]}]}]})
+    result=merge_reports([parse_report(body,"vitest")])
+    self.assertEqual(result["counts"]["failed"],1);self.assertEqual(result["counts"]["errors"],0)
+    self.assertTrue(validate_result(result,"red"));self.assertTrue(validate_result(result,"mutation"))
+ def test_vitest_runtime_error_does_not_hide_inconsistent_native_counts(self):
+  value={"numTotalTests":2,"numPassedTests":0,"numFailedTests":2,"testResults":[{"name":"browser.test.ts","assertionResults":[{"fullName":"assertion","status":"failed","failureMessages":["AssertionError: expected cancelled"]},{"fullName":"driver","status":"failed","failureMessages":["Error: ELEMENT_DISABLED"]}]}]}
+  for key,wrong in [("numTotalTests",3),("numPassedTests",1),("numFailedTests",1),("numFailedTests",3)]:
+   with self.subTest(key=key,wrong=wrong):
+    invalid=copy.deepcopy(value);invalid[key]=wrong
+    with self.assertRaises(PolicyError) as caught:parse_report(json.dumps(invalid),"vitest")
+    self.assertEqual(str(caught.exception.__cause__),"REPORT_COUNT_MISMATCH")
+
 class WorkflowTests(unittest.TestCase):
  def setUp(self):
   self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
