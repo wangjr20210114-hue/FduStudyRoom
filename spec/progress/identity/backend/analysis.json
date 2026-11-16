@@ -7,83 +7,6 @@
       "path": "spec/requirements.json",
       "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631",
       "text": {
-        "id": "IAM-03",
-        "module": "M01",
-        "title": "账号管理和资格维护",
-        "source": {
-          "kind": "derived",
-          "pdf_pages": [
-            5
-          ],
-          "note": "由任务书约束推导，属于需验收的设计决策"
-        },
-        "acceptance": [
-          "管理员可按版本授权、停用，旧会话失效",
-          "院系资格与整教室申请资格不能由普通用户自报"
-        ],
-        "layers": [
-          "backend",
-          "frontend"
-        ],
-        "baseline_status": {
-          "backend": "pending",
-          "frontend": "pending"
-        },
-        "external_dependencies": [],
-        "verification": {
-          "red": "新增行为测试，未实现时必须以目标断言失败",
-          "green": "实现后同一测试通过，相关回归通过",
-          "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
-        },
-        "evidence": [],
-        "execution_owner": "member",
-        "integration_dependencies": []
-      },
-      "kind": "canonical_catalogue"
-    },
-    {
-      "path": "spec/requirements.json",
-      "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631",
-      "text": {
-        "id": "IAM-04",
-        "module": "M01",
-        "title": "系统参数管理",
-        "source": {
-          "kind": "explicit",
-          "pdf_pages": [
-            5,
-            6
-          ],
-          "note": "任务书明确要求"
-        },
-        "acceptance": [
-          "预约最长时长默认4小时，可配置",
-          "提醒、签到截止及审批维修时限经过校验、版本化修改并留痕"
-        ],
-        "layers": [
-          "backend",
-          "frontend"
-        ],
-        "baseline_status": {
-          "backend": "pending",
-          "frontend": "pending"
-        },
-        "external_dependencies": [],
-        "verification": {
-          "red": "新增行为测试，未实现时必须以目标断言失败",
-          "green": "实现后同一测试通过，相关回归通过",
-          "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
-        },
-        "evidence": [],
-        "execution_owner": "member",
-        "integration_dependencies": []
-      },
-      "kind": "canonical_catalogue"
-    },
-    {
-      "path": "spec/requirements.json",
-      "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631",
-      "text": {
         "id": "IAM-05",
         "module": "M01",
         "title": "身份与权限公开校验契约",
@@ -116,554 +39,69 @@
         "execution_owner": "member",
         "integration_dependencies": []
       },
-      "kind": "canonical_catalogue"
-    },
-    {
-      "path": "spec/requirements.json",
-      "sha256": "062c906684ac184c8f568b2b96c13a26548c65d1373ceeb41e285848acf7f631",
-      "text": {
-        "id": "IAM-07",
-        "module": "M01",
-        "title": "通知邮箱填写与验证",
-        "source": {
-          "kind": "derived",
-          "pdf_pages": [
-            1,
-            6
-          ],
-          "note": "将既有S081邮箱验证场景按账户与投递所有权分开登记；不改变已验收SUP-01的历史范围"
-        },
-        "acceptance": [
-          "本人填写合法邮箱后进入待验证；拒绝非法地址或夹带角色、院系资格；缺邮箱仍可登录和使用站内通知",
-          "本人当前目标邮箱在有效期内可由验证链接确认，重复确认幂等；原始令牌不以明文存入数据库或公开日志",
-          "过期、他人和旧邮箱链接均被拒绝；缺邮箱不静默取消预约，邮件任务明确显示缺地址或待补全状态"
-        ],
-        "layers": [
-          "backend",
-          "frontend"
-        ],
-        "baseline_status": {
-          "backend": "pending",
-          "frontend": "pending"
-        },
-        "external_dependencies": [],
-        "verification": {
-          "red": "新增行为测试，未实现时必须以目标断言失败",
-          "green": "实现后同一测试通过，相关回归通过",
-          "mutation": "在隔离副本故意破坏目标规则，原测试必须失败"
-        },
-        "evidence": [],
-        "execution_owner": "member",
-        "integration_dependencies": [
-          "SUP-04"
-        ]
-      },
-      "kind": "canonical_catalogue"
+      "kind": "canonical_catalogue",
+      "requirement_ids": [
+        "IAM-05"
+      ]
     },
     {
       "path": "docs/workflow/round3-contracts-and-work-orders.md",
-      "sha256": "f9c5fabb32f09d0e0bec778d1970e7eaea34780b05a8b37832085481e1d2f794",
-      "text": "# 六人完整功能开发工作单\n\n本轮接续已上线的 c369a01，使用 a—f 六个本机缓冲站身份。先完成剩余后端，再完成各域前端；保持独立工作树、容器、需求分析、TDD、变异、回归和收件。已验证项核对证据后跳过。新交付的人工验收独立进行，不沿用上轮仅六项后端的验收结论。\n\n## 分工\n\n| 身份 | 领域 | 剩余后端 | 剩余前端 |\n| --- | --- | --- | --- |\n| a | 账号和设置 | IAM-03/04/05/07 | IAM-02/03/04/07 |\n| b | 教室、座位、占用 | RES-01/02/03/04/05/06；RES-08真实数据源受阻 | RES-01/02/03/04/05/07；RES-08显示未接入 |\n| c | 个人预约和签到 | M1-01/02/03/04/05/07/08 | M1-01至08 |\n| d | 整室申请和审批 | M2-01/03/04/05/06 | M2-01至05 |\n| e | 报修和维修 | M3-01/02/03/04/05/07 | M3-01至07 |\n| f | 通知、审计、统计 | SUP-02/03/04；AGT-01外部模型受阻 | SUP-01/02/03；AGT-01如实显示配置缺口 |\n\nIAM-01/06前后端已验收；IAM-02、RES-07、M1-06、M2-02、M3-06、SUP-01后端已在上一轮验证。邮箱验证原有S081由M01负责账户状态，登记IAM-07；邮件瞬时投递由M06负责，登记SUP-04/S082。旧SUP-01的验收历史不改写成覆盖邮箱验证。\n\n## 已确认的规则\n\n用户于2026-11-15明确确认P02–P09、P12，审批默认60分钟、维修默认120分钟，可由管理员调整。其他默认值为最长预约4小时、提前15分钟提醒、开始后10分钟提醒、15分钟未签到取消。设置整组原子更新且校验；业务创建或派单时保留截止时间快照，改设置不追溯改旧单。\n\n统计按P08。停用/维修从实际生效时刻截断可服务窗口，恢复起重新开放，不追溯整段失效。释放生效时间是资源模块成功持久应用的服务器时刻。容量与实际保留占用按[from,to)、asOf和历史可服务窗口取交集；先取消后开始的占用为0。未知历史明确显示不可计算，不能拿当前active状态伪造历史。\n\n## 公开接口\n\n所有内部接口使用X-Service-Key，普通页面不持有该密钥。公共IdentityPrincipal保持原结构，各域不读他域私有表。\n\n### 账号、资格和参数\n\n- GET /internal/identity/users/{id}/eligibility：userId、enabled、role、permissions、departmentCode、canApplyRoom、authVersion；停用用户或角色返回enabled=false且没有有效权限。\n- GET /internal/identity/users/{id}/notification-email：userId、enabled、email、verified，仅可信服务可查。资格字段只由管理员维护。\n- GET /internal/system/settings：version、maxReservationHours、beforeStartReminderMinutes、afterStartReminderMinutes、checkinDeadlineMinutes、approvalTtlMinutes、repairSlaMinutes。\n- 管理员GET/PUT /api/admin/settings（PUT带expectedVersion），GET /api/admin/settings/history；所有数值正整数且开始后提醒早于签到截止，整组更新版本+1并留痕。\n- 系统设置与历史归iam，使用本模块新增迁移，不写resource表。\n\n### 资源\n\n- GET/POST /api/resources/rooms，GET/PUT /api/resources/rooms/{id}；GET/POST /api/resources/rooms/{id}/seats，PUT /api/resources/seats/{id}；写入带expectedVersion。\n- POST /internal/resources/allocations：operationId、sourceModule(M1/M2)、sourceId、sourceVersion、roomId、seatId(M1必需)、userId(M1必需)、startsAt、endsAt；M2全室原子占用。\n- POST /internal/resources/releases：operationId、sourceModule、sourceId、sourceVersion。\n- PUT /internal/resources/restrictions/{sourceId}：operationId、sourceVersion、roomId、active，归M3维修限制。\n- GET /internal/resources/availability、/capacity、/sources/{sourceModule}/{sourceId}；搜索参数startsAt、endsAt、userId、campus、building、hasSocket。\n- 首次写入201、幂等重放200，400非法格式、403资格不符、404主数据不存在、409冲突/旧版本/同键异参数、503必要依赖不可用。\n- 本域追加resource_operations来源版本/操作指纹和历史，保留整室教室级来源范围。新建/启用座位不能绕过整室占用；先释放的墓碑不能被旧消息复活。\n- 公共V3安装PostgreSQL可信btree_gist扩展，本域V2使用它建立座位与用户时间范围排斥约束；不修改已发布V1。\n\n### 通知、审计和统计\n\n- 现有POST /internal/notifications/events沿用已发布契约。\n- POST /internal/audit/events：eventKey、sourceService、actorId(系统任务可空)、action、sourceModule、sourceId、success、occurredAt、traceId、受限beforeData/afterData。首次201、相同键同内容200、异内容409；成功变更与待发审计同事务，越权失败也留安全记录。\n- GET /api/audit：audit:read鉴权、分页、traceId/sourceModule/sourceId筛选；不新增组织树或院系范围。\n- GET /internal/resources/statistics?from&to&asOf&roomId：capacitySeatSeconds、occupiedSeatSeconds、occupiedM1SeatSeconds、occupiedM2SeatSeconds、confirmedBookingCount、confirmedM1BookingCount、confirmedM2BookingCount、algorithm、historyAvailableFrom、historyComplete。占用数按来源ID去重且与有效窗口正交集；historyComplete=false不伪装为0。\n- GET /internal/reservations/statistics使用同一时间/教室范围：checkedInCount、noShowCount、排除数及来源说明；只纳入已到签到截止的队列，排除开始前取消和系统维修终结。\n- GET /api/statistics由f通过HTTP合并，statistics:read鉴权；来源失败、历史不足、0容量分别表达，不能补造0或NaN。\n\n### 邮箱验证\n\n- POST /internal/notifications/verification-email：operationId(UUID)、userId(UUID)、email、token、expiresAt，X-Service-Key；不接收URL、subject、body或locale。\n- f用受信origin生成/account#verify-email=...，固定双语模板。a本人页面读取fragment后立即清URL，再仅通过POST body验证。\n- 回执operationId、status、duplicate、retryable、nextRetryAt、errorCode。status为ACCEPTED/FAILED/NOT_CONFIGURED/UNKNOWN；ACCEPTED只表示SMTP接收，不称最终送达。\n- 200表示确定状态或重复，202表示UNKNOWN，400仅非法DTO，401密钥无效，409同键异参数。配置缺失返回NOT_CONFIGURED；过期未发为FAILED不可重试。\n- f发送前持久提交UNKNOWN；相同ID的ACCEPTED/UNKNOWN仅回读不重发。只有确定失败或未配置、尚未过期且到nextRetryAt，才允许同ID同参数重试。a超时保留原ID。\n- a仅持久nonce/hash等并从受保护密钥重建令牌；f仅存规范化请求指纹和安全回执，不存邮箱、token、URL或整封正文。禁止令牌进入日志或普通通知表。\n\n## 权限\n\n新增动作由a统一登记；其他领域只使用权限，不写IAM。沿用USER、MAINTAINER、SYSTEM_ADMIN，支持自定义角色。\n\n| 默认范围 | 权限 |\n| --- | --- |\n| 三角色，另检查本人/被派/申请资格 | resource:rooms:read；reservation:read/create/cancel/checkin；approval:read/apply；repair:report/history:read；notification:read |\n| MAINTAINER和SYSTEM_ADMIN，另检查实际被派人员 | repair:maintain |\n| SYSTEM_ADMIN | reservation:admin-cancel；approval:decide；repair:assign/accept/evaluate/admin-cancel；audit:read；statistics:read；identity:settings:read/write |\n\n原权限不删除；角色名不能代替对象归属与权限检查。IAM的已有管理权限和b签到码权限继续沿用。\n\n## 浏览器与交付\n\n真实浏览器测试复用frontend/tests/shared/browser.ts，业务测试加载真实产品组件或路由；API fixture只隔离数据来源。Vitest原生JSON通过现有record --kind e2e保存，不新增依赖/锁文件。纯SSR或假页面不能报UI通过。各域全部本层TDD/变异/回归通过再收件，前后端真实联调在协调QA环境单独验。\n\n本轮submit --no-github先自动收件，协调人保留同一差异并统一安排导出推送，避免半成品快照轮流覆盖体验站。所有GitHub推送仍按既有CI和站点规则执行；Gitee新交付仍须真人验收和独立CI，不沿用上一轮的验收。Git冲突由人处理，不自动合并main。\n\n## 当前基线证据\n\n公共工具117项（116通过、1项Windows专用在Linux跳过）；后端81/81；浏览器基础4/4、独立破坏观察值检出1个业务断言失败、类型检查通过；btree_gist在非超级用户数据库所有者下真实安装，重叠范围插入产生23P01。详情保存在本轮private目录。正式业务实现仍须各自完整需求收据，不能复用这些基线检查冒充功能完成。\n",
-      "kind": "approved_coordinator_work_order"
+      "sha256": "c1848312903d266392a10dd8a3fdc38d7759c679d2689be816254c36e14759cf",
+      "text": "# 六人完整功能开发工作单\n\n本轮接续已上线的 c369a01，使用 a—f 六个本机缓冲站身份。先完成剩余后端，再完成各域前端；保持独立工作树、容器、需求分析、TDD、变异、回归和收件。已验证项核对证据后跳过。新交付的人工验收独立进行，不沿用上轮仅六项后端的验收结论。\n\n## 分工\n\n| 身份 | 领域 | 剩余后端 | 剩余前端 |\n| --- | --- | --- | --- |\n| a | 账号和设置 | IAM-03/04/05/07 | IAM-02/03/04/07 |\n| b | 教室、座位、占用 | RES-01/02/03/04/05/06；RES-08真实数据源受阻 | RES-01/02/03/04/05/07；RES-08显示未接入 |\n| c | 个人预约和签到 | M1-01/02/03/04/05/07/08 | M1-01/02/03/04/05/07/08 |\n| d | 整室申请和审批 | M2-01/03/04/05/06 | M2-01至05 |\n| e | 报修和维修 | M3-01/02/03/04/05/07 | M3-01至07 |\n| f | 通知、审计、统计 | SUP-02/03/04；AGT-01外部模型受阻 | SUP-01/02/03；AGT-01如实显示配置缺口 |\n\nIAM-01/06前后端已验收；IAM-02、RES-07、M1-06、M2-02、M3-06、SUP-01后端已在上一轮验证。邮箱验证原有S081由M01负责账户状态，登记IAM-07；邮件瞬时投递由M06负责，登记SUP-04/S082。旧SUP-01的验收历史不改写成覆盖邮箱验证。\n\n## 已确认的规则\n\n用户于2026-11-15明确确认P02–P09、P12，审批默认60分钟、维修默认120分钟，可由管理员调整。其他默认值为最长预约4小时、提前15分钟提醒、开始后10分钟提醒、15分钟未签到取消。设置整组原子更新且校验；业务创建或派单时保留截止时间快照，改设置不追溯改旧单。\n\n统计按P08。停用/维修从实际生效时刻截断可服务窗口，恢复起重新开放，不追溯整段失效。释放生效时间是资源模块成功持久应用的服务器时刻。容量与实际保留占用按[from,to)、asOf和历史可服务窗口取交集；先取消后开始的占用为0。未知历史明确显示不可计算，不能拿当前active状态伪造历史。\n\n## 公开接口\n\n所有内部接口使用X-Service-Key，普通页面不持有该密钥。公共IdentityPrincipal保持原结构，各域不读他域私有表。\n\n### 账号、资格和参数\n\n- GET /internal/identity/users/{id}/eligibility：userId、enabled、role、permissions、departmentCode、canApplyRoom、authVersion；停用用户或角色返回enabled=false且没有有效权限。\n- GET /internal/identity/users/{id}/notification-email：userId、enabled、email、verified，仅可信服务可查。资格字段只由管理员维护。\n- GET /internal/system/settings：version、maxReservationHours、beforeStartReminderMinutes、afterStartReminderMinutes、checkinDeadlineMinutes、approvalTtlMinutes、repairSlaMinutes。\n- 管理员GET/PUT /api/admin/settings（PUT带expectedVersion），GET /api/admin/settings/history；所有数值正整数且开始后提醒早于签到截止，整组更新版本+1并留痕。\n- 系统设置与历史归iam，使用本模块新增迁移，不写resource表。\n\n### 资源\n\n- GET/POST /api/resources/rooms，GET/PUT /api/resources/rooms/{id}；GET/POST /api/resources/rooms/{id}/seats，PUT /api/resources/seats/{id}；写入带expectedVersion。\n- POST /internal/resources/allocations：operationId、sourceModule(M1/M2)、sourceId、sourceVersion、roomId、seatId(M1必需)、userId(M1必需)、startsAt、endsAt；M2全室原子占用。\n- POST /internal/resources/releases：operationId、sourceModule、sourceId、sourceVersion。\n- PUT /internal/resources/restrictions/{sourceId}：operationId、sourceVersion、roomId、active，归M3维修限制。\n- GET /internal/resources/availability、/capacity、/sources/{sourceModule}/{sourceId}；搜索参数startsAt、endsAt、userId、campus、building、hasSocket。\n- 首次写入201、幂等重放200，400非法格式、403资格不符、404主数据不存在、409冲突/旧版本/同键异参数、503必要依赖不可用。\n- 本域追加resource_operations来源版本/操作指纹和历史，保留整室教室级来源范围。新建/启用座位不能绕过整室占用；先释放的墓碑不能被旧消息复活。\n- 公共V3安装PostgreSQL可信btree_gist扩展，本域V2使用它建立座位与用户时间范围排斥约束；不修改已发布V1。\n\n### 通知、审计和统计\n\n- 现有POST /internal/notifications/events沿用已发布契约。\n- POST /internal/audit/events：eventKey、sourceService、actorId(系统任务可空)、action、sourceModule、sourceId、success、occurredAt、traceId、受限beforeData/afterData。首次201、相同键同内容200、异内容409；成功变更与待发审计同事务，越权失败也留安全记录。\n- GET /api/audit：audit:read鉴权、分页、traceId/sourceModule/sourceId筛选；不新增组织树或院系范围。\n- GET /internal/resources/statistics?from&to&asOf&roomId：capacitySeatSeconds、occupiedSeatSeconds、occupiedM1SeatSeconds、occupiedM2SeatSeconds、confirmedBookingCount、confirmedM1BookingCount、confirmedM2BookingCount、algorithm、historyAvailableFrom、historyComplete。占用数按来源ID去重且与有效窗口正交集；historyComplete=false不伪装为0。\n- GET /internal/reservations/statistics使用同一时间/教室范围：checkedInCount、noShowCount、排除数及来源说明；只纳入已到签到截止的队列，排除开始前取消和系统维修终结。\n- GET /api/statistics由f通过HTTP合并，statistics:read鉴权；来源失败、历史不足、0容量分别表达，不能补造0或NaN。\n\n### 邮箱验证\n\n- POST /internal/notifications/verification-email：operationId(UUID)、userId(UUID)、email、token、expiresAt，X-Service-Key；不接收URL、subject、body或locale。\n- f用受信origin生成/account#verify-email=...，固定双语模板。a本人页面读取fragment后立即清URL，再仅通过POST body验证。\n- 回执operationId、status、duplicate、retryable、nextRetryAt、errorCode。status为ACCEPTED/FAILED/NOT_CONFIGURED/UNKNOWN；ACCEPTED只表示SMTP接收，不称最终送达。\n- 200表示确定状态或重复，202表示UNKNOWN，400仅非法DTO，401密钥无效，409同键异参数。配置缺失返回NOT_CONFIGURED；过期未发为FAILED不可重试。\n- f发送前持久提交UNKNOWN；相同ID的ACCEPTED/UNKNOWN仅回读不重发。只有确定失败或未配置、尚未过期且到nextRetryAt，才允许同ID同参数重试。a超时保留原ID。\n- a仅持久nonce/hash等并从受保护密钥重建令牌；f仅存规范化请求指纹和安全回执，不存邮箱、token、URL或整封正文。禁止令牌进入日志或普通通知表。\n\n## 权限\n\n新增动作由a统一登记；其他领域只使用权限，不写IAM。沿用USER、MAINTAINER、SYSTEM_ADMIN，支持自定义角色。\n\n| 默认范围 | 权限 |\n| --- | --- |\n| 三角色，另检查本人/被派/申请资格 | resource:rooms:read；reservation:read/create/cancel/checkin；approval:read/apply；repair:report/history:read；notification:read |\n| MAINTAINER和SYSTEM_ADMIN，另检查实际被派人员 | repair:maintain |\n| SYSTEM_ADMIN | reservation:admin-cancel；reservation:admin-read；approval:decide；approval:flow:read；approval:flow:write；approval:admin-cancel；repair:assign/accept/evaluate/admin-cancel；audit:read；statistics:read；identity:settings:read/write |\n\n原权限不删除；角色名不能代替对象归属与权限检查。IAM的已有管理权限和b签到码权限继续沿用。\n\n## 浏览器与交付\n\n真实浏览器测试复用frontend/tests/shared/browser.ts，业务测试加载真实产品组件或路由；API fixture只隔离数据来源。Vitest原生JSON通过现有record --kind e2e保存，不新增依赖/锁文件。纯SSR或假页面不能报UI通过。各域全部本层TDD/变异/回归通过再收件，前后端真实联调在协调QA环境单独验。\n\n本轮submit --no-github先自动收件，协调人保留同一差异并统一安排导出推送，避免半成品快照轮流覆盖体验站。所有GitHub推送仍按既有CI和站点规则执行；Gitee新交付仍须真人验收和独立CI，不沿用上一轮的验收。Git冲突由人处理，不自动合并main。\n\n## 当前基线证据\n\n公共工具117项（116通过、1项Windows专用在Linux跳过）；后端81/81；浏览器基础4/4、独立破坏观察值检出1个业务断言失败、类型检查通过；btree_gist在非超级用户数据库所有者下真实安装，重叠范围插入产生23P01。详情保存在本轮private目录。正式业务实现仍须各自完整需求收据，不能复用这些基线检查冒充功能完成。\n",
+      "kind": "approved_work_order",
+      "requirement_ids": [
+        "IAM-05"
+      ]
     },
     {
-      "kind": "coordinator_supplement",
-      "source": "Parent coordination message in current task",
-      "text": "Add service-key candidate directory limited to approval:decide/repair:maintain and atomic safe audit outbox for new and previously accepted role operations; authenticated denied operations are audited. Frozen principal remains unchanged."
-    },
+      "registered_path": "docs/sources/task-book.pdf",
+      "actual_local_path": "C:\\Users\\wangjr\\Desktop\\Pj-任务书(2)(2).pdf",
+      "actual_exists": true,
+      "sha256": "e34ad2d40cb60d6c583bae73eeaed8391d91b6c1f171fa9f046eb9f83b2e8221",
+      "kind": "original_pdf_metadata",
+      "pages": [
+        2,
+        4
+      ],
+      "note": "IAM-05为批准派生验收，不冒称PDF逐字原文；仓库登记路径缺失，按实际桌面文件摘要核对。"
+    }
+  ],
+  "plan_snapshots": [
     {
-      "kind": "coordinator_supplement",
-      "source": "Parent 2026-11-16 coordination: expand existing scoped candidate directory",
-      "text": "Repair dispatcher and independent inspector selection must use repair:assign and repair:accept candidates, separately from approval:decide and repair:maintain; no new role, permission or table; reject any other unapproved permission."
-    },
-    {
-      "kind": "coordinator_supplement",
-      "source": "Final parent coordination after M04/M05 preflight",
-      "text": "Register approval:flow:read, approval:flow:write and approval:admin-cancel separately from approval:decide, grant only SYSTEM_ADMIN by default; no M01 writes to m2 tables."
+      "path": "spec/specs/S007.md",
+      "sha256": "cada6d7d6d427e3a28b880c6493a1295bf17d8380975f13bbec9cf812ba11b91",
+      "text": "# 所有功能都按当前登录人的身份和权限处理\n\n> 业务需求草案；页面和按钮名称用于说明计划中的功能，不表示已经实现。\n\n<a id=\"s007sc01\"></a>\n\n## 场景一\n\n### 场景概述\n\n用户在预约和报修等不同功能之间操作时，系统始终识别当前登录人，并按该账号真实权限处理。\n\n### 操作步骤与预期结果\n\n1. user1登录，并拥有当前操作所需权限。\n2. 用户打开自己的预约或报修页面，执行一项获授权操作。\n3. 系统始终识别为user1，使用该账号实际权限，不因进入另一个功能就换成其他身份。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC01）</summary>\n\n- 场景名称：在不同功能中都识别为当前登录人\n- 场景编号：S007.SC01\n\n**对应的业务要求**\n\n- IAM-05.AC1：流程服务通过真实网络向身份服务确认当前用户\n\n**精确条件**\n\n- user1会话有效，两服务隔离启动\n\n**精确动作**\n\n- 从流程服务携会话调用身份公开端点\n\n**结果与约束**\n\n- 网络响应中的用户、权限和版本决定调用结果；不读资源服务私有账号表\n\n</details>\n\n<a id=\"s007sc02\"></a>\n\n## 场景二\n\n### 场景概述\n\n普通用户在请求里把自己写成管理员，也不能审批或派单，系统仍使用真实登录身份判断权限。\n\n### 操作步骤与预期结果\n\n1. user1登录，且没有审批权限。\n2. 在提交给流程服务的请求中，把用户写成admin1，角色写成系统管理员。\n3. 系统仍按user1检查并拒绝操作，不产生审批或派单记录。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC02）</summary>\n\n- 场景名称：普通用户把请求里的名字改成管理员也没有用\n- 场景编号：S007.SC02\n\n**对应的业务要求**\n\n- IAM-05.AC2：不相信页面自己填写的用户编号、角色和资格\n\n**精确条件**\n\n- user1无审批权限\n\n**精确动作**\n\n- 向流程服务请求体填写admin1及SYSTEM_ADMIN\n\n**结果与约束**\n\n- 仍以user1身份拒绝；没有审批或派单写入\n\n</details>\n\n<a id=\"s007sc03\"></a>\n\n## 场景三\n\n### 场景概述\n\n审批或派单时，如果系统无法及时确认当前身份，就返回明确失败，不继续修改业务，也不无限等待。\n\n### 操作步骤与预期结果\n\n1. 身份查询未能在约定时间内返回。\n2. 用户提交审批或派单操作。\n3. 系统在设置的最长等待时间内返回可说明原因的失败结果。\n4. 系统不相信页面自报身份，也不改用旧的宽松权限继续写入数据。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC03）</summary>\n\n- 场景名称：查不到身份时，不继续审批或派单\n- 场景编号：S007.SC03\n\n**对应的业务要求**\n\n- IAM-05.AC3：查询有最长等待时间，失败时不继续敏感操作\n\n**精确条件**\n\n- 测试代理将身份响应延迟到契约超时之后\n\n**精确动作**\n\n- 发起审批或派单写请求\n\n**结果与约束**\n\n- 在配置超时内返回可诊断失败；不以缓存的宽权限或前端身份继续写入\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S007\n- 业务分组：账号与权限\n- 范围：核心业务\n- 对应要求：IAM-05\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S004 管理员配置角色和可以使用的功能](S004.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+      "kind": "business_scenario_original",
+      "non_scenario_reference": "保留文件全文，首段背景和末尾分类/共用说明实现时参考，不新增批准验收。"
     }
   ],
   "boundary": {
-    "identity": "Real password accounts, Cookie and CSRF; isolated test fixtures only. IAM01/06 accepted; IAM02 backend prior verified evidence reviewed.",
-    "missing": "Source controllers have no settings, qualification maintenance or email verification endpoints. IAM users already own department_code/can_apply_room/auth_version.",
-    "integration_pending": [
-      "IAM05 actual workflow-service timeout and forged sensitive operation QA",
-      "Other domains consuming new settings/qualification APIs will be checked in coordinator QA; no cross-domain table writes."
+    "pages": [],
+    "components": [],
+    "scope": "仅M01/backend IAM-05，不证明前端交互。",
+    "data": [
+      {
+        "key": "identity-http",
+        "fact": "当前c01原M01七类37项在本人runner/PG真实通过，run=de6e5e68-0519-4cf9-89ae-e2b97b52c251。本轮测试账号、角色、资格、房间全部公开HTTP准备。"
+      },
+      {
+        "key": "workflow-provider",
+        "fact": "当前Stage1从冻结c01 Git archive自动构建只读workflow.jar+manifest；fixture.local保留实际base/image/source/JAR字节SHA，来源为当前基线，不复用旧3ce运行证据。"
+      },
+      {
+        "key": "network",
+        "fact": "计划真实独立workflow JVM经loopback透明代理访问本次M01，独立本人fixture PG。无他域实现导入/跨域SQL。"
+      }
+    ],
+    "unverified": [
+      {
+        "key": "workflow-http-before-tests",
+        "attempted": "已核对Stage1的ZIP/hash与新37基线，尚未运行当前七项黑盒行为。",
+        "impact": "后续以本次record原始HTTP/超时探针和状态断言验证；不在固定分析提前记成功。"
+      }
     ]
   },
   "requirements": [
-    {
-      "id": "IAM-03",
-      "source": {
-        "kind": "derived",
-        "pdf_pages": [
-          5
-        ],
-        "note": "由任务书约束推导，属于需验收的设计决策"
-      },
-      "acceptance": [
-        "管理员可按版本授权、停用，旧会话失效",
-        "院系资格与整教室申请资格不能由普通用户自报"
-      ],
-      "scenarios": [
-        {
-          "id": "IAM-03.S01",
-          "covers": [
-            1
-          ],
-          "preconditions": [
-            "user1已登录，当前权限记录是第7版。"
-          ],
-          "actions": [
-            "管理员打开账号权限页面，按第7版资料保存一次授权。",
-            "开发者再用旧的第7版资料提交另一次修改。"
-          ],
-          "expected": [
-            "第一次保存成功，权限产生新版本；第二次提示资料已变化，不能覆盖第一次修改。旧登录状态失效。"
-          ],
-          "depends_on": [],
-          "business_scene_refs": [
-            "S005.SC01"
-          ],
-          "original_text": "## 场景一\n\n### 场景概述\n\n管理员修改账号权限时使用最新资料。第一次授权成功后，另一份旧版本修改不能覆盖它，原账号的旧登录状态也随权限变化失效。\n\n### 操作步骤与预期结果\n\n1. user1已登录，权限资料当前为第7版。\n2. 管理员按第7版资料保存授权，系统生成新的权限版本。\n3. 另一份修改继续携带旧的第7版提交，系统提示资料已变化，不覆盖刚保存的结果。\n4. user1原来的登录状态失效，不能继续沿用旧权限操作。\n\n<details>\n<summary>场景编号与精确规则补充（S005.SC01）</summary>\n\n- 场景名称：两个人同时修改权限时，不能互相覆盖\n- 场景编号：S005.SC01\n\n**对应的业务要求**\n\n- IAM-03.AC1：按最新版本修改授权或停用账号，旧登录权限随之失效\n\n**精确条件**\n\n- user1当前authVersion=7且已登录\n\n**精确动作**\n\n- admin1以expectedAuthVersion=7授权后，再以7重复提交变更\n\n**结果与约束**\n\n- 首次成功为新版本；旧版本更新冲突，旧会话失效；不会覆盖第一次结果\n\n</details>\n\n<a id=\"s005sc02\"></a>\n\n",
-          "source_path": "spec/specs/S005.md",
-          "source_sha256": "3580d3949ae99ac79952356307db2223656feba1135946b87f69e6cf5b1fa887",
-          "objects": [
-            {
-              "kind": "api",
-              "key": "/api/admin/users/{id}/eligibility",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/identity/users/{id}/eligibility",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            }
-          ],
-          "cells": [
-            {
-              "id": "IAM-03.S01#1",
-              "criterion": 1,
-              "basis": "管理员可按版本授权、停用，旧会话失效",
-              "kind": "api",
-              "expected": "第一次保存成功，权限产生新版本；第二次提示资料已变化，不能覆盖第一次修改。旧登录状态失效。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/users/{id}/eligibility, /internal/identity/users/{id}/eligibility responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.AccountEligibilityHttpTest#adminGrantVersionRevokesOldSession"
-              ]
-            },
-            {
-              "id": "IAM-03.S01#2",
-              "criterion": 1,
-              "basis": "管理员可按版本授权、停用，旧会话失效",
-              "kind": "api",
-              "expected": "第一次保存成功，权限产生新版本；第二次提示资料已变化，不能覆盖第一次修改。旧登录状态失效。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/users/{id}/eligibility, /internal/identity/users/{id}/eligibility responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.AccountEligibilityHttpTest#staleQualificationDoesNotOverwrite"
-              ]
-            },
-            {
-              "id": "IAM-03.S01#extra5",
-              "criterion": 1,
-              "basis": "管理员可按版本授权、停用，旧会话失效",
-              "kind": "api",
-              "expected": "Coordinator-approved public candidate directory and durable atomic audit preserve current account authority without exposing credentials.",
-              "sample": "Custom role with maintain permission; disabled role; real HTTP and explicit isolated IAM constraint fault.",
-              "observation": "Internal service candidate response; iam.audit_outbox and iam.users after controlled failed transaction.",
-              "comparison": "Exact effective candidate set; denied operation is unchanged and audited; failed audit insertion rolls back eligibility update.",
-              "test_ids": [
-                "com.campus.identity.api.AccountEligibilityHttpTest#roleChangesAndDeniedRequestsProduceSafeAuditOutbox"
-              ]
-            },
-            {
-              "id": "IAM-03.S01#extra6",
-              "criterion": 1,
-              "basis": "管理员可按版本授权、停用，旧会话失效",
-              "kind": "api",
-              "expected": "Coordinator-approved public candidate directory and durable atomic audit preserve current account authority without exposing credentials.",
-              "sample": "Custom role with maintain permission; disabled role; real HTTP and explicit isolated IAM constraint fault.",
-              "observation": "Internal service candidate response; iam.audit_outbox and iam.users after controlled failed transaction.",
-              "comparison": "Exact effective candidate set; denied operation is unchanged and audited; failed audit insertion rolls back eligibility update.",
-              "test_ids": [
-                "com.campus.identity.api.AccountEligibilityHttpTest#eligibilityAndAuditAreAtomic"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "IAM-03.S02",
-          "covers": [
-            2
-          ],
-          "preconditions": [
-            "user1还没有被确认属于CS院系，也没有整间教室申请资格。"
-          ],
-          "actions": [
-            "开发者尝试在注册或个人资料修改请求中，把院系填成CS，并把整室申请资格改成有。",
-            "管理员核实后，再通过管理功能为该用户授权。"
-          ],
-          "expected": [
-            "用户自己填写不能获得资格；只有管理员核实并授权后，这些资格才用于受限教室和整间教室申请。"
-          ],
-          "depends_on": [],
-          "business_scene_refs": [
-            "S005.SC02"
-          ],
-          "original_text": "## 场景二\n\n### 场景概述\n\n院系和整室申请资格由管理员核实。普通用户在注册或个人资料请求中自行填写这些资格，不会得到受限教室或整室申请权限。\n\n### 操作步骤与预期结果\n\n1. user1尚未被核实为CS院系，也没有整室申请资格。\n2. user1在注册或个人修改请求里填写CS并声明有整室申请资格，系统拒绝自行授权，资格不变。\n3. 管理员核实情况后，通过管理功能正式授权。\n4. 只有管理员确认后的资格，才用于受限教室和整室申请的检查。\n\n<details>\n<summary>场景编号与精确规则补充（S005.SC02）</summary>\n\n- 场景名称：院系和整间教室申请资格由管理员确认\n- 场景编号：S005.SC02\n\n**对应的业务要求**\n\n- IAM-03.AC2：普通用户不能自己声称有院系或整室申请资格\n- USR-06.AC2：院系和整室资格由管理员维护，本地注册不能声称已验证复旦身份\n\n**精确条件**\n\n- user1未被核实CS院系且can_apply_room=false\n\n**精确动作**\n\n- user1在注册或个人修改请求中提交CS和can_apply_room=true\n\n**结果与约束**\n\n- 拒绝自授，资格不变；admin1核实并授权后才供后续受限资源和整室申请使用\n\n</details>\n\n<a id=\"s005sc03\"></a>\n\n",
-          "source_path": "spec/specs/S005.md",
-          "source_sha256": "3580d3949ae99ac79952356307db2223656feba1135946b87f69e6cf5b1fa887",
-          "objects": [
-            {
-              "kind": "api",
-              "key": "/api/admin/users/{id}/eligibility",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/identity/users/{id}/eligibility",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/identity/users?permission=approval:decide|repair:maintain|repair:assign|repair:accept",
-              "status": "missing",
-              "evidence": "Coordinator-approved exact four-code directory; valid effective accounts only, no school-wide user list."
-            }
-          ],
-          "cells": [
-            {
-              "id": "IAM-03.S02#1",
-              "criterion": 2,
-              "basis": "院系资格与整教室申请资格不能由普通用户自报",
-              "kind": "api",
-              "expected": "用户自己填写不能获得资格；只有管理员核实并授权后，这些资格才用于受限教室和整间教室申请。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/users/{id}/eligibility, /internal/identity/users/{id}/eligibility responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.AccountEligibilityHttpTest#ordinaryCannotSetEligibility"
-              ]
-            },
-            {
-              "id": "IAM-03.S02#2",
-              "criterion": 2,
-              "basis": "院系资格与整教室申请资格不能由普通用户自报",
-              "kind": "api",
-              "expected": "用户自己填写不能获得资格；只有管理员核实并授权后，这些资格才用于受限教室和整间教室申请。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/users/{id}/eligibility, /internal/identity/users/{id}/eligibility responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.AccountEligibilityHttpTest#serviceKeyRequiredAndDisabledRoleHasNoEffectivePermissions"
-              ]
-            },
-            {
-              "id": "IAM-03.S02#3",
-              "criterion": 2,
-              "basis": "院系资格与整教室申请资格不能由普通用户自报",
-              "kind": "api",
-              "expected": "用户自己填写不能获得资格；只有管理员核实并授权后，这些资格才用于受限教室和整间教室申请。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/users/{id}/eligibility, /internal/identity/users/{id}/eligibility responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.AccountEligibilityHttpTest#defaultPermissionsCoverNormalFlows"
-              ]
-            },
-            {
-              "id": "IAM-03.S02#extra4",
-              "criterion": 2,
-              "basis": "院系资格与整教室申请资格不能由普通用户自报",
-              "kind": "api",
-              "expected": "Coordinator-approved public candidate directory and durable atomic audit preserve current account authority without exposing credentials.",
-              "sample": "Custom role with maintain permission; disabled role; real HTTP and explicit isolated IAM constraint fault.",
-              "observation": "Internal service candidate response; iam.audit_outbox and iam.users after controlled failed transaction.",
-              "comparison": "Exact effective candidate set; denied operation is unchanged and audited; failed audit insertion rolls back eligibility update.",
-              "test_ids": [
-                "com.campus.identity.api.AccountEligibilityHttpTest#trustedDirectoryOnlyListsEffectivePermissionCandidates"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "IAM-03.S03",
-          "covers": [
-            1
-          ],
-          "preconditions": [
-            "user1已经有预约历史。"
-          ],
-          "actions": [
-            "管理员打开账号管理页面，停用user1。",
-            "尝试重新登录user1，再尝试沿用停用前的登录信息操作。"
-          ],
-          "expected": [
-            "两种方式都不能继续进行受保护的操作。过去的预约仍能对应到这个账号。"
-          ],
-          "depends_on": [],
-          "business_scene_refs": [
-            "S005.SC03"
-          ],
-          "original_text": "## 场景三\n\n### 场景概述\n\n管理员停用账号后，该用户不能重新登录，也不能沿用旧登录信息操作；原预约历史仍保留与账号的对应关系。\n\n### 操作步骤与预期结果\n\n1. 管理员打开已有预约历史的user1账号。\n2. 管理员点击停用，系统保存账号停用状态。\n3. 用户重新登录或使用停用前的登录信息进行受保护操作，系统均拒绝。\n4. 查询过去记录时，预约仍对应原账号，不删除历史引用。\n\n<details>\n<summary>场景编号与精确规则补充（S005.SC03）</summary>\n\n- 场景名称：账号停用后不能使用，过去的记录仍保留\n- 场景编号：S005.SC03\n\n**对应的业务要求**\n\n- IAM-03.AC1：按最新版本修改授权或停用账号，旧登录权限随之失效\n\n**精确条件**\n\n- user1已有预约历史\n\n**精确动作**\n\n- admin1停用user1，随后重用旧会话登录/操作\n\n**结果与约束**\n\n- 新登录和旧会话敏感操作均拒绝；历史记录保留用户引用\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S005\n- 业务分组：账号与权限\n- 范围：核心业务\n- 对应要求：IAM-03、USR-06\n- 有关业务功能：[S004 管理员配置角色和可以使用的功能](S004.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
-          "source_path": "spec/specs/S005.md",
-          "source_sha256": "3580d3949ae99ac79952356307db2223656feba1135946b87f69e6cf5b1fa887",
-          "objects": [
-            {
-              "kind": "api",
-              "key": "/api/admin/users/{id}/eligibility",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/identity/users/{id}/eligibility",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            }
-          ],
-          "cells": [
-            {
-              "id": "IAM-03.S03#1",
-              "criterion": 1,
-              "basis": "管理员可按版本授权、停用，旧会话失效",
-              "kind": "api",
-              "expected": "两种方式都不能继续进行受保护的操作。过去的预约仍能对应到这个账号。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/users/{id}/eligibility, /internal/identity/users/{id}/eligibility responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.AccountEligibilityHttpTest#disabledUsersPreserveHistoryAndRejectOldSessions"
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "IAM-04",
-      "source": {
-        "kind": "explicit",
-        "pdf_pages": [
-          5,
-          6
-        ],
-        "note": "任务书明确要求"
-      },
-      "acceptance": [
-        "预约最长时长默认4小时，可配置",
-        "提醒、签到截止及审批维修时限经过校验、版本化修改并留痕"
-      ],
-      "scenarios": [
-        {
-          "id": "IAM-04.S01",
-          "covers": [
-            1
-          ],
-          "preconditions": [
-            "当前最长预约时长为4小时。"
-          ],
-          "actions": [
-            "管理员打开系统设置，按当前版本把最长时长改成2小时。",
-            "随后尝试新建一笔3小时预约。"
-          ],
-          "expected": [
-            "新预约提示超过2小时，不能提交。此前已经成功的预约不会被悄悄改掉。"
-          ],
-          "depends_on": [],
-          "business_scene_refs": [
-            "S006.SC01"
-          ],
-          "original_text": "## 场景一\n\n### 场景概述\n\n管理员把最长预约时长从4小时改为2小时后，新预约立即按2小时检查，之前已经成立的预约不被悄悄改写。\n\n### 操作步骤与预期结果\n\n1. 管理员打开系统设置，当前最长预约时长为4小时。\n2. 管理员按当前版本把上限改成2小时并保存。\n3. 用户随后提交一笔3小时新预约，系统提示超过上限，不创建该预约。\n4. 此前已经成功的预约保持原记录。\n\n<details>\n<summary>场景编号与精确规则补充（S006.SC01）</summary>\n\n- 场景名称：修改最长预约时长，只影响之后的新预约\n- 场景编号：S006.SC01\n\n**对应的业务要求**\n\n- IAM-04.AC1：最长预约默认4小时，管理员可以修改\n\n**精确条件**\n\n- 参数maxDurationHours=4\n\n**精确动作**\n\n- admin1按当前版本更新为2，之后发起新的3小时预约校验\n\n**结果与约束**\n\n- 新请求因超过2小时被拒绝；先前已成立预约不被静默改写\n\n</details>\n\n<a id=\"s006sc02\"></a>\n\n",
-          "source_path": "spec/specs/S006.md",
-          "source_sha256": "dce2976502461236ecfdf2df70494bd102cb663f1636c71960ecc1223abf0225",
-          "objects": [
-            {
-              "kind": "api",
-              "key": "/api/admin/settings",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/api/admin/settings/history",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/system/settings",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            }
-          ],
-          "cells": [
-            {
-              "id": "IAM-04.S01#1",
-              "criterion": 1,
-              "basis": "预约最长时长默认4小时，可配置",
-              "kind": "api",
-              "expected": "新预约提示超过2小时，不能提交。此前已经成功的预约不会被悄悄改掉。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/settings, /api/admin/settings/history, /internal/system/settings responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.SystemSettingsHttpTest#defaultAndCurrentSettingsServeServiceKeyOnly"
-              ]
-            },
-            {
-              "id": "IAM-04.S01#2",
-              "criterion": 1,
-              "basis": "预约最长时长默认4小时，可配置",
-              "kind": "api",
-              "expected": "新预约提示超过2小时，不能提交。此前已经成功的预约不会被悄悄改掉。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/settings, /api/admin/settings/history, /internal/system/settings responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.SystemSettingsHttpTest#updateIsVersionedAndHistoryPreservesPreviousValues"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "IAM-04.S02",
-          "covers": [
-            2
-          ],
-          "preconditions": [
-            "当前是开始前15分钟提醒、开始后10分钟提醒、开始后15分钟截止签到。"
-          ],
-          "actions": [
-            "分别尝试把最长时长设成0、把提醒时间设到签到截止之后，以及使用旧版设置保存。"
-          ],
-          "expected": [
-            "每次都说明不能保存的原因。原有设置和版本保持不变，不能只保存其中一部分。"
-          ],
-          "depends_on": [],
-          "business_scene_refs": [
-            "S006.SC02"
-          ],
-          "original_text": "## 场景二\n\n### 场景概述\n\n管理员填写不合理的时限，或者拿旧版本设置保存时，系统说明错误并保留原配置，不能只更新一部分参数。\n\n### 操作步骤与预期结果\n\n1. 当前设置为开始前15分钟提醒、开始后10分钟提醒、开始后15分钟截止签到。\n2. 管理员分别尝试把最长预约时长设为0、把提醒时间放到签到截止之后，以及提交旧版设置。\n3. 每次保存都被拒绝，并说明对应问题。\n4. 原配置及版本保持不变，不出现一部分新值、一部分旧值的情况。\n\n<details>\n<summary>场景编号与精确规则补充（S006.SC02）</summary>\n\n- 场景名称：不合理或已经过时的设置不能保存\n- 场景编号：S006.SC02\n\n**对应的业务要求**\n\n- IAM-04.AC2：提醒、签到截止、审批和维修时限先检查再保存，每次修改有版本和记录\n\n**精确条件**\n\n- 默认提醒为-15、+10、截止+15分钟\n\n**精确动作**\n\n- 提交最长时长0、提醒晚于截止、旧版本修改\n\n**结果与约束**\n\n- 每个非法请求有明确错误；配置及版本不变，不形成半套参数\n\n</details>\n\n<a id=\"s006sc03\"></a>\n\n",
-          "source_path": "spec/specs/S006.md",
-          "source_sha256": "dce2976502461236ecfdf2df70494bd102cb663f1636c71960ecc1223abf0225",
-          "objects": [
-            {
-              "kind": "api",
-              "key": "/api/admin/settings",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/api/admin/settings/history",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/system/settings",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            }
-          ],
-          "cells": [
-            {
-              "id": "IAM-04.S02#1",
-              "criterion": 2,
-              "basis": "提醒、签到截止及审批维修时限经过校验、版本化修改并留痕",
-              "kind": "api",
-              "expected": "每次都说明不能保存的原因。原有设置和版本保持不变，不能只保存其中一部分。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/settings, /api/admin/settings/history, /internal/system/settings responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.SystemSettingsHttpTest#invalidTimingDoesNotPartiallyUpdate"
-              ]
-            },
-            {
-              "id": "IAM-04.S02#2",
-              "criterion": 2,
-              "basis": "提醒、签到截止及审批维修时限经过校验、版本化修改并留痕",
-              "kind": "api",
-              "expected": "每次都说明不能保存的原因。原有设置和版本保持不变，不能只保存其中一部分。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/settings, /api/admin/settings/history, /internal/system/settings responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.SystemSettingsHttpTest#staleAndUnprivilegedSettingsUpdatesAreRejected"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "IAM-04.S03",
-          "covers": [
-            2
-          ],
-          "preconditions": [
-            "测试中审批时限为60分钟，维修时限为120分钟。"
-          ],
-          "actions": [
-            "管理员把这两个时限改成另一组大于0的值。",
-            "打开设置变更记录。"
-          ],
-          "expected": [
-            "记录能看到修改人、修改时间、前后值和版本。",
-            "已有申请和工单保留原先的截止时间，新单据才使用新的时限。"
-          ],
-          "depends_on": [],
-          "business_scene_refs": [
-            "S006.SC03"
-          ],
-          "original_text": "## 场景三\n\n### 场景概述\n\n管理员修改审批和维修时限后，可以在变更记录中看到修改人、时间、前后值和版本。已有单据继续使用原截止时间，新单据才采用新设置。\n\n### 操作步骤与预期结果\n\n1. 示例中审批时限为60分钟，维修时限为120分钟。\n2. 管理员把两项改成另一组大于0的数值并保存。\n3. 打开设置变更记录，可以看到修改人、时间、原值、新值和版本。\n4. 已有申请和工单保持原截止时间，之后新建的单据使用新时限。\n\n<details>\n<summary>场景编号与精确规则补充（S006.SC03）</summary>\n\n- 场景名称：修改审批和维修时限后，能查到是谁改的\n- 场景编号：S006.SC03\n\n**对应的业务要求**\n\n- IAM-04.AC2：提醒、签到截止、审批和维修时限先检查再保存，每次修改有版本和记录\n\n**精确条件**\n\n- 审批TTL测试60分钟，维修SLA测试120分钟\n\n**精确动作**\n\n- 修改为另一组正值并查询变更记录\n\n**结果与约束**\n\n- 记录操作者、前后值、版本和时间；已有单据保留创建时deadline快照，新单使用新值\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S006\n- 业务分组：账号与权限\n- 范围：核心业务\n- 对应要求：IAM-04\n- 有关业务功能：[S004 管理员配置角色和可以使用的功能](S004.md)。\n- 相关业务规则：[P04](../policies.md#p04)、[P07](../policies.md#p07)、[P10](../policies.md#p10)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
-          "source_path": "spec/specs/S006.md",
-          "source_sha256": "dce2976502461236ecfdf2df70494bd102cb663f1636c71960ecc1223abf0225",
-          "objects": [
-            {
-              "kind": "api",
-              "key": "/api/admin/settings",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/api/admin/settings/history",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/system/settings",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            }
-          ],
-          "cells": [
-            {
-              "id": "IAM-04.S03#1",
-              "criterion": 2,
-              "basis": "提醒、签到截止及审批维修时限经过校验、版本化修改并留痕",
-              "kind": "api",
-              "expected": "记录能看到修改人、修改时间、前后值和版本。；已有申请和工单保留原先的截止时间，新单据才使用新的时限。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/admin/settings, /api/admin/settings/history, /internal/system/settings responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.SystemSettingsHttpTest#updateIsVersionedAndHistoryPreservesPreviousValues"
-              ]
-            }
-          ]
-        }
-      ]
-    },
     {
       "id": "IAM-05",
       "source": {
@@ -698,18 +136,58 @@
           "business_scene_refs": [
             "S007.SC01"
           ],
-          "original_text": "## 场景一\n\n### 场景概述\n\n用户在预约和报修等不同功能之间操作时，系统始终识别当前登录人，并按该账号真实权限处理。\n\n### 操作步骤与预期结果\n\n1. user1登录，并拥有当前操作所需权限。\n2. 用户打开自己的预约或报修页面，执行一项获授权操作。\n3. 系统始终识别为user1，使用该账号实际权限，不因进入另一个功能就换成其他身份。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC01）</summary>\n\n- 场景名称：在不同功能中都识别为当前登录人\n- 场景编号：S007.SC01\n\n**对应的业务要求**\n\n- IAM-05.AC1：流程服务通过真实网络向身份服务确认当前用户\n\n**精确条件**\n\n- user1会话有效，两服务隔离启动\n\n**精确动作**\n\n- 从流程服务携会话调用身份公开端点\n\n**结果与约束**\n\n- 网络响应中的用户、权限和版本决定调用结果；不读资源服务私有账号表\n\n</details>\n\n<a id=\"s007sc02\"></a>\n\n",
+          "original_text": "\n\n## 场景一\n\n### 场景概述\n\n用户在预约和报修等不同功能之间操作时，系统始终识别当前登录人，并按该账号真实权限处理。\n\n### 操作步骤与预期结果\n\n1. user1登录，并拥有当前操作所需权限。\n2. 用户打开自己的预约或报修页面，执行一项获授权操作。\n3. 系统始终识别为user1，使用该账号实际权限，不因进入另一个功能就换成其他身份。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC01）</summary>\n\n- 场景名称：在不同功能中都识别为当前登录人\n- 场景编号：S007.SC01\n\n**对应的业务要求**\n\n- IAM-05.AC1：流程服务通过真实网络向身份服务确认当前用户\n\n**精确条件**\n\n- user1会话有效，两服务隔离启动\n\n**精确动作**\n\n- 从流程服务携会话调用身份公开端点\n\n**结果与约束**\n\n- 网络响应中的用户、权限和版本决定调用结果；不读资源服务私有账号表\n\n</details>\n\n",
           "source_path": "spec/specs/S007.md",
           "source_sha256": "cada6d7d6d427e3a28b880c6493a1295bf17d8380975f13bbec9cf812ba11b91",
           "objects": [
             {
               "kind": "api",
               "key": "/internal/auth/introspect",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
+              "status": "existing",
+              "evidence": "contracts/openapi/identity.yaml与本域AuthController.java声明公开服务认证/Bearer接口；新c01原M01基线37项通过。实际workflow网络链路仍由后续新七项验证，不继承旧运行结果。"
             }
           ],
-          "cells": []
+          "cells": [
+            {
+              "id": "IAM-05.S01#1",
+              "criterion": 1,
+              "basis": "流程服务通过服务端网络确认身份",
+              "kind": "api",
+              "expected": "常规：两个真实登录用户经身份HTTP确认，只能看到本人的报修详情，返回reporterId精确为本人，读他人记录403。",
+              "sample": "本人PG中新HTTP注册user1/user2，真实房间、各自报修；workflow冻结JAR独立JVM；代理PASS只转发实际M01。",
+              "observation": "代理实际introspect请求计数、公开GET报修detail.reporterId/id、跨用户HTTP403。",
+              "comparison": "精确匹配当前会话用户及对象ID；代理至少一次实际成功转发；不以存在性或日志文本替代身份断言。",
+              "test_ids": [
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#workflowUsesCurrentIdentityForOwnRepairRecords"
+              ]
+            },
+            {
+              "id": "IAM-05.S01#2",
+              "criterion": 1,
+              "basis": "流程服务通过服务端网络确认身份",
+              "kind": "api",
+              "expected": "撤权：已被workflow认可的权限在M01改动后，旧Bearer直接introspect401、workflow旧会话401，新低权限会话敏感写403；停用后拒绝旧会话和新登录。",
+              "sample": "HTTP授予测试账号系统管理员后先成功访问；再用真实管理员HTTP降为USER/停用，旧Cookie只在内存保留。",
+              "observation": "M01直接HTTP内省、workflow公开配置读取/写入、前后配置版本和内容。",
+              "comparison": "401/403精确值；当前authVersion变更前后公开值；被拒绝写入前后业务快照相等。",
+              "test_ids": [
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#revocationReachesWorkflowWithoutTrustingOldSession"
+              ]
+            },
+            {
+              "id": "IAM-05.S01#3",
+              "criterion": 1,
+              "basis": "流程服务通过服务端网络确认身份",
+              "kind": "api",
+              "expected": "服务认证：正确键+当前真实Bearer返回本人；缺/错键、缺/坏Bearer精确401；代理只将一次服务键改错并转发到真实M01，workflow也401。",
+              "sample": "当前真实登录Cookie取Bearer，不用TokenService伪造；独立无Cookie内部客户端；错键为本次自造负输入。",
+              "observation": "公开POST /internal/auth/introspect返回CurrentUser/error、workflow受保护GET、代理真实上游状态与计数。",
+              "comparison": "正例身份/权限/版本精确匹配；全部负例401；实际错误服务键由真实M01拒绝，无假身份响应。",
+              "test_ids": [
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#publicIntrospectionRequiresServiceKeyAndCurrentBearer"
+              ]
+            }
+          ]
         },
         {
           "id": "IAM-05.S02",
@@ -729,18 +207,45 @@
           "business_scene_refs": [
             "S007.SC02"
           ],
-          "original_text": "## 场景二\n\n### 场景概述\n\n普通用户在请求里把自己写成管理员，也不能审批或派单，系统仍使用真实登录身份判断权限。\n\n### 操作步骤与预期结果\n\n1. user1登录，且没有审批权限。\n2. 在提交给流程服务的请求中，把用户写成admin1，角色写成系统管理员。\n3. 系统仍按user1检查并拒绝操作，不产生审批或派单记录。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC02）</summary>\n\n- 场景名称：普通用户把请求里的名字改成管理员也没有用\n- 场景编号：S007.SC02\n\n**对应的业务要求**\n\n- IAM-05.AC2：不相信页面自己填写的用户编号、角色和资格\n\n**精确条件**\n\n- user1无审批权限\n\n**精确动作**\n\n- 向流程服务请求体填写admin1及SYSTEM_ADMIN\n\n**结果与约束**\n\n- 仍以user1身份拒绝；没有审批或派单写入\n\n</details>\n\n<a id=\"s007sc03\"></a>\n\n",
+          "original_text": "\n\n## 场景二\n\n### 场景概述\n\n普通用户在请求里把自己写成管理员，也不能审批或派单，系统仍使用真实登录身份判断权限。\n\n### 操作步骤与预期结果\n\n1. user1登录，且没有审批权限。\n2. 在提交给流程服务的请求中，把用户写成admin1，角色写成系统管理员。\n3. 系统仍按user1检查并拒绝操作，不产生审批或派单记录。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC02）</summary>\n\n- 场景名称：普通用户把请求里的名字改成管理员也没有用\n- 场景编号：S007.SC02\n\n**对应的业务要求**\n\n- IAM-05.AC2：不相信页面自己填写的用户编号、角色和资格\n\n**精确条件**\n\n- user1无审批权限\n\n**精确动作**\n\n- 向流程服务请求体填写admin1及SYSTEM_ADMIN\n\n**结果与约束**\n\n- 仍以user1身份拒绝；没有审批或派单写入\n\n</details>\n\n",
           "source_path": "spec/specs/S007.md",
           "source_sha256": "cada6d7d6d427e3a28b880c6493a1295bf17d8380975f13bbec9cf812ba11b91",
           "objects": [
             {
               "kind": "api",
               "key": "/internal/auth/introspect",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
+              "status": "existing",
+              "evidence": "contracts/openapi/identity.yaml与本域AuthController.java声明公开服务认证/Bearer接口；新c01原M01基线37项通过。实际workflow网络链路仍由后续新七项验证，不继承旧运行结果。"
             }
           ],
-          "cells": []
+          "cells": [
+            {
+              "id": "IAM-05.S02#1",
+              "criterion": 2,
+              "basis": "不信任前端的用户ID、角色或业务资格",
+              "kind": "api",
+              "expected": "常规越权拒绝：无审批/派单权限的USER即使自报admin用户ID、SYSTEM_ADMIN和伪造身份头，配置写及派单写均403，原业务版本/归属/历史不变。",
+              "sample": "HTTP准备真实待派报修和有效维修候选；普通USER带真实有效CSRF；配置写体夹带身份/角色，派单合法体夹带伪造头。",
+              "observation": "真实admin公开GET配置、报修detail/history；写响应status/code/trace。",
+              "comparison": "权限拒绝403，前后配置和工单/业务历史相等；拒绝审计可变化但不算业务变更。",
+              "test_ids": [
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#forgedActorAndRoleCannotApproveOrAssign"
+              ]
+            },
+            {
+              "id": "IAM-05.S02#2",
+              "criterion": 2,
+              "basis": "不信任前端的用户ID、角色或业务资格",
+              "kind": "api",
+              "expected": "资格不接受自报：真实canApplyRoom=false时正常形状申请403，夹带canApplyRoom/departmentCode/applicantId等未知字段的请求400；本人申请列表没有本次唯一用途记录，M01资格仍为false。",
+              "sample": "本人HTTP注册USER，真实房间和两名不同非申请人的真实审批人；通过M01受信eligibility HTTP确认false。",
+              "observation": "workflow申请响应、本人公开申请列表、M01公开eligibility响应。",
+              "comparison": "分别精确403与400；唯一用途未出现、列表返回结构必须是可观察列表，不能把解析失败当空；资格前后false。",
+              "test_ids": [
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#forgedEligibilityCannotCreateAnApproval"
+              ]
+            }
+          ]
         },
         {
           "id": "IAM-05.S03",
@@ -761,275 +266,42 @@
           "business_scene_refs": [
             "S007.SC03"
           ],
-          "original_text": "## 场景三\n\n### 场景概述\n\n审批或派单时，如果系统无法及时确认当前身份，就返回明确失败，不继续修改业务，也不无限等待。\n\n### 操作步骤与预期结果\n\n1. 身份查询未能在约定时间内返回。\n2. 用户提交审批或派单操作。\n3. 系统在设置的最长等待时间内返回可说明原因的失败结果。\n4. 系统不相信页面自报身份，也不改用旧的宽松权限继续写入数据。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC03）</summary>\n\n- 场景名称：查不到身份时，不继续审批或派单\n- 场景编号：S007.SC03\n\n**对应的业务要求**\n\n- IAM-05.AC3：查询有最长等待时间，失败时不继续敏感操作\n\n**精确条件**\n\n- 测试代理将身份响应延迟到契约超时之后\n\n**精确动作**\n\n- 发起审批或派单写请求\n\n**结果与约束**\n\n- 在配置超时内返回可诊断失败；不以缓存的宽权限或前端身份继续写入\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S007\n- 业务分组：账号与权限\n- 范围：核心业务\n- 对应要求：IAM-05\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S004 管理员配置角色和可以使用的功能](S004.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
+          "original_text": "\n\n## 场景三\n\n### 场景概述\n\n审批或派单时，如果系统无法及时确认当前身份，就返回明确失败，不继续修改业务，也不无限等待。\n\n### 操作步骤与预期结果\n\n1. 身份查询未能在约定时间内返回。\n2. 用户提交审批或派单操作。\n3. 系统在设置的最长等待时间内返回可说明原因的失败结果。\n4. 系统不相信页面自报身份，也不改用旧的宽松权限继续写入数据。\n\n<details>\n<summary>场景编号与精确规则补充（S007.SC03）</summary>\n\n- 场景名称：查不到身份时，不继续审批或派单\n- 场景编号：S007.SC03\n\n**对应的业务要求**\n\n- IAM-05.AC3：查询有最长等待时间，失败时不继续敏感操作\n\n**精确条件**\n\n- 测试代理将身份响应延迟到契约超时之后\n\n**精确动作**\n\n- 发起审批或派单写请求\n\n**结果与约束**\n\n- 在配置超时内返回可诊断失败；不以缓存的宽权限或前端身份继续写入\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S007\n- 业务分组：账号与权限\n- 范围：核心业务\n- 对应要求：IAM-05\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S004 管理员配置角色和可以使用的功能](S004.md)。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
           "source_path": "spec/specs/S007.md",
           "source_sha256": "cada6d7d6d427e3a28b880c6493a1295bf17d8380975f13bbec9cf812ba11b91",
           "objects": [
             {
               "kind": "api",
               "key": "/internal/auth/introspect",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            }
-          ],
-          "cells": []
-        }
-      ]
-    },
-    {
-      "id": "IAM-07",
-      "source": {
-        "kind": "derived",
-        "pdf_pages": [
-          1,
-          6
-        ],
-        "note": "将既有S081邮箱验证场景按账户与投递所有权分开登记；不改变已验收SUP-01的历史范围"
-      },
-      "acceptance": [
-        "本人填写合法邮箱后进入待验证；拒绝非法地址或夹带角色、院系资格；缺邮箱仍可登录和使用站内通知",
-        "本人当前目标邮箱在有效期内可由验证链接确认，重复确认幂等；原始令牌不以明文存入数据库或公开日志",
-        "过期、他人和旧邮箱链接均被拒绝；缺邮箱不静默取消预约，邮件任务明确显示缺地址或待补全状态"
-      ],
-      "scenarios": [
-        {
-          "id": "IAM-07.S01",
-          "covers": [
-            1
-          ],
-          "preconditions": [
-            "user1还没填邮箱，但可以正常用本地账号登录。"
-          ],
-          "actions": [
-            "打开个人资料，填写测试邮箱student1@example.test并提交。",
-            "另分别尝试not-an-email，以及额外夹带角色或院系资格的请求。"
-          ],
-          "expected": [
-            "合法邮箱保存为待验证，格式错误或多带资格字段的请求被拒绝，不改变角色和资格。没邮箱仍能看站内消息，邮件应显示缺地址，不能显示已送达。"
-          ],
-          "depends_on": [],
-          "business_scene_refs": [
-            "S081.SC01"
-          ],
-          "original_text": "## 场景一\n\n### 场景概述\n\n用户在个人资料填写通知邮箱后，合法地址进入待验证，格式错误或夹带权限字段会被拒绝。没邮箱也能登录和查看站内消息。\n\n### 操作步骤与预期结果\n\n1. user1邮箱为空，仍可正常使用本系统账号登录。\n2. 打开个人资料，填写student1@example.test并提交，地址保存为待验证。\n3. 另分别提交not-an-email或夹带角色、院系资格的请求，系统拒绝，不改变角色和资格。\n4. 没有邮箱时站内通知仍可用，邮件显示缺地址，不能显示已送达。\n\n<details>\n<summary>场景编号与精确规则补充（S081.SC01）</summary>\n\n- 场景名称：填写邮箱不会改变角色或申请资格\n- 场景编号：S081.SC01\n\n**对应的业务要求**\n\n- IAM-07.AC1：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- user1邮箱为空，仍可用本地账号登录\n\n**精确动作**\n\n- 本人提交测试邮箱student1@example.test，再分别提交not-an-email或夹带角色/院系字段\n\n**结果与约束**\n\n- 合法邮箱保存为待验证；非法字段/格式拒绝且不授角色或资格；没有邮箱时站内通知可用但邮件显示缺地址而非已送达\n\n</details>\n\n<a id=\"s081sc02\"></a>\n\n",
-          "source_path": "spec/specs/S081.md",
-          "source_sha256": "a37a8bb42d52724b86b2ca4828769c50381554f2607eca2ea633157628f51b0f",
-          "objects": [
-            {
-              "kind": "api",
-              "key": "/api/account/email",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/api/account/email/verification",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/api/account/email/verify",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/identity/users/{id}/notification-email",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
+              "status": "existing",
+              "evidence": "contracts/openapi/identity.yaml与本域AuthController.java声明公开服务认证/Bearer接口；新c01原M01基线37项通过。实际workflow网络链路仍由后续新七项验证，不继承旧运行结果。"
             }
           ],
           "cells": [
             {
-              "id": "IAM-07.S01#1",
-              "criterion": 1,
-              "basis": "本人填写合法邮箱后进入待验证；拒绝非法地址或夹带角色、院系资格；缺邮箱仍可登录和使用站内通知",
-              "kind": "api",
-              "expected": "合法邮箱保存为待验证，格式错误或多带资格字段的请求被拒绝，不改变角色和资格。没邮箱仍能看站内消息，邮件应显示缺地址，不能显示已送达。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/account/email, /api/account/email/verification, /api/account/email/verify, /internal/identity/users/{id}/notification-email responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.NotificationEmailHttpTest#ownerCanSaveEmailWithoutGrantingPrivileges"
-              ]
-            },
-            {
-              "id": "IAM-07.S01#2",
-              "criterion": 1,
-              "basis": "本人填写合法邮箱后进入待验证；拒绝非法地址或夹带角色、院系资格；缺邮箱仍可登录和使用站内通知",
-              "kind": "api",
-              "expected": "合法邮箱保存为待验证，格式错误或多带资格字段的请求被拒绝，不改变角色和资格。没邮箱仍能看站内消息，邮件应显示缺地址，不能显示已送达。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/account/email, /api/account/email/verification, /api/account/email/verify, /internal/identity/users/{id}/notification-email responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.NotificationEmailHttpTest#missingOrUnverifiedEmailIsExplicitAndDoesNotBlockLogin"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "IAM-07.S02",
-          "covers": [
-            2
-          ],
-          "preconditions": [
-            "user1在08:00为student1@example.test申请验证，测试有效期15分钟；当前08:14:59。"
-          ],
-          "actions": [
-            "以user1登录，打开验证链接，再打开同一链接一次。"
-          ],
-          "expected": [
-            "只把user1当前这个目标邮箱标为已验证，重复打开不重复修改。开发者检查日志和数据库：不公开密码，不明文保存原始验证令牌。"
-          ],
-          "depends_on": [],
-          "business_scene_refs": [
-            "S081.SC02"
-          ],
-          "original_text": "## 场景二\n\n### 场景概述\n\n用户在验证链接有效期内打开链接，只验证自己的当前目标邮箱。重复打开不重复变更，也不明文保存原始验证令牌。\n\n### 操作步骤与预期结果\n\n1. user1在08:00为student1@example.test申请验证，示例有效期15分钟。\n2. 08:14:59时user1登录并打开链接，只有本人当前这个邮箱被标为已验证。\n3. 再次打开同一链接，系统保持原验证结果，不重复修改。\n4. 密码不公开，原始验证令牌不以明文进入数据库或公开日志。\n\n<details>\n<summary>场景编号与精确规则补充（S081.SC02）</summary>\n\n- 场景名称：在有效期内打开验证链接，只验证自己的目标邮箱\n- 场景编号：S081.SC02\n\n**对应的业务要求**\n\n- IAM-07.AC2：真实邮件提醒使用可配置的邮件发送服务\n\n**精确条件**\n\n- user1为student1@example.test申请验证，issued_at=08:00、有效期15分钟，now=08:14:59\n\n**精确动作**\n\n- 在有效期内以user1打开验证链接，再重放一次\n\n**结果与约束**\n\n- 仅该账号当前目标邮箱变为已验证；重放不重复变更；密码和原始验证令牌不进入公开日志/数据库明文\n\n</details>\n\n<a id=\"s081sc03\"></a>\n\n",
-          "source_path": "spec/specs/S081.md",
-          "source_sha256": "a37a8bb42d52724b86b2ca4828769c50381554f2607eca2ea633157628f51b0f",
-          "objects": [
-            {
-              "kind": "api",
-              "key": "/api/account/email",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/api/account/email/verification",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/api/account/email/verify",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/identity/users/{id}/notification-email",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            }
-          ],
-          "cells": [
-            {
-              "id": "IAM-07.S02#1",
-              "criterion": 2,
-              "basis": "本人当前目标邮箱在有效期内可由验证链接确认，重复确认幂等；原始令牌不以明文存入数据库或公开日志",
-              "kind": "api",
-              "expected": "只把user1当前这个目标邮箱标为已验证，重复打开不重复修改。开发者检查日志和数据库：不公开密码，不明文保存原始验证令牌。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/account/email, /api/account/email/verification, /api/account/email/verify, /internal/identity/users/{id}/notification-email responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.NotificationEmailHttpTest#verificationRequestBindsAndDoesNotStoreRawToken"
-              ]
-            },
-            {
-              "id": "IAM-07.S02#2",
-              "criterion": 2,
-              "basis": "本人当前目标邮箱在有效期内可由验证链接确认，重复确认幂等；原始令牌不以明文存入数据库或公开日志",
-              "kind": "api",
-              "expected": "只把user1当前这个目标邮箱标为已验证，重复打开不重复修改。开发者检查日志和数据库：不公开密码，不明文保存原始验证令牌。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/account/email, /api/account/email/verification, /api/account/email/verify, /internal/identity/users/{id}/notification-email responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.NotificationEmailHttpTest#linkVerifiesOnlyOwnerAndReplaysIdempotently"
-              ]
-            },
-            {
-              "id": "IAM-07.S02#3",
-              "criterion": 2,
-              "basis": "本人当前目标邮箱在有效期内可由验证链接确认，重复确认幂等；原始令牌不以明文存入数据库或公开日志",
-              "kind": "api",
-              "expected": "只把user1当前这个目标邮箱标为已验证，重复打开不重复修改。开发者检查日志和数据库：不公开密码，不明文保存原始验证令牌。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/account/email, /api/account/email/verification, /api/account/email/verify, /internal/identity/users/{id}/notification-email responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
-              "test_ids": [
-                "com.campus.identity.api.NotificationEmailHttpTest#deliveryFailureKeepsSameOperationForSafeRetry"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "IAM-07.S03",
-          "covers": [
-            3
-          ],
-          "preconditions": [
-            "分别准备08:00发出且当前已到08:15:00的链接、属于user2的未过期链接，以及对应user1旧邮箱的链接。"
-          ],
-          "actions": [
-            "以user1分别打开这3条链接。"
-          ],
-          "expected": [
-            "每次拒绝，当前邮箱不会被错误标成已验证。邮箱缺失不导致正常预约被悄悄取消；邮件任务明确提示失败或需要补全。"
-          ],
-          "depends_on": [],
-          "business_scene_refs": [
-            "S081.SC03"
-          ],
-          "original_text": "## 场景三\n\n### 场景概述\n\n过期、属于别人或对应旧邮箱的验证链接，都不能验证当前地址。邮箱缺口不会悄悄取消预约，邮件任务会提示问题。\n\n### 操作步骤与预期结果\n\n1. user1分别打开08:00发出且已到08:15:00的链接、user2的未过期链接、本人已换掉旧邮箱的链接。\n2. 系统逐次拒绝，当前邮箱不会被错误标为已验证。\n3. 正常预约不因邮箱缺失被自动取消，邮件任务明确提示失败或需要补全。\n\n<details>\n<summary>场景编号与精确规则补充（S081.SC03）</summary>\n\n- 场景名称：过期、别人账号和旧邮箱的链接都不能验证当前邮箱\n- 场景编号：S081.SC03\n\n**对应的业务要求**\n\n- IAM-07.AC3：可确认失败的邮件支持重试，结果可见，不能虚称送达\n\n**精确条件**\n\n- 第一条issued_at=08:00且now=08:15:00；第二条属于user2且未过期；第三条对应user1已更换的旧邮箱\n\n**精确动作**\n\n- 分别以user1使用三条链接\n\n**结果与约束**\n\n- 各次拒绝且当前地址不被错误标验证；正常预约不因邮件地址缺口被静默取消，邮件任务有明确失败/待补全提示\n\n</details>\n\n<details>\n<summary>功能分类、业务依赖和共用说明</summary>\n\n- 功能编号：S081\n- 业务分组：账号与权限\n- 范围：核心业务\n- 对应要求：IAM-07\n- 有关业务功能：[S003 登录、重新打开页面和退出](S003.md)、[S062 查看站内消息，避免重复通知和过时提醒](S062.md)、[S078 实际发送邮件，失败可重试，结果不明就提示待核实](S078.md)。\n- 相关业务规则：[P16](../policies.md#p16)。待评审规则仍是建议。\n- [场景共用说明](../policies.md)列出示例账号、教室和时间。\n\n</details>\n",
-          "source_path": "spec/specs/S081.md",
-          "source_sha256": "a37a8bb42d52724b86b2ca4828769c50381554f2607eca2ea633157628f51b0f",
-          "objects": [
-            {
-              "kind": "api",
-              "key": "/api/account/email",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/api/account/email/verification",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/api/account/email/verify",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            },
-            {
-              "kind": "api",
-              "key": "/internal/identity/users/{id}/notification-email",
-              "status": "missing",
-              "evidence": "Read all identity controllers at frozen 7a41fb12; the approved new endpoint is absent."
-            }
-          ],
-          "cells": [
-            {
-              "id": "IAM-07.S03#1",
+              "id": "IAM-05.S03#1",
               "criterion": 3,
-              "basis": "过期、他人和旧邮箱链接均被拒绝；缺邮箱不静默取消预约，邮件任务明确显示缺地址或待补全状态",
+              "basis": "调用有超时，失败拒绝敏感操作",
               "kind": "api",
-              "expected": "每次拒绝，当前邮箱不会被错误标成已验证。邮箱缺失不导致正常预约被悄悄取消；邮件任务明确提示失败或需要补全。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/account/email, /api/account/email/verification, /api/account/email/verify, /internal/identity/users/{id}/notification-email responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
+              "expected": "身份超时不审批：真实admin预热成功，合法配置写触发已接受的introspect；代理实际延迟8秒，workflow约4秒内503/IDENTITY_UNAVAILABLE；超时前后和迟到200后配置不变，恢复后只有显式重试可改一次版本。",
+              "sample": "独立真实workflow+M01/本人PG；真实CSRF通过本人身份服务获取，计时包含该短调用，代理PASS先成功；DELAY只拦一次实际内省。",
+              "observation": "同JVM nanoTime耗时、代理accepted/finished探针及真实上游200、workflow错误trace、公开GET配置连续快照。",
+              "comparison": "固定3–6.5秒业务容差，客户端等待12秒；状态503/IDENTITY_UNAVAILABLE；迟到响应后配置不变；显式重试version仅+1。",
               "test_ids": [
-                "com.campus.identity.api.NotificationEmailHttpTest#expiredForeignAndReplacedEmailChallengesAreRejected"
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#delayedIdentityCannotChangeApprovalConfiguration"
               ]
             },
             {
-              "id": "IAM-07.S03#2",
+              "id": "IAM-05.S03#2",
               "criterion": 3,
-              "basis": "过期、他人和旧邮箱链接均被拒绝；缺邮箱不静默取消预约，邮件任务明确显示缺地址或待补全状态",
+              "basis": "调用有超时，失败拒绝敏感操作",
               "kind": "api",
-              "expected": "每次拒绝，当前邮箱不会被错误标成已验证。邮箱缺失不导致正常预约被悄悄取消；邮件任务明确提示失败或需要补全。",
-              "sample": "Independent local accounts and PostgreSQL fixtures; actual resource-service HTTP, controlled identity clock for expiry, real local notification HTTP fixture (not SMTP delivery proof).",
-              "observation": "/api/account/email, /api/account/email/verification, /api/account/email/verify, /internal/identity/users/{id}/notification-email responses and IAM-owned persisted state",
-              "comparison": "Exact expected HTTP status, identity/permission/value/version/history/unchanged-state assertions; token plaintext absent from persisted/public state.",
+              "expected": "身份超时不派单：已成功读取的真实admin发合法派单时，内省真实延迟超过4秒；返回有界503，迟到200后工单版本/technicianId/状态/业务历史仍原值。",
+              "sample": "真实HTTP报修、真实可派维修员；预热成功、合法CSRF；代理只延迟本次真实内省，不stop服务。",
+              "observation": "同JVM耗时、代理真实accepted/finished与上游状态；公开GET工单detail/history前后。",
+              "comparison": "固定3–6.5秒+503/IDENTITY_UNAVAILABLE；8秒真实延迟结束后重复观察不变，不沿用先前宽权限。",
               "test_ids": [
-                "com.campus.identity.api.NotificationEmailHttpTest#missingOrUnverifiedEmailIsExplicitAndDoesNotBlockLogin"
+                "com.campus.identity.api.IdentityWorkflowBlackBoxIntegrationTest#delayedIdentityCannotAssignRepair"
               ]
             }
           ]
@@ -1037,12 +309,19 @@
       ]
     }
   ],
-  "issues": [
-    {
-      "id": "A-IAM05",
-      "type": "[ATTRIBUTION]",
-      "status": "协调QA待验",
-      "description": "Existing common caller has bounded HTTP and introspection; actual workflow JAR must be verified through public HTTP without importing private classes. No claim of complete IAM05 yet."
-    }
-  ]
+  "issues": [],
+  "historical_scope": {
+    "note": "本轮仅IAM-05。原26ac因旧B全表清理外键冲突CI失败，原记录已保留；本c01仅修正基线夹具后独立重交，不复写旧a工作树，不虚构新增业务。其他IAM项不在本轮。",
+    "previous_requirement_ids": [
+      "IAM-03",
+      "IAM-04",
+      "IAM-05",
+      "IAM-07"
+    ]
+  },
+  "execution_context": {
+    "base": "c01a6058e97bb3bb38f29fbc3d6fc1790beb13b6",
+    "purpose": "修复基线上的IAM-05独立重交，业务验收未改变",
+    "fixture_modes": "sandbox严格自动只读fixture；trusted reactor固定兄弟target包前置由既有批准测试检查；无任意路径或下载回退。"
+  }
 }
