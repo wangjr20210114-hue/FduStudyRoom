@@ -147,7 +147,16 @@ export async function fixture(){
  await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+((server.address() as any).port),pages:BrowserPage[]=[]
  async function open(path='/repairs'){
   for(const old of pages.splice(0))await old.close()
-  const p=await startBrowser();pages.push(p);await p.goto(origin+path);await p.waitFor("document.querySelector('.shell-page h1')",{timeoutMs:15000})
+  const p=await startBrowser();
+ const immediateFill=p.fill.bind(p)
+ p.fill=async(selector,value)=>{
+  const key=JSON.stringify(selector)
+  const ready=`(()=>{const nodes=document.querySelectorAll(${key});const e=nodes[0];return nodes.length===1&&(e instanceof HTMLInputElement||e instanceof HTMLTextAreaElement)&&!e.disabled&&!e.readOnly&&!e.matches(':disabled')})()`
+  if(!await p.evaluate(ready))console.log('SCOPED_FILL_WAIT',selector,await p.evaluate(`(()=>{const nodes=document.querySelectorAll(${key});const e=nodes[0];return {count:nodes.length,tag:e?.tagName,disabled:e?.disabled,readOnly:e?.readOnly}})()`))
+  await p.waitFor(ready,{timeoutMs:5000})
+  await immediateFill(selector,value)
+ }
+pages.push(p);await p.goto(origin+path);await p.waitFor("document.querySelector('.shell-page h1')",{timeoutMs:15000})
   expect(await p.evaluate("!!document.querySelector('[data-repair-root]')")).toBe(true);return p
  }
  async function close(){

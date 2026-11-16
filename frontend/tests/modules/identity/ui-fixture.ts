@@ -34,7 +34,16 @@ export async function ui(permissions=grants, anonymous=false) {
  if(path==='/api/account/email'&&method==='PATCH'){if(Object.keys(body).join()!=='email'||!/^[^\s@]+@[^\s@]+$/.test(body.email))return error(400,'INVALID_EMAIL');state.email={...state.email,email:body.email,verified:false,verifiedAt:null,deliveryStatus:null};return send(200,state.email)}
  if(path==='/api/account/email/verification'){if(!state.email.email)return error(400,'EMAIL_REQUIRED');state.email.deliveryStatus=state.delivery;return send(state.delivery==='UNKNOWN'?202:200,{operationId:'op1',status:state.delivery,retryable:['FAILED','NOT_CONFIGURED'].includes(state.delivery),nextRetryAt:null,errorCode:state.delivery==='NOT_CONFIGURED'?'SMTP_NOT_CONFIGURED':null})}
  if(path==='/api/account/email/verify'){if(state.emailFailure)return error(400,state.emailFailure);if(body.token!==token)return error(400,'EMAIL_VERIFICATION_INVALID');state.email.verified=true;state.email.verifiedAt='2026-11-16T01:00:00Z';return send(200,state.email)}
- return error(404,'NOT_FOUND')})}},vue()],resolve:{alias:{'@':fileURLToPath(new URL('../../../src',import.meta.url))}},server:{host:'127.0.0.1',port:0,strictPort:false},logLevel:'error'});await server.listen();const address=server.httpServer!.address();if(!address||typeof address==='string')throw new Error('FIXTURE_ORIGIN');const origin='http://127.0.0.1:'+address.port;const page=await startBrowser();console.log('IDENTITY_REAL_CHROME',page.metadata.version);
+ return error(404,'NOT_FOUND')})}},vue()],resolve:{alias:{'@':fileURLToPath(new URL('../../../src',import.meta.url))}},server:{host:'127.0.0.1',port:0,strictPort:false},logLevel:'error'});await server.listen();const address=server.httpServer!.address();if(!address||typeof address==='string')throw new Error('FIXTURE_ORIGIN');const origin='http://127.0.0.1:'+address.port;const page=await startBrowser();
+ const immediateFill=page.fill.bind(page)
+ page.fill=async(selector,value)=>{
+  const key=JSON.stringify(selector)
+  const ready=`(()=>{const nodes=document.querySelectorAll(${key});const e=nodes[0];return nodes.length===1&&(e instanceof HTMLInputElement||e instanceof HTMLTextAreaElement)&&!e.disabled&&!e.readOnly&&!e.matches(':disabled')})()`
+  if(!await page.evaluate(ready))console.log('SCOPED_FILL_WAIT',selector,await page.evaluate(`(()=>{const nodes=document.querySelectorAll(${key});const e=nodes[0];return {count:nodes.length,tag:e?.tagName,disabled:e?.disabled,readOnly:e?.readOnly}})()`))
+  await page.waitFor(ready,{timeoutMs:5000})
+  await immediateFill(selector,value)
+ }
+console.log('IDENTITY_REAL_CHROME',page.metadata.version);
  return {state,page,origin,async open(path:string){try{await page.goto(origin+path)}catch(error){if(!(error instanceof Error)||!error.message.startsWith('BROWSER_WAIT_TIMEOUT'))throw error;console.log('FIXTURE_COLD_DOCUMENT_WAIT');await page.waitFor("document.readyState==='complete'",{timeoutMs:20000})}await page.waitFor("!!document.querySelector('h1')",{timeoutMs:20000})},async close(){await page.close();await server.close()}}
 }
 export async function shown(page:BrowserPage,selector:string){const end=Date.now()+3500;while(Date.now()<end){if(await page.evaluate(`!!document.querySelector(${JSON.stringify(selector)})`))return true;await new Promise(r=>setTimeout(r,30))}return false}
