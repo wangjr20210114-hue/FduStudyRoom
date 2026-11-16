@@ -180,7 +180,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Success or identical retry"
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareHistory"
+                }
+              }
+            }
           },
           "201": {
             "description": "New confirmed reservation"
@@ -270,7 +277,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Success or identical retry"
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
           },
           "201": {
             "description": "New confirmed reservation"
@@ -320,13 +334,27 @@
         ],
         "responses": {
           "200": {
-            "description": "Success or identical retry"
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
           },
           "201": {
             "description": "New confirmed reservation"
           },
           "202": {
-            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid DTO/time/code/cursor"
@@ -390,13 +418,27 @@
         ],
         "responses": {
           "200": {
-            "description": "Success or identical retry"
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
           },
           "201": {
             "description": "New confirmed reservation"
           },
           "202": {
-            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success"
+            "description": "PENDING allocation or CANCEL_PENDING release; not confirmed success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareReservation"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid DTO/time/code/cursor"
@@ -591,7 +633,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Success or identical retry"
+            "description": "Success or identical retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseAwareHistory"
+                }
+              }
+            }
           },
           "201": {
             "description": "New confirmed reservation"
@@ -967,6 +1016,72 @@
           "ignored",
           "appliedSourceVersion"
         ]
+      },
+      "ReleaseProgress": {
+        "type": "object",
+        "additionalProperties": false,
+        "readOnly": true,
+        "description": "Optional snapshot of only the reservation current resourceVersion RELEASE task. Omitted if that exact task does not exist; an older DONE task never implies current success. GET only observes and never dispatches, claims or changes retry times.",
+        "required": [
+          "status",
+          "attempts",
+          "nextRetryAt",
+          "errorCode"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CLAIMED",
+              "DONE",
+              "CANCELLED"
+            ],
+            "description": "Outbox task status, distinct from reservation status. DONE and resourceState=RELEASED are both required before displaying resource release success."
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Actual number of claims, including in-flight and successful claims; this is not a failure counter."
+          },
+          "nextRetryAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Only PENDING exposes the persisted UTC planned earliest next attempt; not a promised processing time. Other states expose null. Existing cancellation retries still honor this time; no force-retry API is added."
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(DEPENDENCY_HTTP_[1-5][0-9]{2}|INVALID_RESOURCE_RELEASE|RESERVATION_DEPENDENCY_UNAVAILABLE|RESERVATION_DELIVERY_UNAVAILABLE|RELEASE_DEPENDENCY_UNAVAILABLE)$",
+            "description": "Last completed failure for PENDING/CLAIMED only; terminal tasks expose null. Unknown stored errors are normalized to RELEASE_DEPENDENCY_UNAVAILABLE. No raw exception, URL, key, payload, response or claim data is public."
+          }
+        }
+      },
+      "ReleaseAwareReservation": {
+        "type": "object",
+        "properties": {
+          "releaseProgress": {
+            "$ref": "#/components/schemas/ReleaseProgress"
+          }
+        },
+        "description": "All existing reservation properties and permissions remain unchanged; releaseProgress is additive and optional."
+      },
+      "ReleaseAwareHistory": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseAwareReservation"
+            }
+          }
+        },
+        "description": "Existing signed pagination and owner/admin scope unchanged. At most 100 already-visible rows share one batched own-domain outbox read."
       }
     }
   }

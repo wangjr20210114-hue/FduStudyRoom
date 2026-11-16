@@ -69,7 +69,7 @@ public class ReservationService {
   if("REJECTED".equals(row.get("status")))throw new ApiException(409,"RESERVATION_RESOURCE_CONFLICT");
   return new Write(s.view(row),result[1]==null);
  }
- public Map<String,Object> detail(IdentityPrincipal actor,UUID id){var r=s.row(id,false);owner(r,actor);var result=s.view(r);var deliveries=s.db.queryForList("SELECT id,status,response::text AS response FROM m1.reservation_outbox WHERE reservation_id=? AND kind='NOTIFY' ORDER BY created_at,id",id);result.put("notifications",deliveries.stream().map(x->map("eventId",x.get("id"),"status",x.get("status"),"receipt",s.parse(x.get("response")))).toList());return result;}
+ public Map<String,Object> detail(IdentityPrincipal actor,UUID id){var r=s.row(id,false);owner(r,actor);var result=s.releaseView(r);var deliveries=s.db.queryForList("SELECT id,status,response::text AS response FROM m1.reservation_outbox WHERE reservation_id=? AND kind='NOTIFY' ORDER BY created_at,id",id);result.put("notifications",deliveries.stream().map(x->map("eventId",x.get("id"),"status",x.get("status"),"receipt",s.parse(x.get("response")))).toList());return result;}
  public Write cancel(IdentityPrincipal actor,UUID id,UUID operation,String reason,boolean administrator){
   if(administrator&&(reason==null||reason.isBlank()||reason.length()>500))throw new ApiException(400,"ADMIN_CANCEL_REASON_REQUIRED");
   String fp=fingerprint(actor.id(),administrator?"ADMIN_CANCEL":"CANCEL",map("id",id,"reason",administrator?reason:null));String action=administrator?"ADMIN_CANCEL":"CANCEL";
@@ -80,7 +80,7 @@ public class ReservationService {
    if(!active(r)||(administrator&&!clock.instant().isBefore(instant(r.get("ends_at"))))||(!administrator&&(!"RESERVED".equals(r.get("status"))||!clock.instant().isBefore(instant(r.get("starts_at"))))))throw new ApiException(409,"RESERVATION_CANNOT_CANCEL");
    terminate(r,administrator?"ADMIN":"USER","CANCELLED",actor.id(),clock.instant());s.command(operation,id,actor.id(),action,fp,clock.instant());return false;
   });
-  dispatch(event(id,"RELEASE",((Number)s.row(id,false).get("resource_version")).intValue()));flushFor(id);return new Write(s.view(s.row(id,false)),duplicate);
+  dispatch(event(id,"RELEASE",((Number)s.row(id,false).get("resource_version")).intValue()));flushFor(id);return new Write(s.releaseView(s.row(id,false)),duplicate);
  }
  public Write checkin(IdentityPrincipal actor,UUID id,UUID operation,String code){
   Map<String,Object>r=s.row(id,false);owner(r,actor);if(code==null||!code.matches("[0-9]{6}"))throw new ApiException(400,"INVALID_CHECKIN_CODE");
@@ -204,6 +204,6 @@ public class ReservationService {
   String where=" WHERE record_seq<=?";List<Object>args=new ArrayList<>();args.add(snapshot);if(!administrator){where+=" AND user_id=?";args.add(actor.id());}if(room!=null){where+=" AND room_id=?";args.add(room);}if(seat!=null){where+=" AND seat_id=?";args.add(seat);}if(from!=null){where+=" AND starts_at>=?";args.add(ts(from));}if(to!=null){where+=" AND starts_at<?";args.add(ts(to));}if(lastStart!=null){where+=" AND (starts_at,id)<(?,?)";args.add(ts(lastStart));args.add(lastId);}args.add(limit+1);
   var rows=s.db.queryForList("SELECT * FROM m1.seat_reservations"+where+" ORDER BY starts_at DESC,id DESC LIMIT ?",args.toArray());boolean more=rows.size()>limit;if(more)rows=new ArrayList<>(rows.subList(0,limit));
   String next=null;if(more){var last=rows.getLast();String encoded=Base64.getUrlEncoder().withoutPadding().encodeToString(s.text(map("scope",scope,"snapshot",snapshot,"start",instant(last.get("starts_at")).toString(),"id",last.get("id").toString())).getBytes(StandardCharsets.UTF_8));next=encoded+"."+sign(encoded);}
-  return map("items",rows.stream().map(s::view).toList(),"nextCursor",next,"limit",limit,"timeZone","Asia/Shanghai");
+  return map("items",s.releaseViews(rows),"nextCursor",next,"limit",limit,"timeZone","Asia/Shanghai");
  }
 }
