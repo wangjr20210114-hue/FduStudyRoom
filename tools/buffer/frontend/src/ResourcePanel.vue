@@ -10,6 +10,7 @@ interface ResourceStatus {
  disk: { known: boolean; totalBytes?: number; availableBytes?: number }
  jvm: { usedBytes: number; maxBytes: number }
  queue: { pending_count: number; pending_bytes: number; ready_count: number }
+ remoteWorkerConnected?: boolean
  verificationEnabled: boolean
  ciCanStart: boolean
  syncEnabled: boolean
@@ -68,8 +69,9 @@ function bytes(value:number|undefined){
     <strong>{{ status.queue.pending_count }}</strong>
     <p>{{ t('readyCount') }} {{ status.queue.ready_count }}</p>
     <p>{{ t('queueBytes') }} {{ bytes(status.queue.pending_bytes) }}</p>
-    <p>{{ status.verificationEnabled?(status.ciCanStart?t('ciReady'):t('ciPaused')):t('ciDisabled') }}</p>
-    <p>{{ status.syncEnabled?t('syncEnabled'):t('syncDisabled') }}</p>
+    <p v-if="status.remoteWorkerConnected">{{ t('remoteWorker') }}</p>
+    <p v-else>{{ status.verificationEnabled?(status.ciCanStart?t('ciReady'):t('ciPaused')):t('ciDisabled') }}</p>
+    <p>{{ status.syncEnabled||status.remoteWorkerConnected?t('syncEnabled'):t('syncDisabled') }}</p>
    </div>
   </div>
  </section>

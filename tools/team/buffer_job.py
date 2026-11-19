@@ -1,6 +1,7 @@
 """Trusted buffer worker. Git and Docker operations use argument arrays, never member shell text."""
 import argparse,base64,hashlib,json,os,re,secrets,subprocess,sys,time,urllib.parse,urllib.request,uuid
 from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parent))
 from policy import PolicyError,load,authorize,git,git_run,evidence_valid,guard
 from environment import docker,docker_path,bind_identity,PG
 from members import scoped
@@ -143,6 +144,8 @@ def publish(config,item):
     # This worker only publishes feature refs. It cannot force-update or push main.
     env={**os.environ,'GIT_TERMINAL_PROMPT':'0','GCM_INTERACTIVE':'Never'}
     execute_git(repo,'push',config['remote'],branch+':refs/heads/'+branch,env=env,timeout=120)
+    if config.get('publicationMode')=='branch-only':
+        return {**result,'state':'PUBLISHED','code':'GITEE_FEATURE_BRANCH_PUBLISHED','delivery':'feature_branch','merge_status':'awaiting_human_merge'}
     token=config.get('giteeApiToken','') or os.environ.get('CAMPUS_GITEE_API_TOKEN','')
     if not token:return {**result,'state':'PUSH_FAILED','code':'BRANCH_PUSHED_MR_CREDENTIAL_MISSING'}
     owner=config['giteeOwner'];repository=config['giteeRepo']

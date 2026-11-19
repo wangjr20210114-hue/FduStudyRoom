@@ -15,7 +15,7 @@ public class BufferController implements WebMvcConfigurer {
  @GetMapping("/") public org.springframework.web.servlet.ModelAndView home(){return new org.springframework.web.servlet.ModelAndView("forward:/index.html");}
  @GetMapping("/health") public Map<String,String> health(){return Map.of("status","UP");}
  @GetMapping("/api/me") public Map<String,Object> me(HttpServletRequest request){var result=new LinkedHashMap<>(member(request).publicView());result.put("baseline",settings.baseline());return result;}
- @GetMapping("/api/status") public Map<String,Object> status(HttpServletRequest request){var result=new LinkedHashMap<>(resources.snapshot());result.put("queue",repo.queueSummary(member(request)));return result;}
+ @GetMapping("/api/status") public Map<String,Object> status(HttpServletRequest request){var result=new LinkedHashMap<>(resources.snapshot());result.put("remoteWorkerConnected",repo.remoteWorkerConnected());result.put("queue",repo.queueSummary(member(request)));return result;}
  @GetMapping("/api/submissions") public List<Map<String,Object>> list(HttpServletRequest request){return repo.list(member(request));}
  @GetMapping("/api/requirements") @SuppressWarnings("unchecked") public List<Map<String,Object>> requirements(HttpServletRequest request){
   var member=member(request);var submissions=repo.list(member);

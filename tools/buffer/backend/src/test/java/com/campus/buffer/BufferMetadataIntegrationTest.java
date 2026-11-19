@@ -129,6 +129,6 @@ class BufferMetadataIntegrationTest {
   UUID fresh=assertDoesNotThrow(()->repository.insert(owner,metadata(rawLog()),new byte[]{4}),"An upgraded nonempty database must accept original NUL-containing evidence");
   assertEquals(metadata(rawLog()),repository.get(fresh).get("metadata"));
   assertEquals("jsonb",db.queryForObject("SELECT pg_typeof(metadata)::text FROM buffer.submissions WHERE id=?",String.class,fresh));
-  assertEquals("3",db.queryForObject("SELECT max(version::int)::text FROM buffer.flyway_schema_history",String.class));
+  assertEquals("4",db.queryForObject("SELECT max(version::int)::text FROM buffer.flyway_schema_history",String.class));
  }
 }

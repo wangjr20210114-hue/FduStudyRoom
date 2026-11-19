@@ -30,6 +30,16 @@ public class SystemResources {
   return new Memory(0,0,false);
  }
  public boolean pressure(Memory memory){return memory.known() && memory.usedPercent()>=settings.memoryThreshold();}
+ public boolean publicationPressure(){
+  String configured=settings.pressureInfoPath();
+  if(configured.isBlank())return pressure(memory());
+  try{
+   Path file=Path.of(configured);
+   long elapsed=System.currentTimeMillis()-Files.getLastModifiedTime(file).toMillis();
+   if(elapsed<0 || elapsed>180000)return false;
+   return pressure(parseMemory(Files.readString(file)));
+  }catch(java.io.IOException error){return false;}
+ }
  public boolean canStartCi(){var m=memory();return m.known() && !pressure(m) && m.availableBytes()>=settings.minCiAvailableBytes();}
  public Map<String,Object> snapshot(){
   var m=memory();Map<String,Object> out=new LinkedHashMap<>();out.put("sampledAt",java.time.Instant.now().toString());

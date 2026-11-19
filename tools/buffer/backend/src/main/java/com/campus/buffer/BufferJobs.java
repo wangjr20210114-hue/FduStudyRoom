@@ -46,11 +46,11 @@ public class BufferJobs {
   if(settings.verificationEnabled() && resources.canStartCi() && pending.isEmpty()){
    var reviewed=repo.reviewed();if(!reviewed.isEmpty())try{verify(reviewed.getFirst());}catch(GateException ignored){}
   }
-  var action=DispatchPolicy.decide(settings.enabled(),resources.pressure(resources.memory()),repo.due(),repo.pressureDue());
+  var action=DispatchPolicy.decide(settings.enabled(),resources.publicationPressure(),repo.due(),repo.pressureDue());
   if(action!=DispatchPolicy.Action.NONE)transaction.executeWithoutResult(status->syncLocked(action));
  }
  public void sync(){
-  var action=resources.pressure(resources.memory())?DispatchPolicy.Action.PRESSURE_FIRST:DispatchPolicy.Action.SCHEDULED;
+  var action=resources.publicationPressure()?DispatchPolicy.Action.PRESSURE_FIRST:DispatchPolicy.Action.SCHEDULED;
   transaction.executeWithoutResult(status->syncLocked(action));
  }
  private void syncLocked(DispatchPolicy.Action action){

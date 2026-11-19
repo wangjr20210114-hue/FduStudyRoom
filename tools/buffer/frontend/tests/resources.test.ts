@@ -11,6 +11,10 @@ async function render(value:InstanceType<typeof ResourcePanel>['$props']['status
  return renderToString(app)
 }
 describe('buffer resource panel',()=>{
+ it('shows the connected external worker on a receive-only host',async()=>{
+  const html=await render({...status,remoteWorkerConnected:true},'en')
+  expect(html).toContain('Windows worker connected');expect(html).toContain('Gitee sync enabled')
+ })
  it('shows available memory, threshold and the member queue',async()=>{
   const html=await render(status)
   expect(html).toContain('60.0%');expect(html).toContain('85%');expect(html).toContain('1.60 GiB');expect(html).toContain('2.00 KiB')

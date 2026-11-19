@@ -76,6 +76,8 @@ Vite 默认将 /api 代理至 http://127.0.0.1:8080。需要修改后端端口�
 
 ## 团队技能与协作缓冲站
 
+首次入组请解压组长发给自己的 a–f 成员包。组员可以自行登记 GitHub 用户名和安装环境，步骤见[六人入组与交付](docs/22-team-onboarding.md)。
+
 业务功能与关系图见 [业务需求说明](docs/17-spec-topology-and-assignment.md)，具体场景见 [业务Spec索引](spec/README.md)。分工、环境、测试、报告和交付管理见 [workflow要求](docs/18-workflow-obligations.md)。这些仍是需求规划，不自动改变成员权限。
 
 六模块分工、机器可读需求、TDD边界、环境启动和72小时同步流程见 [团队工作流](docs/14-team-workflow.md)，完整需求与外部阻塞见 [需求基线](docs/15-requirements-baseline.md)。Windows入口为 scripts/build.ps1，macOS入口为 sh scripts/build.sh；缓冲站使用 -Buffer / --buffer。

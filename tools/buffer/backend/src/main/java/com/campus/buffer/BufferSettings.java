@@ -61,6 +61,7 @@ public class BufferSettings {
  public double memoryThreshold(){return ((Number)config.getOrDefault("memoryThresholdPercent",85)).doubleValue();}
  public int pressureCooldown(){return ((Number)config.getOrDefault("pressureCooldownSeconds",300)).intValue();}
  public long minCiAvailableBytes(){return ((Number)config.getOrDefault("minCiAvailableBytes",2684354560L)).longValue();}
+ public String pressureInfoPath(){return (String)config.getOrDefault("pressureInfoPath","");}
  public String memoryInfoPath(){return (String)config.getOrDefault("memoryInfoPath","");}
  @SuppressWarnings("unchecked") public Set<String> allowedOrigins(){return Set.copyOf((List<String>)config.getOrDefault("allowedOrigins",List.of("http://127.0.0.1:7780","http://localhost:7780","http://127.0.0.1:5174","http://localhost:5174")));}
  public String python(){return (String)config.getOrDefault("pythonExecutable",System.getProperty("os.name").startsWith("Windows")?"python":"python3");}
