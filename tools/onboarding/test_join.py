@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -64,6 +65,29 @@ class OnboardingTest(unittest.TestCase):
                     else:
                         with self.assertRaises(RuntimeError):invitations.sync(owner)
                 self.assertEqual(any(args[:2]==("--method","PUT") for args in calls),invited)
+
+    def test_network_setting(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp)
+            root=directory/"member"
+            other=directory/"unrelated"
+            for repo in (root,other):
+                subprocess.run(["git","init","--quiet",repo],check=True)
+            env={**os.environ,"GIT_CONFIG_GLOBAL":str(directory/"global.gitconfig")}
+            original=subprocess.run
+            def simulate(args, **kw):
+                if "ls-remote" not in args:
+                    return original(args,**kw)
+                if "-c" in args:
+                    return subprocess.CompletedProcess(args,0)
+                found=original(["git","config","--get","http.https://github.com/.proxy"],cwd=root,capture_output=True)
+                return subprocess.CompletedProcess(args,found.returncode)
+            with patch.dict("os.environ",env),patch.object(join.urllib.request,"getproxies",return_value={"http":"http://127.0.0.1:8011"}),patch.object(subprocess,"run",side_effect=simulate):
+                join.github_transport(root)
+                join.github_transport(root)
+                self.assertEqual(join.value(["git","config","--get","http.https://github.com/.proxy"],cwd=root),"http://127.0.0.1:8011")
+                self.assertEqual(join.value(["git","config","--get","http.https://github.com/.proxy"],cwd=other,check=False),"")
 
 if __name__=="__main__":
     unittest.main()

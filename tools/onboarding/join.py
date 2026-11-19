@@ -116,6 +116,43 @@ def repository_access():
     return writable()
 
 
+def github_transport(root):
+    """Use an existing system proxy only if direct Git fails, within this member's checkouts."""
+    def reaches_github(extra=()):
+        try:
+            result = subprocess.run(["git",*extra,"ls-remote","--exit-code",ORIGIN,"HEAD"],
+                                    cwd=root,capture_output=True,timeout=25,
+                                    env={**os.environ,"GIT_TERMINAL_PROMPT":"0","GCM_INTERACTIVE":"Never"})
+            return result.returncode == 0
+        except subprocess.TimeoutExpired:
+            return False
+
+    if reaches_github():
+        return
+    from urllib.parse import urlsplit
+    proxies = urllib.request.getproxies()
+    for proxy in dict.fromkeys(proxies.get(k) for k in ("http","https","all")):
+        if not proxy:
+            continue
+        endpoint = urlsplit(proxy)
+        if endpoint.scheme not in ("http","https","socks5","socks5h") or not endpoint.hostname or endpoint.username or endpoint.password:
+            continue
+        key = "http.https://github.com/.proxy"
+        if not reaches_github(("-c",key+"="+proxy)):
+            continue
+        fragment=root/".campus/github-network.gitconfig"
+        fragment.parent.mkdir(exist_ok=True)
+        command(["git","config","--file",fragment,key,proxy])
+        include="includeIf.gitdir/i:"+root.resolve().as_posix().rstrip("/")+"/.path"
+        saved=value(["git","config","--global","--get-all",include],check=False).splitlines()
+        if fragment.as_posix() not in saved:
+            command(["git","config","--global","--add",include,fragment.as_posix()])
+        if reaches_github():
+            return
+    raise RuntimeError("Git 暂时连不到 GitHub。检查本机网络或系统代理，再重新启动。")
+
+
+
 def development_tools(root):
     sys.path.insert(0,str(root/"tools/team"))
     from environment import tools, docker, docker_path, PG
@@ -175,6 +212,7 @@ def main():
     if saved and (saved.get("identity") != slot or saved.get("buffer_url") != SITE or saved.get("token") != token):
         raise RuntimeError("同一目录已有其他成员配置。")
     github = account(saved)
+    github_transport(root)
     for layer in ("backend","frontend"):
         profile(slot,token,layer)
     buffer("/api/team/github",token,"backend",github)
