@@ -1,4 +1,5 @@
 """Exercise packaged checkouts, actual Flyway migrations, and both layer views in a disposable buffer."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -62,9 +63,10 @@ def verify(root,work,dist):
                     join.KIT=folder
                     repo=join.checkout(tmp/slot)
                     assert join.checkout(repo)==repo
-                    args=[sys.executable,"scripts/team.py","install-skills","--skills-dir",str(tmp/(slot+"-skills"))]
-                    subprocess.run(args,cwd=repo,check=True,stdout=subprocess.DEVNULL)
-                    subprocess.run(args+["--check"],cwd=repo,check=True,stdout=subprocess.DEVNULL)
+                    join.install_entry(repo)
+                    join.install_project_skills(repo,os.environ.copy())
+                    assert output(["git","-C",str(repo),"status","--porcelain"])==""
+                    assert json.loads(output([sys.executable,"-X","utf8",str(folder/join.ENTRY/"scripts/join.py"),"status"]))["module"]==mod
                     token=join.read(folder/"member.json")["access_code"]
                     join.save(repo/".campus/member.local",dict(identity=slot,buffer_url=join.SITE,token=token))
                     for layer in ("backend","frontend"):

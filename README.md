@@ -76,13 +76,13 @@ Vite 默认将 /api 代理至 http://127.0.0.1:8080。需要修改后端端口�
 
 ## 团队技能与协作缓冲站
 
-首次入组请解压组长发给自己的 a–f 成员包。组员可以自行登记 GitHub 用户名和安装环境，步骤见[六人入组与交付](docs/22-team-onboarding.md)。
+首次入组请解压自己的 a–f 成员包，用已启用 Codex 的 IDE 打开该目录，在对话中输入 `$campus-join 帮我入组并继续我的未完成需求`。环境准备、分工、TDD 和交付由同一对话接续。[六人入组与交付](docs/22-team-onboarding.md)
 
 业务功能与关系图见 [业务需求说明](docs/17-spec-topology-and-assignment.md)，具体场景见 [业务Spec索引](spec/README.md)。分工、环境、测试、报告和交付管理见 [workflow要求](docs/18-workflow-obligations.md)。这些仍是需求规划，不自动改变成员权限。
 
-六模块分工、机器可读需求、TDD边界、环境启动和72小时同步流程见 [团队工作流](docs/14-team-workflow.md)，完整需求与外部阻塞见 [需求基线](docs/15-requirements-baseline.md)。Windows入口为 scripts/build.ps1，macOS入口为 sh scripts/build.sh；缓冲站使用 -Buffer / --buffer。
+六模块分工、TDD 边界和 72 小时同步流程见[团队工作流](docs/14-team-workflow.md)。业务需求与外部阻塞见[需求基线](docs/15-requirements-baseline.md)。
 
-五个skill位于 skills/，统一入口是 `$campus-workflow 我的身份是 frontend-a，处理未完成需求`。环境、需求分解、测试设计和限界TDD按检查点推进，支持中断恢复。借鉴Harmony及本轮验证见 [全流程说明](docs/16-workflow-reference.md)。协调人先初始化真实成员和访问码，成员再只提供身份与需求状态；公共代码与锁文件保持冻结，模块路由、字典、测试和迁移各自维护。
+成员入口会调用 skills/ 中的环境、工作流、需求、测试和 TDD 技能。开发按检查点恢复，模块路由、字典、测试和迁移各自维护。[全流程说明](docs/16-workflow-reference.md)
 
 缓冲站默认仅本机 http://127.0.0.1:7780 ，专用PostgreSQL与业务数据分离。它自动接收diff草稿，人工审核和独立CI通过后才生成正式提交；72小时任务发布功能分支和MR，不直推main。首次需配置可信CI镜像、baseline和服务端Gitee凭据后启用同步，详见工作流说明。
 

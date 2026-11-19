@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -27,7 +28,24 @@ class OnboardingTest(unittest.TestCase):
                     contents=b"".join(packet.read(name) for name in packet.namelist())
                     self.assertFalse(any(t.encode() in contents for other,t in credentials.items() if other!=slot))
                     self.assertIn(".agents/skills/campus-join/SKILL.md",packet.namelist())
-                    self.assertNotIn(b"\r",packet.read("start.command"))
+                    self.assertIn(".agents/skills/campus-join/scripts/join.py",packet.namelist())
+                    self.assertIn(".agents/skills/campus-join/references/host.md",packet.namelist())
+                    self.assertFalse(any(n.endswith((".cmd",".command")) for n in packet.namelist()))
+                    folder = root/("kit-" + slot)
+                    packet.extractall(folder)
+                    helper = folder/join.ENTRY/"scripts/join.py"
+                    info = subprocess.check_output([sys.executable, "-X","utf8",helper,"status"],text=True,encoding="utf-8")
+                    self.assertEqual(json.loads(info)["module"],module)
+                    self.assertNotIn(credentials[slot],info)
+                    repo = root/("checkout-" + slot)
+                    (repo/".git/info").mkdir(parents=True)
+                    with patch.object(join,"KIT",folder):
+                        join.install_entry(repo)
+                        join.install_entry(repo)
+                    join.save(repo/".campus/member.local",{"identity":slot,"buffer_url":join.SITE,"token":credentials[slot]})
+                    info = subprocess.check_output([sys.executable,"-X","utf8",repo/join.ENTRY/"scripts/join.py","status"],text=True,encoding="utf-8")
+                    self.assertEqual(json.loads(info)["project"],str(repo))
+                    self.assertFalse(json.loads(info)["prepared"])
 
     def test_server_cannot_redirect_a_member_to_other_modules_or_versions(self):
         good=dict(id="a",modules=["M01"],admin=False,layer="backend",baseline=join.BASE)
@@ -38,10 +56,41 @@ class OnboardingTest(unittest.TestCase):
             self.assertEqual(good,join.profile("a","unused","backend"))
 
     def test_account_mismatch_is_rejected(self):
-        with patch.object(join,"command"),patch.object(join,"value",return_value='{"login":"alice","id":57}'):
+        authenticated = subprocess.CompletedProcess([],0,stdout='{"login":"alice","id":57}')
+        with patch.object(join,"command",return_value=authenticated):
             for saved in ({"github":"bob"},{"github":"alice","github_id":58}):
                 with self.assertRaises(RuntimeError):
                     join.account(saved)
+            with self.assertRaisesRegex(join.MemberAction,"CONFIRM_GITHUB_ACCOUNT alice"):
+                join.account({})
+            self.assertEqual({"login":"alice","id":57},join.account({},"ALICE"))
+
+    def test_failed_invitation_resumes_without_interactive_input(self):
+        from contextlib import ExitStack, redirect_stdout
+        from io import StringIO
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            base = Path(tmp)
+            kit, root = base/"kit", base/"a"
+            token = "x"*32
+            join.save(kit/"member.json",{"slot":"a","access_code":token})
+            stack.enter_context(patch.object(join,"KIT",kit))
+            stack.enter_context(patch.object(join,"ROOT_HOME",base))
+            stack.enter_context(patch("builtins.input",side_effect=AssertionError("terminal prompt")))
+            for name in ("checkout","github_transport","profile","buffer","install_entry","command"):
+                stack.enter_context(patch.object(join,name))
+            stack.enter_context(patch.object(join,"account",return_value={"login":"alice","id":57}))
+            stack.enter_context(patch.object(join,"development_tools",return_value={}))
+            stack.enter_context(patch.object(join,"repository_access",side_effect=[False,True]))
+            with self.assertRaisesRegex(join.MemberAction,"INVITATION_PENDING"):
+                join.main(["prepare","--github","alice"])
+            self.assertTrue((root/".campus/member.local").is_file())
+            self.assertFalse((root/".campus/join-ready.local").exists())
+            join.main(["prepare"])
+            result = StringIO()
+            with redirect_stdout(result):
+                join.main(["status"])
+            self.assertTrue(json.loads(result.getvalue())["prepared"])
+            self.assertNotIn(token,result.getvalue())
 
     def test_inviter_checks_immutable_id_and_skips_pending_invites(self):
         import invitations

@@ -1,4 +1,5 @@
 """Bootstrap a member checkout from the assigned private distribution."""
+import argparse
 import json
 import os
 import shutil
@@ -10,7 +11,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-KIT = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent
+ENTRY = Path(".agents/skills/campus-join")
+KIT = HERE.parents[3] if HERE.name == "scripts" and HERE.parent.name == "campus-join" else HERE
 BASE = "2142af7a714377764fa32118fa99a92a8551a4d4"
 REPO = "wangjr20210114-hue/FduStudyRoom"
 ORIGIN = "https://github.com/" + REPO + ".git"
@@ -87,14 +90,22 @@ def profile(slot, token, layer):
     return me
 
 
-def account(saved):
+class MemberAction(RuntimeError):
+    """An IDE-visible step the member can resume in the same conversation."""
+
+
+def account(saved, requested=None):
     result = command(["gh","api","--hostname","github.com","user"], capture=True, check=False)
     if result.returncode:
-        command(["gh","auth","login","--hostname","github.com","--git-protocol","https","--web"])
-    me = json.loads(value(["gh","api","--hostname","github.com","user"]))
-    typed = saved.get("github") or input(f"你的 GitHub 用户名（回车使用已登录的 {me['login']}）：").strip() or me["login"]
+        if command(["gh","auth","status","--hostname","github.com"], capture=True, check=False).returncode:
+            raise MemberAction("GITHUB_LOGIN_REQUIRED")
+        raise RuntimeError("读取 GitHub 账号失败，请检查 GitHub 连通性。")
+    me = json.loads(result.stdout)
+    typed = requested or saved.get("github")
+    if not typed:
+        raise MemberAction("CONFIRM_GITHUB_ACCOUNT " + me["login"])
     if typed.casefold() != me["login"].casefold() or saved.get("github_id", me["id"]) != me["id"]:
-        raise RuntimeError("填写账号与当前 GitHub 登录不同，请用 gh auth switch 切换自己的账号后重试。")
+        raise MemberAction("GITHUB_ACCOUNT_MISMATCH 当前登录 " + me["login"])
     return {"id":me["id"],"login":me["login"]}
 
 
@@ -153,28 +164,36 @@ def github_transport(root):
 
 
 
+def install_project_skills(root, env):
+    target = root/".agents/skills"
+    args = [sys.executable, root/"scripts/team.py", "install-skills", "--skills-dir"]
+    if command(args+[target,"--check"],capture=True,check=False,env=env).returncode == 0:
+        return
+    target.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=target) as tmp:
+        staged = Path(tmp)/"skills"
+        command(args+[staged],env=env)
+        for folder in staged.iterdir():
+            existing = target/folder.name
+            if existing.exists():
+                for item in folder.rglob("*"):
+                    if item.is_file():
+                        local = existing/item.relative_to(folder)
+                        if not local.is_file() or local.read_bytes() != item.read_bytes():
+                            raise RuntimeError("已有项目技能内容不同，请核对 " + folder.name)
+        for folder in staged.iterdir():
+            if not (target/folder.name).exists():
+                folder.rename(target/folder.name)
+    command(args+[target,"--check"],env=env)
+
+
 def development_tools(root):
     sys.path.insert(0,str(root/"tools/team"))
     from environment import tools, docker, docker_path, PG
     _, env, notices = tools(root, install=True)
     for note in notices:
         print(note)
-    cli = shutil.which("codex.cmd" if os.name == "nt" else "codex", path=env["PATH"])
-    private_prefix = root/".campus/codex"
-    local_cli = private_prefix/("codex.cmd" if os.name == "nt" else "bin/codex")
-    if not cli and not local_cli.is_file():
-        npm = shutil.which("npm.cmd" if os.name == "nt" else "npm",path=env["PATH"])
-        if not npm:
-            raise RuntimeError("Node 24 已安装，但未找到配套 npm。")
-        command([npm, "install","--prefix",private_prefix,"-g","@openai/codex@0.159.2"],env=env)
-    cli = cli or str(local_cli)
-    if command([cli,"login","status"],env=env,capture=True,check=False).returncode:
-        command([cli,"login"],env=env)
-    command([cli,"login","status"],env=env)
-    team = [sys.executable,root/"scripts/team.py"]
-    if command(team+["install-skills","--check"],capture=True,check=False,env=env).returncode:
-        command(team+["install-skills"],env=env)
-    command(team+["install-skills","--check"],env=env)
+    install_project_skills(root, env)
     dc = docker(root)
     server = value(dc+["info","--format","{{.ServerVersion}}"])
     if int(server.split(".")[0]) < 28:
@@ -199,45 +218,91 @@ def development_tools(root):
     for image in (PG,"axllent/mailpit@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387"):
         if command(dc+["image","inspect",image],capture=True,check=False).returncode:
             command(dc+["pull",image])
-    return cli, env
+    return env
 
 
-def main():
-    os.environ["PYTHONUTF8"]="1"
-    kit = read(KIT/"member.json")
-    slot, token = kit["slot"], kit["access_code"]
+def member_context():
+    if (KIT/"member.json").is_file():
+        kit = read(KIT/"member.json")
+        slot, token = kit["slot"], kit["access_code"]
+        if slot not in SLOTS:
+            raise RuntimeError("无法识别成员包代号。")
+        root = ROOT_HOME/slot
+    else:
+        root = KIT
+        binding = root/".campus/member.local"
+        if not binding.is_file():
+            raise RuntimeError("请在 IDE 中打开已解压的个人包或已入组的项目目录。")
+        saved = read(binding)
+        slot, token = saved["identity"], saved["token"]
     if slot not in SLOTS or not isinstance(token,str) or len(token)<32:
         raise RuntimeError("分配文件无效，请重新解压你自己的成员包。")
-    root = checkout(ROOT_HOME/slot)
     binding = root/".campus/member.local"
     saved = read(binding) if binding.exists() else {}
     if saved and (saved.get("identity") != slot or saved.get("buffer_url") != SITE or saved.get("token") != token):
         raise RuntimeError("同一目录已有其他成员配置。")
-    github = account(saved)
+    return root, slot, token, saved
+
+
+def install_entry(root):
+    source, target = KIT/ENTRY, root/ENTRY
+    if source != target:
+        if target.exists():
+            for name in ("SKILL.md", "references/host.md", "scripts/join.py"):
+                if not (target/name).is_file() or (target/name).read_bytes() != (source/name).read_bytes():
+                    raise RuntimeError("项目中的入组技能与个人包不同，请核对版本。")
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(dir=target.parent) as tmp:
+                stage = Path(tmp)/"entry"
+                shutil.copytree(source, stage, ignore=shutil.ignore_patterns("__pycache__"))
+                stage.rename(target)
+    exclude = root/".git/info/exclude"
+    rules = exclude.read_text(encoding="utf-8") if exclude.is_file() else ""
+    if "/.agents/skills/" not in rules.splitlines():
+        with exclude.open("a", encoding="utf-8") as stream:
+            stream.write("\n/.agents/skills/\n")
+
+
+def main(argv=None):
+    os.environ["PYTHONUTF8"] = "1"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("action", choices=("status","prepare"))
+    parser.add_argument("--github", help="GitHub username confirmed in the IDE")
+    args = parser.parse_args(argv)
+    root, slot, token, saved = member_context()
+    ready = root/".campus/join-ready.local"
+    if args.action == "status":
+        stamp = read(ready) if ready.is_file() else {}
+        prepared = bool(saved) and stamp == {"slot":slot,"github_id":saved.get("github_id"),"baseline":BASE}
+        print(json.dumps({"project":str(root),"member":slot,"module":SLOTS[slot],"github":saved.get("github"),
+                          "prepared":prepared},ensure_ascii=False))
+        return
+    checkout(root)
+    github = account(saved, args.github)
     github_transport(root)
     for layer in ("backend","frontend"):
         profile(slot,token,layer)
     buffer("/api/team/github",token,"backend",github)
-    save(binding,{"identity":slot,"buffer_url":SITE,"token":token,"github":github["login"],"github_id":github["id"]})
-    print("正在准备 Codex、五个项目技能和隔离测试环境。",flush=True)
-    cli, env = development_tools(root)
+    save(root/".campus/member.local",{"identity":slot,"buffer_url":SITE,"token":token,"github":github["login"],"github_id":github["id"]})
+    install_entry(root)
+    env = development_tools(root)
     for layer in ("backend","frontend"):
         command([sys.executable,root/"scripts/team.py","workflow",slot,"--module",SLOTS[slot],
                  "--layer",layer,"--preview"],env=env)
     if not repository_access():
-        raise RuntimeError("已登记账号，等待仓库邀请。稍后再次打开本程序即可接收。")
+        raise MemberAction("INVITATION_PENDING 已登记账号，等待仓库邀请。")
     command(["gh","auth","setup-git","--hostname","github.com"])
-    print(f"成员 {slot} · {SLOTS[slot]} 项目就绪。IDE 打开 {root}。",flush=True)
-    choice = input("回车打开 Codex 查看待办，输入 2 启动本地产品，输入 3 退出：").strip()
-    if choice == "2":
-        command([sys.executable,root/"scripts/team.py","build","--install","--start"],cwd=root,env=env)
-    elif choice != "3":
-        command([cli,"-C",root,f"$campus-workflow 我的身份是 {slot}，只查看本模块待办和已有交付证据。"],env=env)
+    save(ready,{"slot":slot,"github_id":github["id"],"baseline":BASE})
+    print(f"成员 {slot} · {SLOTS[slot]} 项目就绪。项目目录 {root}。",flush=True)
 
 
 if __name__ == "__main__":
     try:
         main()
+    except MemberAction as error:
+        print(error, file=sys.stderr)
+        sys.exit(2)
     except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f"启动未完成：{error}",file=sys.stderr)
         sys.exit(1)
