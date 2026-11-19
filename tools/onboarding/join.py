@@ -196,7 +196,9 @@ def development_tools(root):
                         "--label",label+"="+BASE,"-f",docker_path(root/"infra/team/browser.Dockerfile"),"-t",tag,context])
     command(dc+["run","--rm","--network","none","--platform","linux/amd64",tag,"sh","-ec",
                 'node --version && java -version && "$CAMPUS_TEST_BROWSER" --version'])
-    command(dc+["pull",PG])
+    for image in (PG,"axllent/mailpit@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387"):
+        if command(dc+["image","inspect",image],capture=True,check=False).returncode:
+            command(dc+["pull",image])
     return cli, env
 
 
